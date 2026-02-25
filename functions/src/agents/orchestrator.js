@@ -162,7 +162,7 @@ class AgentOrchestrator {
     // Generate badge if passed
     if (finalScore >= 6) {
       const { v4: uuidv4 } = require('uuid');
-      const badgeId = `BSA-${uuidv4().slice(0, 8).toUpperCase()}`;
+      const badgeId = `UZA-${uuidv4().slice(0, 8).toUpperCase()}`;
       updateData.badgeId = badgeId;
       updateData.completedAt = admin.firestore.FieldValue.serverTimestamp();
 

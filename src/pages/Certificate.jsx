@@ -26,7 +26,7 @@ export default function Certificate() {
   if (!module) {
     return (
       <div className="max-w-4xl mx-auto text-center py-20">
-        <h2 className="text-2xl font-bold text-white mb-4">Module Not Found</h2>
+        <h2 className="text-2xl font-bold text-heading mb-4">Module Not Found</h2>
         <Link to="/dashboard" className="btn-primary">Back to Dashboard</Link>
       </div>
     );
@@ -41,14 +41,14 @@ export default function Certificate() {
   }
 
   const isPassed = progress?.examScore >= 6;
-  const badgeId = progress?.badgeId || `BSA-${moduleId.slice(0, 6).toUpperCase()}-${user?.uid?.slice(0, 8)?.toUpperCase() || 'XXXX'}`;
+  const badgeId = progress?.badgeId || `UZA-${moduleId.slice(0, 6).toUpperCase()}-${user?.uid?.slice(0, 8)?.toUpperCase() || 'XXXX'}`;
 
   if (!isPassed) {
     return (
       <div className="max-w-4xl mx-auto text-center py-20">
-        <Award className="w-16 h-16 text-surface-600 mx-auto mb-4" />
-        <h2 className="text-2xl font-bold text-white mb-4">Certificate Not Available</h2>
-        <p className="text-surface-400 mb-6">You need to pass the exam with a score ≥ 6/10 to earn a certificate.</p>
+        <Award className="w-16 h-16 text-muted mx-auto mb-4" />
+        <h2 className="text-2xl font-bold text-heading mb-4">Certificate Not Available</h2>
+        <p className="text-body mb-6">You need to pass the exam with a score ≥ 6/10 to earn a certificate.</p>
         <button onClick={() => navigate(`/module/${moduleId}`)} className="btn-primary">
           Go to Module
         </button>
@@ -73,14 +73,14 @@ export default function Certificate() {
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
       pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`BuildSkillAI-Certificate-${module.title}.pdf`);
+      pdf.save(`UjuziAI-Certificate-${module.title}.pdf`);
     } catch (err) {
       console.error('Download error:', err);
     }
   };
 
   const shareUrl = `${window.location.origin}/certificate/${moduleId}`;
-  const shareText = `I just earned my "${module.title}" certification on BuildSkillAI! Badge ID: ${badgeId}`;
+  const shareText = `I just earned my "${module.title}" certification on UjuziAI! Badge ID: ${badgeId}`;
 
   const shareLinkedIn = () => {
     window.open(
@@ -101,7 +101,7 @@ export default function Certificate() {
       {/* Back */}
       <button
         onClick={() => navigate('/dashboard')}
-        className="flex items-center gap-2 text-surface-400 hover:text-white transition-colors mb-6"
+        className="flex items-center gap-2 text-body hover:text-heading transition-colors mb-6"
       >
         <ArrowLeft className="w-4 h-4" />
         Back to Dashboard
@@ -110,7 +110,7 @@ export default function Certificate() {
       {/* Certificate */}
       <div
         ref={certRef}
-        className="relative bg-surface-900 border-2 border-primary-500/30 rounded-2xl p-8 md:p-12 overflow-hidden"
+        className="relative bg-surface border-2 border-primary-500/30 rounded-2xl p-8 md:p-12 overflow-hidden"
       >
         {/* Background decoration */}
         <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-primary-500 via-accent-500 to-primary-500" />
@@ -122,20 +122,20 @@ export default function Certificate() {
             <div className="w-12 h-12 bg-primary-600 rounded-xl flex items-center justify-center">
               <Zap className="w-6 h-6 text-white" />
             </div>
-            <span className="text-2xl font-bold gradient-text">BuildSkillAI</span>
+            <span className="text-2xl font-bold gradient-text">UjuziAI</span>
           </div>
 
-          <p className="text-surface-400 uppercase tracking-widest text-sm mb-4">
+          <p className="text-body uppercase tracking-widest text-sm mb-4">
             Certificate of Completion
           </p>
 
-          <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">
+          <h1 className="text-3xl md:text-4xl font-bold text-heading mb-2">
             {module.title}
           </h1>
-          <p className="text-surface-400 mb-8">Build with AI Season</p>
+          <p className="text-body mb-8">Build with AI Season</p>
 
           <div className="mb-8">
-            <p className="text-surface-400 text-sm">Awarded to</p>
+            <p className="text-body text-sm">Awarded to</p>
             <p className="text-2xl font-bold gradient-text mt-1">
               {user?.displayName || 'Learner'}
             </p>
@@ -143,18 +143,18 @@ export default function Certificate() {
 
           <div className="flex items-center justify-center gap-8 mb-8">
             <div>
-              <p className="text-surface-500 text-xs">Score</p>
+              <p className="text-muted text-xs">Score</p>
               <p className="text-xl font-bold text-accent-400">{progress.examScore}/10</p>
             </div>
-            <div className="w-px h-10 bg-surface-700" />
+            <div className="w-px h-10 bg-gray-200 dark:bg-neutral-700" />
             <div>
-              <p className="text-surface-500 text-xs">Badge ID</p>
+              <p className="text-muted text-xs">Badge ID</p>
               <p className="text-sm font-mono text-primary-300">{badgeId}</p>
             </div>
-            <div className="w-px h-10 bg-surface-700" />
+            <div className="w-px h-10 bg-gray-200 dark:bg-neutral-700" />
             <div>
-              <p className="text-surface-500 text-xs">Date</p>
-              <p className="text-sm text-surface-300">{new Date().toLocaleDateString()}</p>
+              <p className="text-muted text-xs">Date</p>
+              <p className="text-sm text-body">{new Date().toLocaleDateString()}</p>
             </div>
           </div>
 
@@ -184,14 +184,16 @@ export default function Certificate() {
       {/* Badge Verification */}
       <div className="glass-card p-6 mt-8 text-center">
         <Award className="w-8 h-8 text-primary-400 mx-auto mb-3" />
-        <h3 className="font-semibold text-white mb-1">Verifiable Badge</h3>
-        <p className="text-sm text-surface-400 mb-3">
+        <h3 className="font-semibold text-heading mb-1">Verifiable Badge</h3>
+        <p className="text-sm text-body mb-3">
           Your badge ID can be used to verify this certification:
         </p>
-        <code className="bg-surface-800 px-4 py-2 rounded-lg text-primary-300 font-mono text-sm">
+        <code className="bg-surface px-4 py-2 rounded-lg text-primary-300 font-mono text-sm">
           {badgeId}
         </code>
       </div>
     </div>
   );
 }
+
+

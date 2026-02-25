@@ -61,20 +61,20 @@ export default function SubmissionForm({ moduleId, onSuccess }) {
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Image Upload */}
       <div>
-        <label className="flex items-center gap-2 text-sm font-medium text-surface-200 mb-3">
+        <label className="flex items-center gap-2 text-sm font-medium text-heading mb-3">
           <Image className="w-4 h-4 text-primary-400" />
           Screenshots / Images <span className="text-red-400">*</span>
         </label>
 
         <div
           onClick={() => fileInputRef.current?.click()}
-          className="border-2 border-dashed border-surface-600 hover:border-primary-500/50 rounded-xl p-8 text-center cursor-pointer transition-colors group"
+          className="border-2 border-dashed border-themed hover:border-primary-500/50 rounded-xl p-8 text-center cursor-pointer transition-colors group"
         >
-          <Upload className="w-10 h-10 text-surface-500 group-hover:text-primary-400 mx-auto mb-3 transition-colors" />
-          <p className="text-surface-400 text-sm">
+          <Upload className="w-10 h-10 text-muted group-hover:text-primary-400 mx-auto mb-3 transition-colors" />
+          <p className="text-body text-sm">
             Click to upload or drag & drop
           </p>
-          <p className="text-surface-500 text-xs mt-1">PNG, JPG up to 5MB each (max 5 images)</p>
+          <p className="text-muted text-xs mt-1">PNG, JPG up to 5MB each (max 5 images)</p>
         </div>
 
         <input
@@ -93,14 +93,14 @@ export default function SubmissionForm({ moduleId, onSuccess }) {
                 <img
                   src={preview}
                   alt={`Upload ${index + 1}`}
-                  className="w-full h-20 object-cover rounded-lg border border-surface-700"
+                  className="w-full h-20 object-cover rounded-lg border border-themed"
                 />
                 <button
                   type="button"
                   onClick={() => removeImage(index)}
                   className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                 >
-                  <X className="w-3 h-3 text-white" />
+                  <X className="w-3 h-3 text-heading" />
                 </button>
               </div>
             ))}
@@ -110,12 +110,12 @@ export default function SubmissionForm({ moduleId, onSuccess }) {
 
       {/* Video URL */}
       <div>
-        <label className="flex items-center gap-2 text-sm font-medium text-surface-200 mb-3">
+        <label className="flex items-center gap-2 text-sm font-medium text-heading mb-3">
           <Video className="w-4 h-4 text-primary-400" />
-          Video URL or Link <span className="text-surface-500">(optional)</span>
+          Video URL or Link <span className="text-muted">(optional)</span>
         </label>
         <div className="relative">
-          <LinkIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-500" />
+          <LinkIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
           <input
             type="url"
             value={videoUrl}
@@ -128,7 +128,7 @@ export default function SubmissionForm({ moduleId, onSuccess }) {
 
       {/* Description */}
       <div>
-        <label className="flex items-center gap-2 text-sm font-medium text-surface-200 mb-3">
+        <label className="flex items-center gap-2 text-sm font-medium text-heading mb-3">
           <FileText className="w-4 h-4 text-primary-400" />
           Description <span className="text-red-400">*</span>
         </label>
@@ -140,14 +140,14 @@ export default function SubmissionForm({ moduleId, onSuccess }) {
           className="input-field resize-none"
         />
         <div className="flex justify-between mt-2">
-          <p className={`text-xs ${wordCount >= MIN_WORDS ? 'text-accent-400' : 'text-surface-500'}`}>
+          <p className={`text-xs ${wordCount >= MIN_WORDS ? 'text-accent-400' : 'text-muted'}`}>
             {wordCount >= MIN_WORDS ? (
               <span className="flex items-center gap-1"><Check className="w-3 h-3" /> Minimum word count met</span>
             ) : (
               `${wordCount}/${MIN_WORDS} minimum words`
             )}
           </p>
-          <p className="text-xs text-surface-500">{wordCount} words</p>
+          <p className="text-xs text-muted">{wordCount} words</p>
         </div>
       </div>
 
@@ -172,3 +172,4 @@ export default function SubmissionForm({ moduleId, onSuccess }) {
     </form>
   );
 }
+

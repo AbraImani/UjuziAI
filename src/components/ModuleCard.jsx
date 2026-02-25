@@ -42,10 +42,10 @@ export default function ModuleCard({ module, progress }) {
         </div>
 
         {/* Content */}
-        <h3 className="text-lg font-semibold text-white mb-2 group-hover:text-primary-300 transition-colors">
+        <h3 className="text-lg font-semibold text-heading mb-2 group-hover:text-primary-300 transition-colors">
           {module.title}
         </h3>
-        <p className="text-sm text-surface-400 mb-4 flex-1 line-clamp-3">
+        <p className="text-sm text-body mb-4 flex-1 line-clamp-3">
           {module.description}
         </p>
 
@@ -54,7 +54,7 @@ export default function ModuleCard({ module, progress }) {
           <span className={`badge border ${DIFFICULTY_COLORS[module.difficulty]}`}>
             {module.difficulty}
           </span>
-          <span className="badge bg-surface-800 text-surface-300 border border-surface-700">
+          <span className="badge bg-surface text-body border border-themed">
             <Clock className="w-3 h-3 mr-1" />
             {module.estimatedTime}
           </span>
@@ -65,7 +65,7 @@ export default function ModuleCard({ module, progress }) {
           {module.topics.map((topic) => (
             <span
               key={topic}
-              className="text-xs px-2 py-0.5 bg-surface-800/80 text-surface-400 rounded-md"
+              className="text-xs px-2 py-0.5 bg-black/5 dark:bg-white/5 text-body rounded-md"
             >
               {topic}
             </span>
@@ -97,3 +97,4 @@ export default function ModuleCard({ module, progress }) {
     </Link>
   );
 }
+

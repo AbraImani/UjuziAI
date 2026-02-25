@@ -30,8 +30,8 @@ export default function ModuleDetail() {
   if (!module) {
     return (
       <div className="max-w-4xl mx-auto text-center py-20">
-        <h2 className="text-2xl font-bold text-white mb-4">Module Not Found</h2>
-        <p className="text-surface-400 mb-6">The module you're looking for doesn't exist.</p>
+        <h2 className="text-2xl font-bold text-heading mb-4">Module Not Found</h2>
+        <p className="text-body mb-6">The module you're looking for doesn't exist.</p>
         <Link to="/dashboard" className="btn-primary">Back to Dashboard</Link>
       </div>
     );
@@ -54,7 +54,7 @@ export default function ModuleDetail() {
             <Lock className="w-6 h-6 text-red-400" />
             <h3 className="text-lg font-semibold text-red-400">Exam Locked</h3>
           </div>
-          <p className="text-surface-400">
+          <p className="text-body">
             This exam has been locked due to policy violations. Contact support if you believe this is an error.
           </p>
         </div>
@@ -68,7 +68,7 @@ export default function ModuleDetail() {
             <Award className="w-6 h-6 text-accent-400" />
             <h3 className="text-lg font-semibold text-accent-400">Module Completed!</h3>
           </div>
-          <p className="text-surface-400 mb-4">
+          <p className="text-body mb-4">
             You scored <span className="text-accent-400 font-bold">{examScore}/10</span>. 
             Your certification badge is ready.
           </p>
@@ -89,10 +89,10 @@ export default function ModuleDetail() {
             <Shield className="w-6 h-6 text-primary-400" />
             <h3 className="text-lg font-semibold text-primary-400">Exam Ready</h3>
           </div>
-          <p className="text-surface-400 mb-2">
+          <p className="text-body mb-2">
             Your submission has been validated. You can now take the exam.
           </p>
-          <div className="flex items-center gap-4 text-sm text-surface-400 mb-4">
+          <div className="flex items-center gap-4 text-sm text-body mb-4">
             <span>Attempts: {examAttempts}/{EXAM_CONFIG.MAX_ATTEMPTS}</span>
             {examScore !== null && <span>Last Score: {examScore}/10</span>}
           </div>
@@ -122,7 +122,7 @@ export default function ModuleDetail() {
             <Shield className="w-6 h-6 text-primary-400" />
             <h3 className="text-lg font-semibold text-primary-400">Proof Submitted</h3>
           </div>
-          <p className="text-surface-400 mb-4">
+          <p className="text-body mb-4">
             Your proof has been submitted. The exam is being prepared.
           </p>
           <button onClick={() => refetch()} className="btn-secondary flex items-center gap-2">
@@ -141,7 +141,7 @@ export default function ModuleDetail() {
       {/* Back button */}
       <button
         onClick={() => navigate('/dashboard')}
-        className="flex items-center gap-2 text-surface-400 hover:text-white transition-colors mb-6"
+        className="flex items-center gap-2 text-body hover:text-heading transition-colors mb-6"
       >
         <ArrowLeft className="w-4 h-4" />
         Back to Dashboard
@@ -159,8 +159,8 @@ export default function ModuleDetail() {
             );
           })()}
           <div className="flex-1">
-            <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">{module.title}</h1>
-            <p className="text-surface-400 leading-relaxed">{module.description}</p>
+            <h1 className="text-2xl md:text-3xl font-bold text-heading mb-2">{module.title}</h1>
+            <p className="text-body leading-relaxed">{module.description}</p>
           </div>
         </div>
 
@@ -168,7 +168,7 @@ export default function ModuleDetail() {
           <span className={`badge border ${DIFFICULTY_COLORS[module.difficulty]}`}>
             {module.difficulty}
           </span>
-          <span className="badge bg-surface-800 text-surface-300 border border-surface-700">
+          <span className="badge bg-surface text-body border border-themed">
             <Clock className="w-3 h-3 mr-1" />
             {module.estimatedTime}
           </span>
@@ -202,8 +202,8 @@ export default function ModuleDetail() {
           <div className="flex items-center gap-3 mb-6">
             <Upload className="w-6 h-6 text-primary-400" />
             <div>
-              <h2 className="text-xl font-semibold text-white">Submit Your Proof</h2>
-              <p className="text-sm text-surface-400">
+              <h2 className="text-xl font-semibold text-heading">Submit Your Proof</h2>
+              <p className="text-sm text-body">
                 Upload evidence of codelab completion to unlock the exam
               </p>
             </div>
@@ -211,11 +211,11 @@ export default function ModuleDetail() {
 
           {!showSubmitForm ? (
             <div className="text-center py-8">
-              <FileText className="w-16 h-16 text-surface-600 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-surface-300 mb-2">
+              <FileText className="w-16 h-16 text-muted mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-body mb-2">
                 Ready to submit your work?
               </h3>
-              <p className="text-surface-500 mb-6 max-w-md mx-auto">
+              <p className="text-muted mb-6 max-w-md mx-auto">
                 You will need screenshots of your completed codelab, an optional video link, and a detailed description
                 of at least 100 words explaining what you learned.
               </p>
@@ -241,21 +241,21 @@ export default function ModuleDetail() {
 
       {/* Requirements Checklist */}
       <div className="glass-card p-8 mt-6">
-        <h3 className="text-lg font-semibold text-white mb-4">Completion Requirements</h3>
+        <h3 className="text-lg font-semibold text-heading mb-4">Completion Requirements</h3>
         <div className="space-y-3">
           {[
             { label: 'Complete the codelab', done: isSubmitted },
             { label: 'Upload screenshot proof', done: isSubmitted },
             { label: 'Write detailed description (100+ words)', done: isSubmitted },
-            { label: 'Pass exam with score >= 6/10 (1 attempt only)', done: isPassed },
+            { label: 'Pass exam with score >= 6/10 (max 2 attempts)', done: isPassed },
           ].map(({ label, done }) => (
             <div key={label} className="flex items-center gap-3">
               {done ? (
                 <CheckCircle className="w-5 h-5 text-accent-400 flex-shrink-0" />
               ) : (
-                <div className="w-5 h-5 rounded-full border-2 border-surface-600 flex-shrink-0" />
+                <div className="w-5 h-5 rounded-full border-2 border-themed flex-shrink-0" />
               )}
-              <span className={done ? 'text-surface-200' : 'text-surface-500'}>{label}</span>
+              <span className={done ? 'text-heading' : 'text-muted'}>{label}</span>
             </div>
           ))}
         </div>
@@ -263,3 +263,4 @@ export default function ModuleDetail() {
     </div>
   );
 }
+

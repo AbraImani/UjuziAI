@@ -1,4 +1,4 @@
-# BuildSkillAI - Project Instructions
+# UjuziAI - Project Instructions
 
 ## Tech Stack
 - **Frontend**: React 18 + Vite + TailwindCSS
@@ -22,3 +22,4 @@
 - Use TailwindCSS for styling
 - All API calls go through Firebase Functions
 - Agent logic lives in `/functions/src/agents/`
+

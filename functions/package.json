@@ -1,6 +1,6 @@
 {
-  "name": "buildskillai-functions",
-  "description": "BuildSkillAI Firebase Cloud Functions - Agent-based Backend",
+  "name": "UjuziAI-functions",
+  "description": "UjuziAI Firebase Cloud Functions - Agent-based Backend",
   "scripts": {
     "serve": "firebase emulators:start --only functions",
     "shell": "firebase functions:shell",
@@ -20,3 +20,4 @@
   "devDependencies": {},
   "private": true
 }
+

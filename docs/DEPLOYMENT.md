@@ -14,7 +14,7 @@
 ### Create Firebase Project
 1. Go to [Firebase Console](https://console.firebase.google.com)
 2. Click "Add Project"
-3. Name it (e.g., `buildskillai`)
+3. Name it (e.g., `UjuziAI`)
 4. Enable Google Analytics (optional)
 
 ### Enable Services
@@ -169,3 +169,4 @@ npm run build && firebase deploy
 | Firestore permission denied | Deploy latest firestore.rules |
 | Storage upload fails | Check storage.rules and file size limits |
 | Emulators not connecting | Verify VITE_USE_EMULATORS=true in .env |
+

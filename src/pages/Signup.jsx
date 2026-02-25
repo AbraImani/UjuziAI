@@ -43,7 +43,7 @@ export default function Signup() {
   };
 
   return (
-    <div className="min-h-screen bg-surface-950 flex items-center justify-center px-4 py-12">
+    <div className="min-h-screen bg-body flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
@@ -51,10 +51,10 @@ export default function Signup() {
             <div className="w-12 h-12 bg-primary-600 rounded-xl flex items-center justify-center">
               <Zap className="w-6 h-6 text-white" />
             </div>
-            <span className="text-2xl font-bold gradient-text">BuildSkillAI</span>
+            <span className="text-2xl font-bold gradient-text">UjuziAI</span>
           </Link>
-          <h1 className="text-2xl font-bold text-white">Create your account</h1>
-          <p className="text-surface-400 mt-1">Join the competition and prove your AI skills</p>
+          <h1 className="text-2xl font-bold text-heading">Create your account</h1>
+          <p className="text-body mt-1">Join the competition and prove your AI skills</p>
         </div>
 
         {/* Form */}
@@ -64,7 +64,7 @@ export default function Signup() {
             type="button"
             onClick={handleGoogleSignUp}
             disabled={googleLoading}
-            className="w-full flex items-center justify-center gap-3 px-6 py-3 bg-white hover:bg-gray-50 text-gray-800 font-medium rounded-xl transition-all duration-200 active:scale-[0.98] disabled:opacity-50 mb-6"
+            className="w-full flex items-center justify-center gap-3 px-6 py-3 bg-white hover:bg-gray-50 text-gray-800 font-medium rounded-xl border border-gray-200 dark:border-transparent transition-all duration-200 active:scale-[0.98] disabled:opacity-50 mb-6"
           >
             {googleLoading ? (
               <Loader2 className="w-5 h-5 animate-spin" />
@@ -82,18 +82,18 @@ export default function Signup() {
           {/* Divider */}
           <div className="relative mb-6">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-surface-700" />
+              <div className="w-full border-t border-themed" />
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="bg-surface-900 px-4 text-surface-500">or sign up with email</span>
+              <span className="px-4 text-muted" style={{ background: 'var(--bg-card)' }}>or sign up with email</span>
             </div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-surface-300 mb-2">Full Name</label>
+              <label className="block text-sm font-medium text-body mb-2">Full Name</label>
               <div className="relative">
-                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-500" />
+                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
                 <input
                   type="text"
                   value={displayName}
@@ -106,9 +106,9 @@ export default function Signup() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-surface-300 mb-2">Email</label>
+              <label className="block text-sm font-medium text-body mb-2">Email</label>
               <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-500" />
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
                 <input
                   type="email"
                   value={email}
@@ -121,9 +121,9 @@ export default function Signup() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-surface-300 mb-2">Password</label>
+              <label className="block text-sm font-medium text-body mb-2">Password</label>
               <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-500" />
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
@@ -136,7 +136,7 @@ export default function Signup() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-surface-500 hover:text-surface-300"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-muted hover:text-body"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -144,9 +144,9 @@ export default function Signup() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-surface-300 mb-2">Confirm Password</label>
+              <label className="block text-sm font-medium text-body mb-2">Confirm Password</label>
               <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-500" />
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
                 <input
                   type="password"
                   value={confirmPassword}
@@ -175,7 +175,7 @@ export default function Signup() {
           </form>
         </div>
 
-        <p className="text-center text-surface-400 mt-6">
+        <p className="text-center text-body mt-6">
           Already have an account?{' '}
           <Link to="/login" className="text-primary-400 hover:text-primary-300 font-medium">
             Sign in

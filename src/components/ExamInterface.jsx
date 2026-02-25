@@ -19,9 +19,9 @@ function MCQQuestion({ question, onAnswer, timeLeft }) {
   return (
     <div className="animate-fade-in">
       <div className="mb-6">
-        <h3 className="text-lg font-semibold text-white mb-2">{question.text}</h3>
+        <h3 className="text-lg font-semibold text-heading mb-2">{question.text}</h3>
         {question.codeSnippet && (
-          <pre className="bg-surface-800 rounded-lg p-4 text-sm font-mono text-surface-300 overflow-x-auto mb-4">
+          <pre className="bg-surface rounded-lg p-4 text-sm font-mono text-body overflow-x-auto mb-4">
             {question.codeSnippet}
           </pre>
         )}
@@ -34,8 +34,8 @@ function MCQQuestion({ question, onAnswer, timeLeft }) {
             onClick={() => handleSelect(index)}
             className={`w-full text-left p-4 rounded-xl border transition-all duration-200 ${
               selected === index
-                ? 'border-primary-500 bg-primary-500/10 text-white'
-                : 'border-surface-700 bg-surface-800/50 text-surface-300 hover:border-surface-500 hover:bg-surface-800'
+                ? 'border-primary-500 bg-primary-500/10 text-heading'
+                : 'border-themed bg-black/5 dark:bg-white/5 text-body hover:border-[var(--color-border)] hover:bg-surface'
             }`}
           >
             <div className="flex items-center gap-3">
@@ -43,7 +43,7 @@ function MCQQuestion({ question, onAnswer, timeLeft }) {
                 className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
                   selected === index
                     ? 'bg-primary-500 text-white'
-                    : 'bg-surface-700 text-surface-400'
+                    : 'bg-gray-200 dark:bg-neutral-700 text-body'
                 }`}
               >
                 {String.fromCharCode(65 + index)}
@@ -71,10 +71,10 @@ function OpenQuestion({ question, onAnswer, timeLeft }) {
   return (
     <div className="animate-fade-in">
       <div className="mb-6">
-        <h3 className="text-lg font-semibold text-white mb-2">{question.text}</h3>
+        <h3 className="text-lg font-semibold text-heading mb-2">{question.text}</h3>
         {question.context && (
-          <div className="bg-surface-800/50 border border-surface-700 rounded-lg p-4 mb-4">
-            <p className="text-sm text-surface-400">{question.context}</p>
+          <div className="bg-black/5 dark:bg-white/5 border border-themed rounded-lg p-4 mb-4">
+            <p className="text-sm text-body">{question.context}</p>
           </div>
         )}
       </div>
@@ -86,7 +86,7 @@ function OpenQuestion({ question, onAnswer, timeLeft }) {
         rows={10}
         className="input-field resize-none font-normal"
       />
-      <p className="text-xs text-surface-500 mt-2">{answer.length} characters</p>
+      <p className="text-xs text-muted mt-2">{answer.length} characters</p>
     </div>
   );
 }
@@ -129,7 +129,7 @@ function Timer({ seconds, onExpire }) {
       className={`flex items-center gap-2 px-4 py-2 rounded-xl font-mono text-lg ${
         isLow
           ? 'bg-red-500/20 text-red-400 border border-red-500/30 animate-pulse'
-          : 'bg-surface-800 text-surface-200 border border-surface-700'
+          : 'bg-surface text-heading border border-themed'
       }`}
     >
       <Clock className="w-5 h-5" />
@@ -211,8 +211,8 @@ export default function ExamInterface({ moduleId, examId, questions, onComplete 
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="glass-card p-8 max-w-md w-full text-center">
             <AlertTriangle className="w-16 h-16 text-amber-400 mx-auto mb-4" />
-            <h3 className="text-xl font-bold text-white mb-2">Warning Detected</h3>
-            <p className="text-surface-400 mb-6">
+            <h3 className="text-xl font-bold text-heading mb-2">Warning Detected</h3>
+            <p className="text-body mb-6">
               Our system detected suspicious activity. This is your first warning.
               A second detection will result in an automatic zero.
             </p>
@@ -229,14 +229,14 @@ export default function ExamInterface({ moduleId, examId, questions, onComplete 
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <div className="flex items-center gap-2 text-sm text-surface-400 mb-1">
+          <div className="flex items-center gap-2 text-sm text-body mb-1">
             <Shield className="w-4 h-4" />
             Proctored Exam
           </div>
-          <h2 className="text-xl font-bold text-white">
+          <h2 className="text-xl font-bold text-heading">
             Question {currentIndex + 1} of {totalQuestions}
           </h2>
-          <p className="text-sm text-surface-400">
+          <p className="text-sm text-body">
             {isMCQ ? 'Multiple Choice' : 'Open-ended'} • {isMCQ ? 'Select the best answer' : 'Write your detailed response'}
           </p>
         </div>
@@ -258,7 +258,7 @@ export default function ExamInterface({ moduleId, examId, questions, onComplete 
                 ? 'bg-primary-500'
                 : index === currentIndex
                 ? 'bg-primary-400 animate-pulse'
-                : 'bg-surface-700'
+                : 'bg-gray-200 dark:bg-neutral-700'
             }`}
           />
         ))}
@@ -312,7 +312,7 @@ export default function ExamInterface({ moduleId, examId, questions, onComplete 
       {/* Notice */}
       <div className="mt-6 flex items-start gap-3 p-4 bg-amber-500/5 border border-amber-500/20 rounded-xl">
         <AlertTriangle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
-        <div className="text-sm text-surface-400">
+        <div className="text-sm text-body">
           <p className="font-medium text-amber-400 mb-1">Exam Rules</p>
           <ul className="space-y-1 list-disc list-inside">
             <li>No back navigation allowed</li>
@@ -324,3 +324,4 @@ export default function ExamInterface({ moduleId, examId, questions, onComplete 
     </div>
   );
 }
+

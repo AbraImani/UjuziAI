@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import {
   LayoutDashboard,
   BookOpen,
@@ -11,10 +12,13 @@ import {
   Menu,
   X,
   Zap,
+  Sun,
+  Moon,
 } from 'lucide-react';
 
 export default function Layout({ children }) {
   const { user, userProfile, logout, isAdmin } = useAuth();
+  const { isDark, toggleTheme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -35,15 +39,15 @@ export default function Layout({ children }) {
   };
 
   return (
-    <div className="min-h-screen bg-surface-950 flex">
+    <div className="min-h-screen bg-body flex">
       {/* Sidebar - Desktop */}
-      <aside className="hidden lg:flex lg:flex-col lg:w-64 bg-surface-900/50 border-r border-surface-800 backdrop-blur-xl">
+      <aside className="hidden lg:flex lg:flex-col lg:w-64 bg-surface border-r border-themed">
         <div className="p-6">
           <Link to="/dashboard" className="flex items-center gap-3">
             <div className="w-10 h-10 bg-primary-600 rounded-xl flex items-center justify-center">
               <Zap className="w-5 h-5 text-white" />
             </div>
-            <span className="text-xl font-bold gradient-text">BuildSkillAI</span>
+            <span className="text-xl font-bold gradient-text">UjuziAI</span>
           </Link>
         </div>
 
@@ -56,8 +60,8 @@ export default function Layout({ children }) {
                 to={path}
                 className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
                   active
-                    ? 'bg-primary-600/20 text-primary-300 border border-primary-500/30'
-                    : 'text-surface-400 hover:text-white hover:bg-surface-800/50'
+                    ? 'bg-primary-600/20 text-primary-600 dark:text-primary-300 border border-primary-500/30'
+                    : 'text-body hover:text-heading hover:bg-black/5 dark:hover:bg-white/5'
                 }`}
               >
                 <Icon className="w-5 h-5" />
@@ -67,20 +71,29 @@ export default function Layout({ children }) {
           })}
         </nav>
 
-        <div className="p-4 border-t border-surface-800">
+        <div className="p-4 border-t border-themed space-y-2">
+          {/* Theme toggle */}
+          <button
+            onClick={toggleTheme}
+            className="flex items-center gap-3 px-4 py-2.5 w-full text-left text-body hover:text-heading hover:bg-black/5 dark:hover:bg-white/5 rounded-xl transition-colors text-sm"
+          >
+            {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            {isDark ? 'Light Mode' : 'Dark Mode'}
+          </button>
+
           <div className="flex items-center gap-3 px-4 py-3">
-            <div className="w-9 h-9 bg-primary-600/30 rounded-full flex items-center justify-center text-primary-300 text-sm font-bold">
+            <div className="w-9 h-9 bg-primary-600/30 rounded-full flex items-center justify-center text-primary-600 dark:text-primary-300 text-sm font-bold">
               {user?.displayName?.[0]?.toUpperCase() || 'U'}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-white truncate">
+              <p className="text-sm font-medium text-heading truncate">
                 {user?.displayName || 'User'}
               </p>
-              <p className="text-xs text-surface-400 truncate">{user?.email}</p>
+              <p className="text-xs text-muted truncate">{user?.email}</p>
             </div>
             <button
               onClick={handleLogout}
-              className="p-2 text-surface-400 hover:text-red-400 transition-colors"
+              className="p-2 text-muted hover:text-red-500 transition-colors"
               title="Sign out"
             >
               <LogOut className="w-4 h-4" />
@@ -93,18 +106,18 @@ export default function Layout({ children }) {
       {sidebarOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm"
             onClick={() => setSidebarOpen(false)}
           />
-          <aside className="relative w-72 h-full bg-surface-900 border-r border-surface-800 flex flex-col animate-slide-up">
+          <aside className="relative w-72 h-full bg-body border-r border-themed flex flex-col animate-slide-up">
             <div className="flex items-center justify-between p-6">
               <Link to="/dashboard" className="flex items-center gap-3" onClick={() => setSidebarOpen(false)}>
                 <div className="w-10 h-10 bg-primary-600 rounded-xl flex items-center justify-center">
                   <Zap className="w-5 h-5 text-white" />
                 </div>
-                <span className="text-xl font-bold gradient-text">BuildSkillAI</span>
+                <span className="text-xl font-bold gradient-text">UjuziAI</span>
               </Link>
-              <button onClick={() => setSidebarOpen(false)} className="text-surface-400">
+              <button onClick={() => setSidebarOpen(false)} className="text-muted">
                 <X className="w-6 h-6" />
               </button>
             </div>
@@ -119,8 +132,8 @@ export default function Layout({ children }) {
                     onClick={() => setSidebarOpen(false)}
                     className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
                       active
-                        ? 'bg-primary-600/20 text-primary-300'
-                        : 'text-surface-400 hover:text-white hover:bg-surface-800/50'
+                        ? 'bg-primary-600/20 text-primary-600 dark:text-primary-300'
+                        : 'text-body hover:text-heading hover:bg-black/5 dark:hover:bg-white/5'
                     }`}
                   >
                     <Icon className="w-5 h-5" />
@@ -130,10 +143,17 @@ export default function Layout({ children }) {
               })}
             </nav>
 
-            <div className="p-4 border-t border-surface-800">
+            <div className="p-4 border-t border-themed space-y-2">
+              <button
+                onClick={toggleTheme}
+                className="flex items-center gap-3 px-4 py-3 w-full text-left text-body hover:text-heading rounded-xl transition-colors"
+              >
+                {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                {isDark ? 'Light Mode' : 'Dark Mode'}
+              </button>
               <button
                 onClick={handleLogout}
-                className="flex items-center gap-3 px-4 py-3 w-full text-left text-red-400 hover:bg-red-500/10 rounded-xl transition-colors"
+                className="flex items-center gap-3 px-4 py-3 w-full text-left text-red-500 hover:bg-red-500/10 rounded-xl transition-colors"
               >
                 <LogOut className="w-5 h-5" />
                 Sign Out
@@ -146,18 +166,18 @@ export default function Layout({ children }) {
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top bar - mobile */}
-        <header className="lg:hidden flex items-center justify-between p-4 bg-surface-900/50 border-b border-surface-800 backdrop-blur-xl sticky top-0 z-40">
-          <button onClick={() => setSidebarOpen(true)} className="text-surface-300">
+        <header className="lg:hidden flex items-center justify-between p-4 bg-surface border-b border-themed sticky top-0 z-40">
+          <button onClick={() => setSidebarOpen(true)} className="text-body">
             <Menu className="w-6 h-6" />
           </button>
           <Link to="/dashboard" className="flex items-center gap-2">
             <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
               <Zap className="w-4 h-4 text-white" />
             </div>
-            <span className="font-bold gradient-text">BuildSkillAI</span>
+            <span className="font-bold gradient-text">UjuziAI</span>
           </Link>
           <Link to="/profile">
-            <div className="w-8 h-8 bg-primary-600/30 rounded-full flex items-center justify-center text-primary-300 text-xs font-bold">
+            <div className="w-8 h-8 bg-primary-600/30 rounded-full flex items-center justify-center text-primary-600 dark:text-primary-300 text-xs font-bold">
               {user?.displayName?.[0]?.toUpperCase() || 'U'}
             </div>
           </Link>

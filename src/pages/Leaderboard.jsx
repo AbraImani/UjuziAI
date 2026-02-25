@@ -53,7 +53,7 @@ export default function Leaderboard() {
     if (index === 1) return <Medal className="w-6 h-6 text-gray-300 drop-shadow-lg" />;
     if (index === 2) return <Medal className="w-6 h-6 text-amber-600 drop-shadow-lg" />;
     return (
-      <span className="w-8 h-8 flex items-center justify-center text-sm font-bold text-surface-400 bg-surface-800 rounded-full">
+      <span className="w-8 h-8 flex items-center justify-center text-sm font-bold text-body bg-surface rounded-full">
         #{index + 1}
       </span>
     );
@@ -63,14 +63,14 @@ export default function Leaderboard() {
     if (index === 0) return 'bg-gradient-to-r from-amber-500/15 to-amber-500/5 border-amber-500/40 shadow-amber-500/10 shadow-lg';
     if (index === 1) return 'bg-gradient-to-r from-gray-400/10 to-gray-400/5 border-gray-400/30';
     if (index === 2) return 'bg-gradient-to-r from-amber-700/10 to-amber-700/5 border-amber-700/30';
-    return 'border-surface-700/50 hover:border-surface-600/50';
+    return 'border-themed hover:border-themed';
   };
 
   const getTrendIcon = (entry) => {
     const trend = entry.trend || 0;
     if (trend > 0) return <ChevronUp className="w-4 h-4 text-accent-400" />;
     if (trend < 0) return <ChevronDown className="w-4 h-4 text-red-400" />;
-    return <Minus className="w-4 h-4 text-surface-500" />;
+    return <Minus className="w-4 h-4 text-muted" />;
   };
 
   const getPodiumHeight = (index) => {
@@ -104,11 +104,11 @@ export default function Leaderboard() {
           <Flame className="w-4 h-4 text-amber-400" />
           <span className="text-sm font-medium text-amber-300">Live Rankings</span>
         </div>
-        <h1 className="text-4xl md:text-5xl font-bold text-white mb-3 flex items-center justify-center gap-3">
+        <h1 className="text-4xl md:text-5xl font-bold text-heading mb-3 flex items-center justify-center gap-3">
           <Trophy className="w-10 h-10 text-amber-400" />
           <span className="gradient-text">Leaderboard</span>
         </h1>
-        <p className="text-surface-400 text-lg max-w-md mx-auto">
+        <p className="text-body text-lg max-w-md mx-auto">
           Compete, climb the ranks, and prove your AI expertise
         </p>
       </div>
@@ -119,19 +119,19 @@ export default function Leaderboard() {
           <div className="flex items-center gap-5">
             <ProgressRing progress={overallProgress} size={90} strokeWidth={6}>
               <div className="text-center">
-                <span className="text-xl font-bold text-white">
+                <span className="text-xl font-bold text-heading">
                   {userRank ? `#${userRank}` : '—'}
                 </span>
               </div>
             </ProgressRing>
             <div>
-              <p className="text-xs text-surface-400 uppercase tracking-wide font-medium">Your Position</p>
-              <p className="text-2xl font-bold text-white mt-1">
+              <p className="text-xs text-body uppercase tracking-wide font-medium">Your Position</p>
+              <p className="text-2xl font-bold text-heading mt-1">
                 {userRank ? (
                   <>Top <span className="gradient-text">{userRank}</span></>
                 ) : 'Unranked'}
               </p>
-              <p className="text-sm text-surface-500 mt-0.5">
+              <p className="text-sm text-muted mt-0.5">
                 {completedCount} of {MODULES.length} modules completed
               </p>
             </div>
@@ -142,22 +142,22 @@ export default function Leaderboard() {
               <div className="w-10 h-10 mx-auto bg-primary-600/20 rounded-xl flex items-center justify-center mb-2">
                 <Target className="w-5 h-5 text-primary-400" />
               </div>
-              <p className="text-xl font-bold text-white">{totalScore}</p>
-              <p className="text-xs text-surface-500">Total Points</p>
+              <p className="text-xl font-bold text-heading">{totalScore}</p>
+              <p className="text-xs text-muted">Total Points</p>
             </div>
             <div className="text-center">
               <div className="w-10 h-10 mx-auto bg-accent-600/20 rounded-xl flex items-center justify-center mb-2">
                 <Award className="w-5 h-5 text-accent-400" />
               </div>
-              <p className="text-xl font-bold text-white">{completedCount}</p>
-              <p className="text-xs text-surface-500">Badges</p>
+              <p className="text-xl font-bold text-heading">{completedCount}</p>
+              <p className="text-xs text-muted">Badges</p>
             </div>
             <div className="text-center">
               <div className="w-10 h-10 mx-auto bg-amber-600/20 rounded-xl flex items-center justify-center mb-2">
                 <BarChart3 className="w-5 h-5 text-amber-400" />
               </div>
-              <p className="text-xl font-bold text-white">{Math.round(overallProgress)}%</p>
-              <p className="text-xs text-surface-500">Progress</p>
+              <p className="text-xl font-bold text-heading">{Math.round(overallProgress)}%</p>
+              <p className="text-xs text-muted">Progress</p>
             </div>
           </div>
         </div>
@@ -176,7 +176,7 @@ export default function Leaderboard() {
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 whitespace-nowrap ${
               filter === key
                 ? 'bg-primary-600/20 text-primary-300 border border-primary-500/30'
-                : 'text-surface-400 hover:text-white hover:bg-surface-800/50 border border-transparent'
+                : 'text-body hover:text-heading hover:bg-black/5 dark:bg-white/5 border border-transparent'
             }`}
           >
             <Icon className="w-4 h-4" />
@@ -188,15 +188,15 @@ export default function Leaderboard() {
       {loading ? (
         <div className="flex flex-col items-center justify-center py-20">
           <Loader2 className="w-10 h-10 animate-spin text-primary-500 mb-4" />
-          <p className="text-surface-400">Loading rankings...</p>
+          <p className="text-body">Loading rankings...</p>
         </div>
       ) : leaderboard.length === 0 ? (
         <div className="glass-card p-16 text-center">
-          <div className="w-20 h-20 mx-auto bg-surface-800 rounded-2xl flex items-center justify-center mb-6">
-            <Trophy className="w-10 h-10 text-surface-600" />
+          <div className="w-20 h-20 mx-auto bg-surface rounded-2xl flex items-center justify-center mb-6">
+            <Trophy className="w-10 h-10 text-muted" />
           </div>
-          <h3 className="text-xl font-bold text-white mb-2">No Rankings Yet</h3>
-          <p className="text-surface-400 max-w-sm mx-auto mb-6">
+          <h3 className="text-xl font-bold text-heading mb-2">No Rankings Yet</h3>
+          <p className="text-body max-w-sm mx-auto mb-6">
             Be the first to complete modules and pass exams to claim the #1 spot on the leaderboard!
           </p>
           <a href="/dashboard" className="btn-primary inline-flex items-center gap-2">
@@ -237,21 +237,21 @@ export default function Leaderboard() {
                         </div>
                       </div>
                       <p className={`text-sm font-medium mb-1 truncate max-w-[80px] sm:max-w-[100px] ${
-                        isCurrentUser ? 'text-primary-300' : 'text-white'
+                        isCurrentUser ? 'text-primary-300' : 'text-heading'
                       }`}>
                         {entry.displayName || 'Anonymous'}
                       </p>
-                      <p className="text-xs text-surface-500 mb-2">{entry.totalScore || 0} pts</p>
+                      <p className="text-xs text-muted mb-2">{entry.totalScore || 0} pts</p>
 
                       <div
                         className={`w-20 sm:w-28 ${getPodiumHeight(originalIndex)} rounded-t-xl border-t border-x bg-gradient-to-t ${getPodiumColor(originalIndex)} flex flex-col items-center justify-start pt-3`}
                       >
-                        <span className="text-2xl font-black text-white/80">
+                        <span className="text-2xl font-black text-heading/80">
                           {originalIndex + 1}
                         </span>
                         <div className="flex items-center gap-0.5 mt-1">
                           <Trophy className="w-3 h-3 text-amber-400" />
-                          <span className="text-xs text-surface-400">
+                          <span className="text-xs text-body">
                             {entry.badges?.length || 0}
                           </span>
                         </div>
@@ -287,7 +287,7 @@ export default function Leaderboard() {
                       className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 border ${
                         isCurrentUser
                           ? 'bg-primary-600/20 text-primary-300 border-primary-500/30'
-                          : 'bg-surface-800 text-surface-300 border-surface-700/50'
+                          : 'bg-surface text-body border-themed'
                       }`}
                     >
                       {entry.displayName?.[0]?.toUpperCase() || 'U'}
@@ -295,7 +295,7 @@ export default function Leaderboard() {
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <p className={`font-semibold truncate ${isCurrentUser ? 'text-primary-300' : 'text-white'}`}>
+                        <p className={`font-semibold truncate ${isCurrentUser ? 'text-primary-300' : 'text-heading'}`}>
                           {entry.displayName || 'Anonymous'}
                         </p>
                         {isCurrentUser && (
@@ -304,21 +304,21 @@ export default function Leaderboard() {
                         {getTrendIcon(entry)}
                       </div>
                       <div className="flex items-center gap-3 mt-0.5">
-                        <p className="text-xs text-surface-500">
+                        <p className="text-xs text-muted">
                           {entry.completedModules?.length || 0} modules
                         </p>
-                        <span className="text-surface-700">•</span>
-                        <p className="text-xs text-surface-500">
+                        <span className="text-muted">•</span>
+                        <p className="text-xs text-muted">
                           {entry.badges?.length || 0} badges
                         </p>
                       </div>
                     </div>
 
                     <div className="text-right flex-shrink-0">
-                      <p className="text-xl font-bold text-white">
+                      <p className="text-xl font-bold text-heading">
                         {entry.totalScore || 0}
                       </p>
-                      <p className="text-[10px] text-surface-500 uppercase tracking-wide">points</p>
+                      <p className="text-[10px] text-muted uppercase tracking-wide">points</p>
                     </div>
                   </div>
                 </div>
@@ -330,34 +330,34 @@ export default function Leaderboard() {
           <div className="mt-10 glass-card p-6">
             <div className="flex items-center gap-2 mb-4">
               <Sparkles className="w-5 h-5 text-primary-400" />
-              <h3 className="text-sm font-semibold text-white uppercase tracking-wide">Competition Stats</h3>
+              <h3 className="text-sm font-semibold text-heading uppercase tracking-wide">Competition Stats</h3>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <div className="text-center p-3 bg-surface-800/50 rounded-xl">
+              <div className="text-center p-3 bg-black/5 dark:bg-white/5 rounded-xl">
                 <Users className="w-5 h-5 mx-auto text-primary-400 mb-2" />
-                <p className="text-lg font-bold text-white">{leaderboard.length}</p>
-                <p className="text-xs text-surface-500">Total Competitors</p>
+                <p className="text-lg font-bold text-heading">{leaderboard.length}</p>
+                <p className="text-xs text-muted">Total Competitors</p>
               </div>
-              <div className="text-center p-3 bg-surface-800/50 rounded-xl">
+              <div className="text-center p-3 bg-black/5 dark:bg-white/5 rounded-xl">
                 <Target className="w-5 h-5 mx-auto text-accent-400 mb-2" />
-                <p className="text-lg font-bold text-white">
+                <p className="text-lg font-bold text-heading">
                   {leaderboard[0]?.totalScore || 0}
                 </p>
-                <p className="text-xs text-surface-500">Highest Score</p>
+                <p className="text-xs text-muted">Highest Score</p>
               </div>
-              <div className="text-center p-3 bg-surface-800/50 rounded-xl">
+              <div className="text-center p-3 bg-black/5 dark:bg-white/5 rounded-xl">
                 <BarChart3 className="w-5 h-5 mx-auto text-amber-400 mb-2" />
-                <p className="text-lg font-bold text-white">
+                <p className="text-lg font-bold text-heading">
                   {leaderboard.length > 0
                     ? Math.round(leaderboard.reduce((s, e) => s + (e.totalScore || 0), 0) / leaderboard.length)
                     : 0}
                 </p>
-                <p className="text-xs text-surface-500">Average Score</p>
+                <p className="text-xs text-muted">Average Score</p>
               </div>
-              <div className="text-center p-3 bg-surface-800/50 rounded-xl">
+              <div className="text-center p-3 bg-black/5 dark:bg-white/5 rounded-xl">
                 <Shield className="w-5 h-5 mx-auto text-red-400 mb-2" />
-                <p className="text-lg font-bold text-white">{MODULES.length}</p>
-                <p className="text-xs text-surface-500">Modules Available</p>
+                <p className="text-lg font-bold text-heading">{MODULES.length}</p>
+                <p className="text-xs text-muted">Modules Available</p>
               </div>
             </div>
           </div>
@@ -366,3 +366,4 @@ export default function Leaderboard() {
     </div>
   );
 }
+

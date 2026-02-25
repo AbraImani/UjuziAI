@@ -162,9 +162,9 @@ export default function Exam() {
 
   if (!module) {
     return (
-      <div className="min-h-screen bg-surface-950 flex items-center justify-center">
+      <div className="min-h-screen bg-body flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-white mb-4">Module Not Found</h2>
+          <h2 className="text-2xl font-bold text-heading mb-4">Module Not Found</h2>
           <button onClick={() => navigate('/dashboard')} className="btn-primary">
             Back to Dashboard
           </button>
@@ -175,7 +175,7 @@ export default function Exam() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-surface-950 flex items-center justify-center">
+      <div className="min-h-screen bg-body flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
       </div>
     );
@@ -184,11 +184,11 @@ export default function Exam() {
   // Exam completed screen
   if (examComplete) {
     return (
-      <div className="min-h-screen bg-surface-950 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-body flex items-center justify-center p-4">
         <div className="glass-card p-12 max-w-md w-full text-center animate-scale-in">
           <CheckCircle className="w-20 h-20 text-accent-400 mx-auto mb-6" />
-          <h2 className="text-2xl font-bold text-white mb-3">Exam Completed!</h2>
-          <p className="text-surface-400 mb-8">
+          <h2 className="text-2xl font-bold text-heading mb-3">Exam Completed!</h2>
+          <p className="text-body mb-8">
             Your answers are being evaluated by our AI agents. Results will be available shortly on the module page.
           </p>
           <button
@@ -205,7 +205,7 @@ export default function Exam() {
   // Exam interface
   if (examStarted && examId) {
     return (
-      <div className="min-h-screen bg-surface-950 p-4 md:p-8">
+      <div className="min-h-screen bg-body p-4 md:p-8">
         <ExamInterface
           moduleId={moduleId}
           examId={examId}
@@ -249,11 +249,11 @@ export default function Exam() {
     const Icon = r.icon;
 
     return (
-      <div className="min-h-screen bg-surface-950 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-body flex items-center justify-center p-4">
         <div className="glass-card p-12 max-w-md w-full text-center">
           <Icon className={`w-16 h-16 text-${r.color}-400 mx-auto mb-4`} />
-          <h2 className="text-2xl font-bold text-white mb-3">{r.title}</h2>
-          <p className="text-surface-400 mb-6">{r.desc}</p>
+          <h2 className="text-2xl font-bold text-heading mb-3">{r.title}</h2>
+          <p className="text-body mb-6">{r.desc}</p>
           <button onClick={() => navigate(`/module/${moduleId}`)} className="btn-primary">
             Back to Module
           </button>
@@ -264,40 +264,40 @@ export default function Exam() {
 
   // Pre-exam screen
   return (
-    <div className="min-h-screen bg-surface-950 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-body flex items-center justify-center p-4">
       <div className="glass-card p-8 md:p-12 max-w-lg w-full">
         <div className="text-center mb-8">
           <Shield className="w-16 h-16 text-primary-400 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-white mb-2">
+          <h2 className="text-2xl font-bold text-heading mb-2">
             {module.title} — Exam
           </h2>
-          <p className="text-surface-400">
+          <p className="text-body">
             Attempt {(status.attempts || 0) + 1} of {EXAM_CONFIG.MAX_ATTEMPTS}
           </p>
         </div>
 
         <div className="space-y-4 mb-8">
-          <h3 className="font-semibold text-white">Exam Rules:</h3>
-          <ul className="space-y-3 text-sm text-surface-400">
+          <h3 className="font-semibold text-heading">Exam Rules:</h3>
+          <ul className="space-y-3 text-sm text-body">
             <li className="flex items-start gap-2">
               <span className="text-primary-400 mt-0.5">•</span>
-              <span><strong className="text-surface-200">7 MCQ questions</strong> — 25-30 seconds each</span>
+              <span><strong className="text-heading">7 MCQ questions</strong> — 25-30 seconds each</span>
             </li>
             <li className="flex items-start gap-2">
               <span className="text-primary-400 mt-0.5">•</span>
-              <span><strong className="text-surface-200">3 open-ended questions</strong> — max 5 minutes each</span>
+              <span><strong className="text-heading">3 open-ended questions</strong> — max 5 minutes each</span>
             </li>
             <li className="flex items-start gap-2">
               <span className="text-primary-400 mt-0.5">•</span>
-              <span><strong className="text-surface-200">No back navigation</strong> — one question at a time</span>
+              <span><strong className="text-heading">No back navigation</strong> — one question at a time</span>
             </li>
             <li className="flex items-start gap-2">
               <span className="text-primary-400 mt-0.5">•</span>
-              <span><strong className="text-surface-200">Auto-advance</strong> when timer expires</span>
+              <span><strong className="text-heading">Auto-advance</strong> when timer expires</span>
             </li>
             <li className="flex items-start gap-2">
               <span className="text-primary-400 mt-0.5">•</span>
-              <span><strong className="text-surface-200">Passing score: 6/10</strong></span>
+              <span><strong className="text-heading">Passing score: 6/10</strong></span>
             </li>
             <li className="flex items-start gap-2">
               <AlertTriangle className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
@@ -333,3 +333,4 @@ export default function Exam() {
     </div>
   );
 }
+

@@ -14,7 +14,7 @@ export default function ProgressRing({ progress, size = 120, strokeWidth = 8, ch
           stroke="currentColor"
           strokeWidth={strokeWidth}
           fill="none"
-          className="text-surface-700"
+          className="text-gray-300 dark:text-neutral-700"
         />
         {/* Progress circle */}
         <circle
@@ -34,9 +34,10 @@ export default function ProgressRing({ progress, size = 120, strokeWidth = 8, ch
       </svg>
       <div className="absolute inset-0 flex items-center justify-center">
         {children || (
-          <span className="text-2xl font-bold text-white">{Math.round(progress)}%</span>
+          <span className="text-2xl font-bold text-heading">{Math.round(progress)}%</span>
         )}
       </div>
     </div>
   );
 }
+

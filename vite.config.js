@@ -10,8 +10,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'icon-192.svg', 'icon-512.svg'],
       manifest: {
-        name: 'BuildSkillAI',
-        short_name: 'BuildSkillAI',
+        name: 'UjuziAI',
+        short_name: 'UjuziAI',
         description: 'Master AI Development — Compete, Learn & Certify',
         theme_color: '#1a73e8',
         background_color: '#0f172a',

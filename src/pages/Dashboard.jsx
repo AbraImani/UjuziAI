@@ -19,21 +19,21 @@ export default function Dashboard() {
       {/* Welcome Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h1 className="text-3xl font-bold text-white">
+          <h1 className="text-3xl font-bold text-heading">
             Welcome back, <span className="gradient-text">{user?.displayName || 'Learner'}</span>
           </h1>
-          <p className="text-surface-400 mt-1">Continue your Build with AI journey</p>
+          <p className="text-body mt-1">Continue your Build with AI journey</p>
         </div>
 
         <div className="flex items-center gap-4">
           <ProgressRing progress={overallProgress} size={80} strokeWidth={6}>
             <div className="text-center">
-              <span className="text-lg font-bold text-white">{Math.round(overallProgress)}%</span>
+              <span className="text-lg font-bold text-heading">{Math.round(overallProgress)}%</span>
             </div>
           </ProgressRing>
           <div>
-            <p className="text-sm text-surface-400">Overall Progress</p>
-            <p className="text-lg font-semibold text-white">
+            <p className="text-sm text-body">Overall Progress</p>
+            <p className="text-lg font-semibold text-heading">
               {completedCount}/{MODULES.length} modules
             </p>
           </div>
@@ -80,8 +80,8 @@ export default function Dashboard() {
                 <Icon className="w-5 h-5" />
               </div>
             </div>
-            <p className="text-2xl font-bold text-white">{value}</p>
-            <p className="text-sm text-surface-400">{label}</p>
+            <p className="text-2xl font-bold text-heading">{value}</p>
+            <p className="text-sm text-body">{label}</p>
           </div>
         ))}
       </div>
@@ -97,10 +97,10 @@ export default function Dashboard() {
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {Array.from({ length: 8 }).map((_, i) => (
               <div key={i} className="glass-card p-6 h-64 animate-pulse">
-                <div className="w-12 h-12 bg-surface-700 rounded-xl mb-4" />
-                <div className="h-4 bg-surface-700 rounded w-3/4 mb-3" />
-                <div className="h-3 bg-surface-700 rounded w-full mb-2" />
-                <div className="h-3 bg-surface-700 rounded w-2/3" />
+                <div className="w-12 h-12 bg-gray-200 dark:bg-neutral-700 rounded-xl mb-4" />
+                <div className="h-4 bg-gray-200 dark:bg-neutral-700 rounded w-3/4 mb-3" />
+                <div className="h-3 bg-gray-200 dark:bg-neutral-700 rounded w-full mb-2" />
+                <div className="h-3 bg-gray-200 dark:bg-neutral-700 rounded w-2/3" />
               </div>
             ))}
           </div>
@@ -119,3 +119,4 @@ export default function Dashboard() {
     </div>
   );
 }
+

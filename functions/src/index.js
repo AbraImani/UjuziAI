@@ -58,7 +58,7 @@ exports.generateExamQuestions = functions.https.onCall(async (data, context) => 
     throw new functions.https.HttpsError('permission-denied', 'Exam is locked');
   }
 
-  if (progress.examAttempts >= 1) {
+  if (progress.examAttempts >= 2) {
     throw new functions.https.HttpsError('permission-denied', 'Maximum attempts reached');
   }
 

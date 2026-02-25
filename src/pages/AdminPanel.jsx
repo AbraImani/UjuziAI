@@ -140,7 +140,7 @@ export default function AdminPanel() {
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
               activeTab === id
                 ? 'bg-primary-600/20 text-primary-300 border border-primary-500/30'
-                : 'text-surface-400 hover:text-white hover:bg-surface-800/50'
+                : 'text-body hover:text-heading hover:bg-black/5 dark:bg-white/5'
             }`}
           >
             <Icon className="w-4 h-4" />
@@ -152,7 +152,7 @@ export default function AdminPanel() {
       {/* Search */}
       {(activeTab === 'submissions' || activeTab === 'users') && (
         <div className="relative mb-6">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-500" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
           <input
             type="text"
             value={searchTerm}
@@ -174,8 +174,8 @@ export default function AdminPanel() {
             <div className="space-y-4">
               {filteredUsers.length === 0 ? (
                 <div className="glass-card p-12 text-center">
-                  <FileText className="w-16 h-16 text-surface-600 mx-auto mb-4" />
-                  <p className="text-surface-400">No submissions found</p>
+                  <FileText className="w-16 h-16 text-muted mx-auto mb-4" />
+                  <p className="text-body">No submissions found</p>
                 </div>
               ) : (
                 filteredUsers.map((u) => {
@@ -189,8 +189,8 @@ export default function AdminPanel() {
                           {u.displayName?.[0]?.toUpperCase() || 'U'}
                         </div>
                         <div>
-                          <p className="font-medium text-white">{u.displayName}</p>
-                          <p className="text-xs text-surface-500">{u.email}</p>
+                          <p className="font-medium text-heading">{u.displayName}</p>
+                          <p className="text-xs text-muted">{u.email}</p>
                         </div>
                       </div>
 
@@ -202,13 +202,13 @@ export default function AdminPanel() {
                           return (
                             <div
                               key={modId}
-                              className="flex items-center justify-between p-3 bg-surface-800/50 rounded-lg"
+                              className="flex items-center justify-between p-3 bg-black/5 dark:bg-white/5 rounded-lg"
                             >
                               <div className="flex items-center gap-3">
                                 {(() => { const Icon = getModuleIcon(mod.iconName); return <div className="w-8 h-8 rounded-lg bg-primary-500/15 text-primary-400 flex items-center justify-center"><Icon className="w-4 h-4" /></div>; })()}
                                 <div>
-                                  <p className="text-sm font-medium text-surface-200">{mod.title}</p>
-                                  <div className="flex items-center gap-2 text-xs text-surface-500">
+                                  <p className="text-sm font-medium text-heading">{mod.title}</p>
+                                  <div className="flex items-center gap-2 text-xs text-muted">
                                     <span>Attempts: {prog.examAttempts || 0}</span>
                                     {prog.examScore !== null && <span>Score: {prog.examScore}/10</span>}
                                   </div>
@@ -267,38 +267,38 @@ export default function AdminPanel() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-surface-700">
-                      <th className="text-left p-4 text-surface-400 font-medium">User</th>
-                      <th className="text-left p-4 text-surface-400 font-medium">Role</th>
-                      <th className="text-center p-4 text-surface-400 font-medium">Modules</th>
-                      <th className="text-center p-4 text-surface-400 font-medium">Score</th>
-                      <th className="text-center p-4 text-surface-400 font-medium">Badges</th>
+                    <tr className="border-b border-themed">
+                      <th className="text-left p-4 text-body font-medium">User</th>
+                      <th className="text-left p-4 text-body font-medium">Role</th>
+                      <th className="text-center p-4 text-body font-medium">Modules</th>
+                      <th className="text-center p-4 text-body font-medium">Score</th>
+                      <th className="text-center p-4 text-body font-medium">Badges</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredUsers.map((u) => (
-                      <tr key={u.id} className="border-b border-surface-800 hover:bg-surface-800/30">
+                      <tr key={u.id} className="border-b border-themed hover:bg-black/5 dark:bg-white/5">
                         <td className="p-4">
                           <div className="flex items-center gap-3">
                             <div className="w-8 h-8 bg-primary-600/20 rounded-full flex items-center justify-center text-xs font-bold text-primary-300">
                               {u.displayName?.[0]?.toUpperCase() || 'U'}
                             </div>
                             <div>
-                              <p className="font-medium text-white">{u.displayName}</p>
-                              <p className="text-xs text-surface-500">{u.email}</p>
+                              <p className="font-medium text-heading">{u.displayName}</p>
+                              <p className="text-xs text-muted">{u.email}</p>
                             </div>
                           </div>
                         </td>
                         <td className="p-4">
-                          <span className={u.role === 'admin' ? 'badge-primary' : 'badge bg-surface-700 text-surface-300'}>
+                          <span className={u.role === 'admin' ? 'badge-primary' : 'badge bg-gray-200 dark:bg-neutral-700 text-body'}>
                             {u.role || 'student'}
                           </span>
                         </td>
-                        <td className="p-4 text-center text-surface-300">
+                        <td className="p-4 text-center text-body">
                           {Object.keys(u.progress || {}).length}
                         </td>
-                        <td className="p-4 text-center text-surface-300">{u.totalScore || 0}</td>
-                        <td className="p-4 text-center text-surface-300">{u.badges?.length || 0}</td>
+                        <td className="p-4 text-center text-body">{u.totalScore || 0}</td>
+                        <td className="p-4 text-center text-body">{u.badges?.length || 0}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -317,8 +317,8 @@ export default function AdminPanel() {
                     <div className="flex items-center gap-4">
                       {(() => { const Icon = getModuleIcon(mod.iconName); return <div className="w-10 h-10 rounded-xl bg-primary-500/15 text-primary-400 flex items-center justify-center"><Icon className="w-5 h-5" /></div>; })()}
                       <div>
-                        <p className="font-medium text-white">{mod.title}</p>
-                        <p className="text-xs text-surface-500">{mod.difficulty} • {mod.estimatedTime}</p>
+                        <p className="font-medium text-heading">{mod.title}</p>
+                        <p className="text-xs text-muted">{mod.difficulty} • {mod.estimatedTime}</p>
                       </div>
                     </div>
                     <button
@@ -350,15 +350,15 @@ export default function AdminPanel() {
           {/* Settings Tab */}
           {activeTab === 'settings' && (
             <div className="glass-card p-8">
-              <h3 className="text-lg font-semibold text-white mb-6">System Settings</h3>
+              <h3 className="text-lg font-semibold text-heading mb-6">System Settings</h3>
               <div className="space-y-6">
-                <div className="p-4 bg-surface-800/50 rounded-xl">
-                  <h4 className="font-medium text-surface-200 mb-2">Question Generation</h4>
-                  <p className="text-sm text-surface-400 mb-3">
+                <div className="p-4 bg-black/5 dark:bg-white/5 rounded-xl">
+                  <h4 className="font-medium text-heading mb-2">Question Generation</h4>
+                  <p className="text-sm text-body mb-3">
                     Questions are dynamically generated by the Question Generator Agent based on
                     module context and codelab content.
                   </p>
-                  <div className="flex items-center gap-3 text-sm text-surface-400">
+                  <div className="flex items-center gap-3 text-sm text-body">
                     <span>MCQ: {7} per exam</span>
                     <span>•</span>
                     <span>Open: {3} per exam</span>
@@ -367,9 +367,9 @@ export default function AdminPanel() {
                   </div>
                 </div>
 
-                <div className="p-4 bg-surface-800/50 rounded-xl">
-                  <h4 className="font-medium text-surface-200 mb-2">Anti-Cheat Settings</h4>
-                  <p className="text-sm text-surface-400 mb-3">
+                <div className="p-4 bg-black/5 dark:bg-white/5 rounded-xl">
+                  <h4 className="font-medium text-heading mb-2">Anti-Cheat Settings</h4>
+                  <p className="text-sm text-body mb-3">
                     AI detection is handled by the Evaluation Agent with semantic depth analysis.
                   </p>
                   <div className="flex items-center gap-2 text-amber-400 text-sm">
@@ -393,3 +393,4 @@ export default function AdminPanel() {
     </div>
   );
 }
+

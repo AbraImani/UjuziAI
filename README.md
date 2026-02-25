@@ -1,4 +1,4 @@
-# BuildSkillAI
+# UjuziAI
 
 > Build with AI Season — Learning Platform with Agent-Based Architecture
 
@@ -76,7 +76,7 @@ A production-ready web application for AI skill certification featuring hands-on
 ## 📁 Project Structure
 
 ```
-BuildSkillAI/
+UjuziAI/
 ├── src/                          # React frontend
 │   ├── components/               # Reusable UI components
 │   │   ├── Layout.jsx           # App shell with sidebar
@@ -183,3 +183,4 @@ cd functions && npm run serve
 ## License
 
 MIT
+

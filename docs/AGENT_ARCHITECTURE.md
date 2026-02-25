@@ -2,7 +2,7 @@
 
 ## Overview
 
-BuildSkillAI uses a multi-agent architecture coordinated through three protocols:
+UjuziAI uses a multi-agent architecture coordinated through three protocols:
 
 - **ADK (Agent Development Kit)**: Agent lifecycle and orchestration
 - **MCP (Model Context Protocol)**: User context persistence and memory
@@ -154,3 +154,4 @@ Pipeline: QuestionGen → AntiHallucination → (exam) → Evaluation → AntiHa
 - Open: average(question_scores) × 10
 - Total: (MCQ + Open) / 2
 - Badge issued if total ≥ 6
+

@@ -32,8 +32,8 @@ export default function Profile() {
             {user?.displayName?.[0]?.toUpperCase() || 'U'}
           </div>
           <div className="text-center md:text-left flex-1">
-            <h1 className="text-2xl font-bold text-white">{user?.displayName || 'User'}</h1>
-            <div className="flex flex-col md:flex-row items-center gap-3 mt-2 text-surface-400 text-sm">
+            <h1 className="text-2xl font-bold text-heading">{user?.displayName || 'User'}</h1>
+            <div className="flex flex-col md:flex-row items-center gap-3 mt-2 text-body text-sm">
               <span className="flex items-center gap-1">
                 <Mail className="w-4 h-4" />
                 {user?.email}
@@ -58,8 +58,8 @@ export default function Profile() {
           </div>
           <ProgressRing progress={overallProgress} size={100} strokeWidth={7}>
             <div className="text-center">
-              <span className="text-xl font-bold text-white">{Math.round(overallProgress)}%</span>
-              <p className="text-[10px] text-surface-500">Complete</p>
+              <span className="text-xl font-bold text-heading">{Math.round(overallProgress)}%</span>
+              <p className="text-[10px] text-muted">Complete</p>
             </div>
           </ProgressRing>
         </div>
@@ -69,32 +69,32 @@ export default function Profile() {
       <div className="grid grid-cols-3 gap-4 mb-6">
         <div className="glass-card p-5 text-center">
           <BookOpen className="w-6 h-6 text-primary-400 mx-auto mb-2" />
-          <p className="text-2xl font-bold text-white">{Object.keys(progressMap).length}</p>
-          <p className="text-xs text-surface-400">Started</p>
+          <p className="text-2xl font-bold text-heading">{Object.keys(progressMap).length}</p>
+          <p className="text-xs text-body">Started</p>
         </div>
         <div className="glass-card p-5 text-center">
           <Trophy className="w-6 h-6 text-accent-400 mx-auto mb-2" />
-          <p className="text-2xl font-bold text-white">{completedModules.length}</p>
-          <p className="text-xs text-surface-400">Completed</p>
+          <p className="text-2xl font-bold text-heading">{completedModules.length}</p>
+          <p className="text-xs text-body">Completed</p>
         </div>
         <div className="glass-card p-5 text-center">
           <Target className="w-6 h-6 text-primary-400 mx-auto mb-2" />
-          <p className="text-2xl font-bold text-white">{totalScore}</p>
-          <p className="text-xs text-surface-400">Total Score</p>
+          <p className="text-2xl font-bold text-heading">{totalScore}</p>
+          <p className="text-xs text-body">Total Score</p>
         </div>
       </div>
 
       {/* Badges / Certifications */}
       <div className="glass-card p-8 mb-6">
-        <h2 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
+        <h2 className="text-lg font-semibold text-heading mb-6 flex items-center gap-2">
           <Award className="w-5 h-5 text-accent-400" />
           Earned Certifications
         </h2>
 
         {completedModules.length === 0 ? (
           <div className="text-center py-8">
-            <Award className="w-16 h-16 text-surface-600 mx-auto mb-4" />
-            <p className="text-surface-400">
+            <Award className="w-16 h-16 text-muted mx-auto mb-4" />
+            <p className="text-body">
               No certifications yet. Complete modules and pass exams to earn badges.
             </p>
           </div>
@@ -109,12 +109,12 @@ export default function Profile() {
                 >
                   {(() => { const Icon = getModuleIcon(module.iconName); return <div className="w-10 h-10 rounded-xl bg-accent-500/15 text-accent-400 flex items-center justify-center flex-shrink-0"><Icon className="w-5 h-5" /></div>; })()}
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-white truncate">{module.title}</p>
+                    <p className="font-medium text-heading truncate">{module.title}</p>
                     <p className="text-sm text-accent-400">
                       Score: {progress.examScore}/10
                     </p>
                     {progress.badgeId && (
-                      <p className="text-xs text-surface-500 font-mono mt-0.5">
+                      <p className="text-xs text-muted font-mono mt-0.5">
                         Badge: {progress.badgeId}
                       </p>
                     )}
@@ -134,7 +134,7 @@ export default function Profile() {
 
       {/* Module Progress List */}
       <div className="glass-card p-8">
-        <h2 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
+        <h2 className="text-lg font-semibold text-heading mb-6 flex items-center gap-2">
           <BookOpen className="w-5 h-5 text-primary-400" />
           Module Progress
         </h2>
@@ -149,11 +149,11 @@ export default function Profile() {
             return (
               <div
                 key={module.id}
-                className="flex items-center gap-4 p-4 bg-surface-800/30 rounded-xl"
+                className="flex items-center gap-4 p-4 bg-black/5 dark:bg-white/5 rounded-xl"
               >
                 {(() => { const Icon = getModuleIcon(module.iconName); return <div className="w-8 h-8 rounded-lg bg-primary-500/15 text-primary-400 flex items-center justify-center flex-shrink-0"><Icon className="w-4 h-4" /></div>; })()}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-white truncate">{module.title}</p>
+                  <p className="text-sm font-medium text-heading truncate">{module.title}</p>
                   <div className="flex items-center gap-2 mt-1">
                     {passed ? (
                       <span className="badge-accent text-[10px]">Passed</span>
@@ -162,7 +162,7 @@ export default function Profile() {
                     ) : progress?.submitted ? (
                       <span className="badge-primary text-[10px]">Submitted</span>
                     ) : (
-                      <span className="text-[10px] text-surface-500">Not started</span>
+                      <span className="text-[10px] text-muted">Not started</span>
                     )}
                   </div>
                 </div>
@@ -173,7 +173,7 @@ export default function Profile() {
                       style={{ width: `${(score / 10) * 100}%` }}
                     />
                   </div>
-                  <p className="text-[10px] text-surface-500 text-right mt-1">{score}/10</p>
+                  <p className="text-[10px] text-muted text-right mt-1">{score}/10</p>
                 </div>
               </div>
             );
@@ -183,3 +183,4 @@ export default function Profile() {
     </div>
   );
 }
+
