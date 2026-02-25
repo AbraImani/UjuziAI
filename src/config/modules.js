@@ -197,8 +197,8 @@ export const EXAM_CONFIG = {
 };
 
 export const BADGE_MESSAGES = {
-  completed: 'Congratulations! You have earned your certification badge.',
-  failed: 'Keep learning. Review the codelab and prepare to try again.',
-  locked: 'This exam has been locked due to policy violations.',
-  pending: 'Your submission is being reviewed.',
+  completed: 'Félicitations ! Vous avez obtenu votre badge de certification.',
+  failed: 'Continuez à apprendre. Revoyez le codelab et préparez-vous pour réessayer.',
+  locked: 'Cet examen a été verrouillé en raison de violations de la politique.',
+  pending: 'Votre soumission est en cours d\'examen.',
 };

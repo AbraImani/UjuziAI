@@ -40,13 +40,13 @@ export default function Profile() {
               </span>
               <span className="flex items-center gap-1">
                 <Calendar className="w-4 h-4" />
-                Joined {userProfile?.createdAt?.toDate?.()?.toLocaleDateString() || 'Recently'}
+                Inscrit {userProfile?.createdAt?.toDate?.()?.toLocaleDateString() || 'Récemment'}
               </span>
             </div>
             <div className="flex flex-wrap items-center gap-2 mt-3">
               <span className="badge-primary">
                 <Shield className="w-3 h-3 mr-1" />
-                {userProfile?.role === 'admin' ? 'Admin' : 'Learner'}
+                {userProfile?.role === 'admin' ? 'Admin' : 'Apprenant'}
               </span>
               {completedModules.length > 0 && (
                 <span className="badge-accent">
@@ -59,7 +59,7 @@ export default function Profile() {
           <ProgressRing progress={overallProgress} size={100} strokeWidth={7}>
             <div className="text-center">
               <span className="text-xl font-bold text-heading">{Math.round(overallProgress)}%</span>
-              <p className="text-[10px] text-muted">Complete</p>
+              <p className="text-[10px] text-muted">Complété</p>
             </div>
           </ProgressRing>
         </div>
@@ -70,17 +70,17 @@ export default function Profile() {
         <div className="glass-card p-5 text-center">
           <BookOpen className="w-6 h-6 text-primary-400 mx-auto mb-2" />
           <p className="text-2xl font-bold text-heading">{Object.keys(progressMap).length}</p>
-          <p className="text-xs text-body">Started</p>
+          <p className="text-xs text-body">Commencés</p>
         </div>
         <div className="glass-card p-5 text-center">
           <Trophy className="w-6 h-6 text-accent-400 mx-auto mb-2" />
           <p className="text-2xl font-bold text-heading">{completedModules.length}</p>
-          <p className="text-xs text-body">Completed</p>
+          <p className="text-xs text-body">Complétés</p>
         </div>
         <div className="glass-card p-5 text-center">
           <Target className="w-6 h-6 text-primary-400 mx-auto mb-2" />
           <p className="text-2xl font-bold text-heading">{totalScore}</p>
-          <p className="text-xs text-body">Total Score</p>
+          <p className="text-xs text-body">Score total</p>
         </div>
       </div>
 
@@ -88,14 +88,14 @@ export default function Profile() {
       <div className="glass-card p-8 mb-6">
         <h2 className="text-lg font-semibold text-heading mb-6 flex items-center gap-2">
           <Award className="w-5 h-5 text-accent-400" />
-          Earned Certifications
+          Certifications obtenues
         </h2>
 
         {completedModules.length === 0 ? (
           <div className="text-center py-8">
             <Award className="w-16 h-16 text-muted mx-auto mb-4" />
             <p className="text-body">
-              No certifications yet. Complete modules and pass exams to earn badges.
+              Aucune certification pour le moment. Complétez les modules et réussissez les examens pour obtenir des badges.
             </p>
           </div>
         ) : (
@@ -136,7 +136,7 @@ export default function Profile() {
       <div className="glass-card p-8">
         <h2 className="text-lg font-semibold text-heading mb-6 flex items-center gap-2">
           <BookOpen className="w-5 h-5 text-primary-400" />
-          Module Progress
+          Progression des modules
         </h2>
 
         <div className="space-y-3">
@@ -156,13 +156,13 @@ export default function Profile() {
                   <p className="text-sm font-medium text-heading truncate">{module.title}</p>
                   <div className="flex items-center gap-2 mt-1">
                     {passed ? (
-                      <span className="badge-accent text-[10px]">Passed</span>
+                      <span className="badge-accent text-[10px]">Réussi</span>
                     ) : attempted ? (
-                      <span className="badge-warning text-[10px]">Attempted</span>
+                      <span className="badge-warning text-[10px]">Tenté</span>
                     ) : progress?.submitted ? (
-                      <span className="badge-primary text-[10px]">Submitted</span>
+                      <span className="badge-primary text-[10px]">Soumis</span>
                     ) : (
-                      <span className="text-[10px] text-muted">Not started</span>
+                      <span className="text-[10px] text-muted">Non commencé</span>
                     )}
                   </div>
                 </div>

@@ -18,7 +18,7 @@ export default function SubmissionForm({ moduleId, onSuccess }) {
   const handleImageSelect = (e) => {
     const files = Array.from(e.target.files);
     if (files.length + images.length > 5) {
-      toast.error('Maximum 5 images allowed');
+      toast.error('Maximum 5 images autorisées');
       return;
     }
 
@@ -41,17 +41,17 @@ export default function SubmissionForm({ moduleId, onSuccess }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!isValid) {
-      toast.error(`Please provide images and a description (min ${MIN_WORDS} words)`);
+      toast.error(`Veuillez fournir des images et une description (min ${MIN_WORDS} mots)`);
       return;
     }
 
     setSubmitting(true);
     try {
       await submitProof(moduleId, { images, videoUrl, description });
-      toast.success('Proof submitted successfully!');
+      toast.success('Preuve soumise avec succès !');
       onSuccess?.();
     } catch (error) {
-      toast.error('Failed to submit proof: ' + error.message);
+      toast.error('Échec de la soumission : ' + error.message);
     } finally {
       setSubmitting(false);
     }
@@ -63,7 +63,7 @@ export default function SubmissionForm({ moduleId, onSuccess }) {
       <div>
         <label className="flex items-center gap-2 text-sm font-medium text-heading mb-3">
           <Image className="w-4 h-4 text-primary-400" />
-          Screenshots / Images <span className="text-red-400">*</span>
+          Captures d'écran / Images <span className="text-red-400">*</span>
         </label>
 
         <div
@@ -72,9 +72,9 @@ export default function SubmissionForm({ moduleId, onSuccess }) {
         >
           <Upload className="w-10 h-10 text-muted group-hover:text-primary-400 mx-auto mb-3 transition-colors" />
           <p className="text-body text-sm">
-            Click to upload or drag & drop
+            Cliquez pour télécharger ou glissez-déposez
           </p>
-          <p className="text-muted text-xs mt-1">PNG, JPG up to 5MB each (max 5 images)</p>
+          <p className="text-muted text-xs mt-1">PNG, JPG jusqu'à 5 Mo chacune (max 5 images)</p>
         </div>
 
         <input
@@ -112,7 +112,7 @@ export default function SubmissionForm({ moduleId, onSuccess }) {
       <div>
         <label className="flex items-center gap-2 text-sm font-medium text-heading mb-3">
           <Video className="w-4 h-4 text-primary-400" />
-          Video URL or Link <span className="text-muted">(optional)</span>
+          URL vidéo ou lien <span className="text-muted">(optionnel)</span>
         </label>
         <div className="relative">
           <LinkIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
@@ -135,19 +135,19 @@ export default function SubmissionForm({ moduleId, onSuccess }) {
         <textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="Describe what you learned, the steps you followed, key concepts you understood, and any challenges you faced. Be specific and detailed — minimum 100 words."
+          placeholder="Décrivez ce que vous avez appris, les étapes que vous avez suivies, les concepts clés que vous avez compris, et les défis que vous avez rencontrés. Soyez précis et détaillé — minimum 100 mots."
           rows={8}
           className="input-field resize-none"
         />
         <div className="flex justify-between mt-2">
           <p className={`text-xs ${wordCount >= MIN_WORDS ? 'text-accent-400' : 'text-muted'}`}>
             {wordCount >= MIN_WORDS ? (
-              <span className="flex items-center gap-1"><Check className="w-3 h-3" /> Minimum word count met</span>
+              <span className="flex items-center gap-1"><Check className="w-3 h-3" /> Nombre minimum de mots atteint</span>
             ) : (
-              `${wordCount}/${MIN_WORDS} minimum words`
+              `${wordCount}/${MIN_WORDS} mots minimum`
             )}
           </p>
-          <p className="text-xs text-muted">{wordCount} words</p>
+          <p className="text-xs text-muted">{wordCount} mots</p>
         </div>
       </div>
 
@@ -160,12 +160,12 @@ export default function SubmissionForm({ moduleId, onSuccess }) {
         {submitting ? (
           <>
             <Loader2 className="w-5 h-5 animate-spin" />
-            Uploading...
+            Envoi en cours...
           </>
         ) : (
           <>
             <Upload className="w-5 h-5" />
-            Submit Proof
+            Soumettre la preuve
           </>
         )}
       </button>

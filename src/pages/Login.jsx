@@ -48,8 +48,8 @@ export default function Login() {
             </div>
             <span className="text-2xl font-bold gradient-text">UjuziAI</span>
           </Link>
-          <h1 className="text-2xl font-bold text-heading">Welcome back</h1>
-          <p className="text-body mt-1">Sign in to continue your journey</p>
+          <h1 className="text-2xl font-bold text-heading">Bon retour parmi nous</h1>
+          <p className="text-body mt-1">Connectez-vous pour continuer votre parcours</p>
         </div>
 
         {/* Form */}
@@ -80,7 +80,7 @@ export default function Login() {
               <div className="w-full border-t border-themed" />
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-4 text-muted" style={{ background: 'var(--bg-card)' }}>or sign in with email</span>
+              <span className="px-4 text-muted" style={{ background: 'var(--bg-card)' }}>ou connectez-vous par email</span>
             </div>
           </div>
 
@@ -101,14 +101,14 @@ export default function Login() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-body mb-2">Password</label>
+              <label className="block text-sm font-medium text-body mb-2">Mot de passe</label>
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter your password"
+                  placeholder="Entrez votre mot de passe"
                   required
                   className="input-field pl-11 pr-11"
                 />
@@ -130,16 +130,16 @@ export default function Login() {
               {loading ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
               ) : (
-                'Sign In'
+                'Connexion'
               )}
             </button>
           </form>
         </div>
 
         <p className="text-center text-body mt-6">
-          Don't have an account?{' '}
+          Pas encore de compte ?{' '}
           <Link to="/signup" className="text-primary-400 hover:text-primary-300 font-medium">
-            Create one
+            Créer un compte
           </Link>
         </p>
       </div>

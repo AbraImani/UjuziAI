@@ -81,7 +81,7 @@ export function AuthProvider({ children }) {
         // Auth succeeded, profile write failed — still let user in
         setUserProfile({ id: result.user.uid, ...userDoc });
       }
-      toast.success('Account created successfully!');
+      toast.success('Compte créé avec succès !');
       return result.user;
     } catch (error) {
       console.error('Signup error:', error.code, error.message);
@@ -94,7 +94,7 @@ export function AuthProvider({ children }) {
   async function login(email, password) {
     try {
       const result = await signInWithEmailAndPassword(auth, email, password);
-      toast.success('Welcome back!');
+      toast.success('Bon retour !');
       return result.user;
     } catch (error) {
       console.error('Login error:', error.code, error.message);
@@ -135,10 +135,10 @@ export function AuthProvider({ children }) {
           console.error('Firestore write error:', firestoreError);
           setUserProfile({ id: firebaseUser.uid, ...userDoc });
         }
-        toast.success('Account created with Google!');
+        toast.success('Compte créé avec Google !');
       } else {
         setUserProfile({ id: existingDoc.id, ...existingDoc.data() });
-        toast.success('Welcome back!');
+        toast.success('Bon retour !');
       }
 
       return firebaseUser;
@@ -156,9 +156,9 @@ export function AuthProvider({ children }) {
   async function logout() {
     try {
       await signOut(auth);
-      toast.success('Signed out successfully');
+      toast.success('Déconnexion réussie');
     } catch (error) {
-      toast.error('Failed to sign out');
+      toast.error('Échec de la déconnexion');
       throw error;
     }
   }
@@ -186,18 +186,18 @@ export function AuthProvider({ children }) {
 
 function getAuthErrorMessage(code) {
   const messages = {
-    'auth/email-already-in-use': 'This email is already registered',
-    'auth/invalid-email': 'Invalid email address',
-    'auth/operation-not-allowed': 'Operation not allowed',
-    'auth/weak-password': 'Password should be at least 6 characters',
-    'auth/user-disabled': 'This account has been disabled',
-    'auth/user-not-found': 'No account found with this email',
-    'auth/wrong-password': 'Incorrect password',
-    'auth/too-many-requests': 'Too many attempts. Please try again later',
-    'auth/invalid-credential': 'Invalid credentials. Please check your email and password',
-    'auth/popup-blocked': 'Pop-up blocked. Please allow pop-ups for this site',
-    'auth/account-exists-with-different-credential': 'An account already exists with this email using a different sign-in method',
-    'auth/cancelled-popup-request': 'Sign-in cancelled',
+    'auth/email-already-in-use': 'Cet email est déjà enregistré',
+    'auth/invalid-email': 'Adresse email invalide',
+    'auth/operation-not-allowed': 'Opération non autorisée',
+    'auth/weak-password': 'Le mot de passe doit contenir au moins 6 caractères',
+    'auth/user-disabled': 'Ce compte a été désactivé',
+    'auth/user-not-found': 'Aucun compte trouvé avec cet email',
+    'auth/wrong-password': 'Mot de passe incorrect',
+    'auth/too-many-requests': 'Trop de tentatives. Veuillez réessayer plus tard',
+    'auth/invalid-credential': 'Identifiants invalides. Vérifiez votre email et mot de passe',
+    'auth/popup-blocked': 'Pop-up bloqué. Veuillez autoriser les pop-ups pour ce site',
+    'auth/account-exists-with-different-credential': 'Un compte existe déjà avec cet email via une autre méthode de connexion',
+    'auth/cancelled-popup-request': 'Connexion annulée',
   };
-  return messages[code] || 'An authentication error occurred';
+  return messages[code] || 'Une erreur d\'authentification s\'est produite';
 }

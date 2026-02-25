@@ -30,9 +30,9 @@ export default function ModuleDetail() {
   if (!module) {
     return (
       <div className="max-w-4xl mx-auto text-center py-20">
-        <h2 className="text-2xl font-bold text-heading mb-4">Module Not Found</h2>
-        <p className="text-body mb-6">The module you're looking for doesn't exist.</p>
-        <Link to="/dashboard" className="btn-primary">Back to Dashboard</Link>
+        <h2 className="text-2xl font-bold text-heading mb-4">Module introuvable</h2>
+        <p className="text-body mb-6">Le module que vous recherchez n'existe pas.</p>
+        <Link to="/dashboard" className="btn-primary">Retour au tableau de bord</Link>
       </div>
     );
   }
@@ -52,10 +52,10 @@ export default function ModuleDetail() {
         <div className="glass-card p-6 border-red-500/30">
           <div className="flex items-center gap-3 mb-3">
             <Lock className="w-6 h-6 text-red-400" />
-            <h3 className="text-lg font-semibold text-red-400">Exam Locked</h3>
+            <h3 className="text-lg font-semibold text-red-400">Examen verrouillé</h3>
           </div>
           <p className="text-body">
-            This exam has been locked due to policy violations. Contact support if you believe this is an error.
+            Cet examen a été verrouillé en raison de violations de la politique. Contactez le support si vous pensez qu'il s'agit d'une erreur.
           </p>
         </div>
       );
@@ -66,16 +66,16 @@ export default function ModuleDetail() {
         <div className="glass-card p-6 border-accent-500/30">
           <div className="flex items-center gap-3 mb-3">
             <Award className="w-6 h-6 text-accent-400" />
-            <h3 className="text-lg font-semibold text-accent-400">Module Completed!</h3>
+            <h3 className="text-lg font-semibold text-accent-400">Module complété !</h3>
           </div>
           <p className="text-body mb-4">
-            You scored <span className="text-accent-400 font-bold">{examScore}/10</span>. 
-            Your certification badge is ready.
+            Vous avez obtenu <span className="text-accent-400 font-bold">{examScore}/10</span>. 
+            Votre badge de certification est prêt.
           </p>
           <div className="flex flex-wrap gap-3">
             <Link to={`/certificate/${moduleId}`} className="btn-accent flex items-center gap-2">
               <Award className="w-4 h-4" />
-              View Certificate
+              Voir le certificat
             </Link>
           </div>
         </div>
@@ -87,14 +87,14 @@ export default function ModuleDetail() {
         <div className="glass-card p-6 border-primary-500/30">
           <div className="flex items-center gap-3 mb-3">
             <Shield className="w-6 h-6 text-primary-400" />
-            <h3 className="text-lg font-semibold text-primary-400">Exam Ready</h3>
+            <h3 className="text-lg font-semibold text-primary-400">Examen prêt</h3>
           </div>
           <p className="text-body mb-2">
-            Your submission has been validated. You can now take the exam.
+            Votre soumission a été validée. Vous pouvez maintenant passer l'examen.
           </p>
           <div className="flex items-center gap-4 text-sm text-body mb-4">
-            <span>Attempts: {examAttempts}/{EXAM_CONFIG.MAX_ATTEMPTS}</span>
-            {examScore !== null && <span>Last Score: {examScore}/10</span>}
+            <span>Tentatives : {examAttempts}/{EXAM_CONFIG.MAX_ATTEMPTS}</span>
+            {examScore !== null && <span>Dernier score : {examScore}/10</span>}
           </div>
           {examAttempts < EXAM_CONFIG.MAX_ATTEMPTS && (
             <button
@@ -102,13 +102,13 @@ export default function ModuleDetail() {
               className="btn-primary flex items-center gap-2"
             >
               <Play className="w-4 h-4" />
-              {examAttempts > 0 ? 'Retry Exam' : 'Start Exam'}
+              {examAttempts > 0 ? 'Repasser l\'examen' : 'Commencer l\'examen'}
             </button>
           )}
           {examAttempts >= EXAM_CONFIG.MAX_ATTEMPTS && !isPassed && (
             <div className="flex items-center gap-2 text-amber-400">
               <AlertTriangle className="w-4 h-4" />
-              <span className="text-sm">Maximum attempts reached</span>
+              <span className="text-sm">Nombre maximum de tentatives atteint</span>
             </div>
           )}
         </div>
@@ -120,14 +120,14 @@ export default function ModuleDetail() {
         <div className="glass-card p-6 border-primary-500/30">
           <div className="flex items-center gap-3 mb-3">
             <Shield className="w-6 h-6 text-primary-400" />
-            <h3 className="text-lg font-semibold text-primary-400">Proof Submitted</h3>
+            <h3 className="text-lg font-semibold text-primary-400">Preuve soumise</h3>
           </div>
           <p className="text-body mb-4">
-            Your proof has been submitted. The exam is being prepared.
+            Votre preuve a été soumise. L'examen est en cours de préparation.
           </p>
           <button onClick={() => refetch()} className="btn-secondary flex items-center gap-2">
             <Clock className="w-4 h-4" />
-            Refresh Status
+            Rafraîchir le statut
           </button>
         </div>
       );
@@ -144,7 +144,7 @@ export default function ModuleDetail() {
         className="flex items-center gap-2 text-body hover:text-heading transition-colors mb-6"
       >
         <ArrowLeft className="w-4 h-4" />
-        Back to Dashboard
+        Retour au tableau de bord
       </button>
 
       {/* Module Header */}
@@ -202,9 +202,9 @@ export default function ModuleDetail() {
           <div className="flex items-center gap-3 mb-6">
             <Upload className="w-6 h-6 text-primary-400" />
             <div>
-              <h2 className="text-xl font-semibold text-heading">Submit Your Proof</h2>
+              <h2 className="text-xl font-semibold text-heading">Soumettez votre preuve</h2>
               <p className="text-sm text-body">
-                Upload evidence of codelab completion to unlock the exam
+                Téléchargez la preuve de complétion du codelab pour débloquer l'examen
               </p>
             </div>
           </div>
@@ -213,18 +213,18 @@ export default function ModuleDetail() {
             <div className="text-center py-8">
               <FileText className="w-16 h-16 text-muted mx-auto mb-4" />
               <h3 className="text-lg font-medium text-body mb-2">
-                Ready to submit your work?
+                Prêt à soumettre votre travail ?
               </h3>
               <p className="text-muted mb-6 max-w-md mx-auto">
-                You will need screenshots of your completed codelab, an optional video link, and a detailed description
-                of at least 100 words explaining what you learned.
+                Vous aurez besoin de captures d'écran de votre codelab complété, d'un lien vidéo optionnel, et d'une description détaillée
+                d'au moins 100 mots expliquant ce que vous avez appris.
               </p>
               <button
                 onClick={() => setShowSubmitForm(true)}
                 className="btn-primary inline-flex items-center gap-2"
               >
                 <Upload className="w-4 h-4" />
-                Begin Submission
+                Commencer la soumission
               </button>
             </div>
           ) : (
@@ -241,13 +241,13 @@ export default function ModuleDetail() {
 
       {/* Requirements Checklist */}
       <div className="glass-card p-8 mt-6">
-        <h3 className="text-lg font-semibold text-heading mb-4">Completion Requirements</h3>
+        <h3 className="text-lg font-semibold text-heading mb-4">Conditions de réussite</h3>
         <div className="space-y-3">
           {[
-            { label: 'Complete the codelab', done: isSubmitted },
-            { label: 'Upload screenshot proof', done: isSubmitted },
-            { label: 'Write detailed description (100+ words)', done: isSubmitted },
-            { label: 'Pass exam with score >= 6/10 (max 2 attempts)', done: isPassed },
+            { label: 'Compléter le codelab', done: isSubmitted },
+            { label: 'Télécharger des captures d\'écran comme preuve', done: isSubmitted },
+            { label: 'Écrire une description détaillée (100+ mots)', done: isSubmitted },
+            { label: 'Réussir l\'examen avec un score >= 6/10 (max 2 tentatives)', done: isPassed },
           ].map(({ label, done }) => (
             <div key={label} className="flex items-center gap-3">
               {done ? (

@@ -11,16 +11,16 @@ export default function ModuleCard({ module, progress }) {
 
   function getStatusBadge() {
     if (isLocked) {
-      return <span className="badge-danger"><Lock className="w-3 h-3 mr-1" /> Locked</span>;
+      return <span className="badge-danger"><Lock className="w-3 h-3 mr-1" /> Verrouillé</span>;
     }
     if (isCompleted) {
-      return <span className="badge-accent"><CheckCircle className="w-3 h-3 mr-1" /> Completed</span>;
+      return <span className="badge-accent"><CheckCircle className="w-3 h-3 mr-1" /> Complété</span>;
     }
     if (hasExamAccess) {
-      return <span className="badge-primary"><BookOpen className="w-3 h-3 mr-1" /> Exam Ready</span>;
+      return <span className="badge-primary"><BookOpen className="w-3 h-3 mr-1" /> Examen prêt</span>;
     }
     if (isSubmitted) {
-      return <span className="badge-warning"><Clock className="w-3 h-3 mr-1" /> Submitted</span>;
+      return <span className="badge-warning"><Clock className="w-3 h-3 mr-1" /> Soumis</span>;
     }
     return null;
   }
@@ -90,7 +90,7 @@ export default function ModuleCard({ module, progress }) {
 
         {/* CTA */}
         <div className="mt-4 flex items-center text-sm text-primary-400 font-medium group-hover:text-primary-300 transition-colors">
-          {isCompleted ? 'View Details' : 'Start Learning'}
+          {isCompleted ? 'Voir les détails' : 'Commencer'}
           <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
         </div>
       </div>

@@ -19,15 +19,15 @@ export default function Landing() {
           <button
             onClick={toggleTheme}
             className="p-2 rounded-xl border border-themed text-body hover:text-heading transition-colors"
-            title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+            title={isDark ? 'Mode clair' : 'Mode sombre'}
           >
             {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </button>
           <Link to="/login" className="text-body hover:text-heading transition-colors font-medium text-sm sm:text-base">
-            Sign In
+            Connexion
           </Link>
           <Link to="/signup" className="btn-primary text-xs sm:text-sm !px-4 !py-2 sm:!px-6 sm:!py-3">
-            Get Started
+            Commencer
           </Link>
         </div>
       </nav>
@@ -37,28 +37,28 @@ export default function Landing() {
         <div className="text-center max-w-4xl mx-auto">
           <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-primary-500/10 border border-primary-500/20 text-primary-600 dark:text-primary-300 text-xs sm:text-sm font-medium mb-6 sm:mb-8 animate-fade-in">
             <Sparkles className="w-3 h-3 sm:w-4 sm:h-4" />
-            Build with AI Season — Now Open
+            Build with AI Season — Ouvert maintenant
           </div>
 
           <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold text-heading mb-4 sm:mb-6 leading-tight tracking-tight animate-fade-in">
-            Master AI Development
+            Maîtrisez le Développement IA
             <br />
-            <span className="gradient-text">Compete & Rank Up</span>
+            <span className="gradient-text">Compétez & Progressez</span>
           </h1>
 
           <p className="text-[13px] sm:text-[15px] md:text-base text-body max-w-2xl mx-auto mb-8 sm:mb-10 animate-fade-in leading-relaxed">
-            Complete hands-on codelabs, prove your skills through proctored exams,
-            climb the leaderboard, and earn verifiable certifications. Powered by intelligent agents.
+            Complétez des codelabs pratiques, prouvez vos compétences à travers des examens supervisés,
+            grimpez dans le classement et obtenez des certifications vérifiables. Propulsé par des agents intelligents.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 animate-fade-in">
             <Link to="/signup" className="btn-primary text-sm sm:text-lg px-6 sm:px-8 py-3 sm:py-4 flex items-center gap-2 w-full sm:w-auto justify-center">
               <Trophy className="w-4 h-4 sm:w-5 sm:h-5" />
-              Start Competing
+              Commencer la compétition
               <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />
             </Link>
             <Link to="/login" className="btn-secondary text-sm sm:text-lg px-6 sm:px-8 py-3 sm:py-4 w-full sm:w-auto text-center">
-              Sign In
+              Se connecter
             </Link>
           </div>
         </div>
@@ -67,9 +67,9 @@ export default function Landing() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6 mt-14 sm:mt-20 max-w-4xl mx-auto">
           {[
             { label: 'Modules', value: '16', icon: BookOpen },
-            { label: 'Learners', value: '500+', icon: Users },
+            { label: 'Apprenants', value: '500+', icon: Users },
             { label: 'Certifications', value: '200+', icon: Trophy },
-            { label: 'AI Agents', value: '4', icon: Brain },
+            { label: 'Agents IA', value: '4', icon: Brain },
           ].map(({ label, value, icon: Icon }) => (
             <div key={label} className="glass-card p-4 sm:p-6 text-center">
               <Icon className="w-6 h-6 sm:w-8 sm:h-8 text-primary-500 mx-auto mb-2 sm:mb-3" />
@@ -82,32 +82,32 @@ export default function Landing() {
 
       {/* Features */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 py-16 sm:py-24 border-t border-themed">
-        <h2 className="section-title text-center mb-3 sm:mb-4">How It Works</h2>
+        <h2 className="section-title text-center mb-3 sm:mb-4">Comment ça marche</h2>
         <p className="section-subtitle text-center mb-10 sm:mb-16 max-w-2xl mx-auto text-sm sm:text-base">
-          A complete learning journey from codelabs to certification, powered by AI agent orchestration.
+          Un parcours d'apprentissage complet, du codelab à la certification, propulsé par l'orchestration d'agents IA.
         </p>
 
         <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-6 sm:gap-8">
           {[
             {
               icon: BookOpen,
-              title: '1. Complete Codelabs',
+              title: '1. Complétez les Codelabs',
               description:
-                'Work through hands-on Build with AI season modules. Each codelab teaches practical AI development skills.',
+                'Travaillez sur les modules pratiques Build with AI. Chaque codelab enseigne des compétences concrètes en développement IA.',
               color: 'primary',
             },
             {
               icon: Shield,
-              title: '2. Submit Proof',
+              title: '2. Soumettez vos preuves',
               description:
-                'Upload screenshots, videos, and detailed descriptions of your work. Submissions are validated before exam access.',
+                'Téléversez des captures d\'écran, vidéos et descriptions détaillées de votre travail. Les soumissions sont validées avant l\'accès à l\'examen.',
               color: 'accent',
             },
             {
               icon: Trophy,
-              title: '3. Earn Certification',
+              title: '3. Obtenez la Certification',
               description:
-                'Pass the AI-proctored exam with score ≥ 6/10. Earn a unique verifiable badge and downloadable certificate.',
+                'Réussissez l\'examen supervisé par IA avec un score ≥ 6/10. Gagnez un badge vérifiable unique et un certificat téléchargeable.',
               color: 'primary',
             },
           ].map(({ icon: Icon, title, description, color }) => (
@@ -130,32 +130,32 @@ export default function Landing() {
 
       {/* Agent Architecture Preview */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 py-16 sm:py-24 border-t border-themed">
-        <h2 className="section-title text-center mb-3 sm:mb-4">Powered by AI Agents</h2>
+        <h2 className="section-title text-center mb-3 sm:mb-4">Propulsé par des Agents IA</h2>
         <p className="section-subtitle text-center mb-10 sm:mb-16 max-w-2xl mx-auto text-sm sm:text-base">
-          Four specialized agents work together using ADK, MCP, and A2A protocols for a fair and intelligent experience.
+          Quatre agents spécialisés travaillent ensemble via les protocoles ADK, MCP et A2A pour une expérience juste et intelligente.
         </p>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
           {[
             {
               icon: Target,
-              title: 'Question Generator',
-              desc: 'Creates dynamic, concept-varied questions for each attempt',
+              title: 'Générateur de Questions',
+              desc: 'Crée des questions dynamiques et variées pour chaque tentative',
             },
             {
               icon: FileText,
-              title: 'Evaluation Agent',
-              desc: 'Grades MCQs and evaluates open responses with depth analysis',
+              title: 'Agent d\'Évaluation',
+              desc: 'Note les QCM et évalue les réponses ouvertes avec analyse de profondeur',
             },
             {
               icon: Shield,
               title: 'Anti-Hallucination',
-              desc: 'Cross-checks answers against codelab context for accuracy',
+              desc: 'Vérifie les réponses par rapport au contexte du codelab',
             },
             {
               icon: Trophy,
-              title: 'Ranking Agent',
-              desc: 'Updates leaderboard and calculates cumulative scores',
+              title: 'Agent de Classement',
+              desc: 'Met à jour le leaderboard et calcule les scores cumulatifs',
             },
           ].map(({ icon: Icon, title, desc }) => (
             <div key={title} className="glass-card p-4 sm:p-6 text-center">
@@ -175,14 +175,14 @@ export default function Landing() {
           <div className="absolute inset-0 bg-gradient-to-br from-primary-600/10 to-accent-600/10" />
           <div className="relative z-10">
             <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-heading mb-3 sm:mb-4">
-              Ready to Build with AI?
+              Prêt à construire avec l'IA ?
             </h2>
             <p className="text-body mb-6 sm:mb-8 max-w-xl mx-auto text-sm sm:text-base">
-              Join hundreds of developers mastering AI development skills.
-              Start your journey today.
+              Rejoignez des centaines de développeurs qui maîtrisent le développement IA.
+              Commencez votre parcours aujourd'hui.
             </p>
             <Link to="/signup" className="btn-primary text-sm sm:text-lg px-6 sm:px-8 py-3 sm:py-4 inline-flex items-center gap-2">
-              Create Free Account
+              Créer un compte gratuit
               <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />
             </Link>
           </div>

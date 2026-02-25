@@ -82,11 +82,11 @@ function OpenQuestion({ question, onAnswer, timeLeft }) {
       <textarea
         value={answer}
         onChange={handleChange}
-        placeholder="Write your answer here. Be specific, detailed, and demonstrate your understanding of the concepts..."
+        placeholder="Écrivez votre réponse ici. Soyez précis, détaillé, et démontrez votre compréhension des concepts..."
         rows={10}
         className="input-field resize-none font-normal"
       />
-      <p className="text-xs text-muted mt-2">{answer.length} characters</p>
+      <p className="text-xs text-muted mt-2">{answer.length} caractères</p>
     </div>
   );
 }
@@ -179,10 +179,10 @@ export default function ExamInterface({ moduleId, examId, questions, onComplete 
       setCompleting(true);
       try {
         await completeExam(examId, moduleId);
-        toast.success('Exam completed! Results are being processed.');
+        toast.success('Examen terminé ! Les résultats sont en cours de traitement.');
         onComplete?.();
       } catch (err) {
-        toast.error('Error completing exam');
+        toast.error('Erreur lors de la finalisation de l\'examen');
       } finally {
         setCompleting(false);
       }
@@ -192,7 +192,7 @@ export default function ExamInterface({ moduleId, examId, questions, onComplete 
   }, [currentAnswer, currentIndex, isLastQuestion, answers, examId, moduleId, submitAnswer, completeExam, currentQuestion, onComplete]);
 
   const handleTimerExpire = useCallback(() => {
-    toast('Time\'s up! Moving to next question.');
+    toast('Temps écoulé ! Passage à la question suivante.');
     goNext();
   }, [goNext]);
 
@@ -211,16 +211,16 @@ export default function ExamInterface({ moduleId, examId, questions, onComplete 
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="glass-card p-8 max-w-md w-full text-center">
             <AlertTriangle className="w-16 h-16 text-amber-400 mx-auto mb-4" />
-            <h3 className="text-xl font-bold text-heading mb-2">Warning Detected</h3>
+            <h3 className="text-xl font-bold text-heading mb-2">Avertissement détecté</h3>
             <p className="text-body mb-6">
-              Our system detected suspicious activity. This is your first warning.
-              A second detection will result in an automatic zero.
+              Notre système a détecté une activité suspecte. Ceci est votre premier avertissement.
+              Une deuxième détection entraînera un zéro automatique.
             </p>
             <button
               onClick={() => setShowWarning(false)}
               className="btn-primary"
             >
-              I Understand
+              Je comprends
             </button>
           </div>
         </div>
@@ -231,13 +231,13 @@ export default function ExamInterface({ moduleId, examId, questions, onComplete 
         <div>
           <div className="flex items-center gap-2 text-sm text-body mb-1">
             <Shield className="w-4 h-4" />
-            Proctored Exam
+            Examen surveillé
           </div>
           <h2 className="text-xl font-bold text-heading">
-            Question {currentIndex + 1} of {totalQuestions}
+            Question {currentIndex + 1} sur {totalQuestions}
           </h2>
           <p className="text-sm text-body">
-            {isMCQ ? 'Multiple Choice' : 'Open-ended'} • {isMCQ ? 'Select the best answer' : 'Write your detailed response'}
+            {isMCQ ? 'Choix multiple' : 'Question ouverte'} • {isMCQ ? 'Sélectionnez la meilleure réponse' : 'Rédigez votre réponse détaillée'}
           </p>
         </div>
 
@@ -298,11 +298,11 @@ export default function ExamInterface({ moduleId, examId, questions, onComplete 
           ) : isLastQuestion ? (
             <>
               <CheckCircle className="w-5 h-5" />
-              Submit Exam
+              Soumettre l'examen
             </>
           ) : (
             <>
-              Next Question
+              Question suivante
               <ChevronRight className="w-5 h-5" />
             </>
           )}
@@ -313,11 +313,11 @@ export default function ExamInterface({ moduleId, examId, questions, onComplete 
       <div className="mt-6 flex items-start gap-3 p-4 bg-amber-500/5 border border-amber-500/20 rounded-xl">
         <AlertTriangle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
         <div className="text-sm text-body">
-          <p className="font-medium text-amber-400 mb-1">Exam Rules</p>
+          <p className="font-medium text-amber-400 mb-1">Règles de l'examen</p>
           <ul className="space-y-1 list-disc list-inside">
-            <li>No back navigation allowed</li>
-            <li>Answers auto-submit when timer expires</li>
-            <li>AI-generated responses will be flagged</li>
+            <li>Pas de retour en arrière autorisé</li>
+            <li>Les réponses sont soumises automatiquement à l'expiration du temps</li>
+            <li>Les réponses générées par IA seront signalées</li>
           </ul>
         </div>
       </div>

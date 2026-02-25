@@ -53,8 +53,8 @@ export default function Signup() {
             </div>
             <span className="text-2xl font-bold gradient-text">UjuziAI</span>
           </Link>
-          <h1 className="text-2xl font-bold text-heading">Create your account</h1>
-          <p className="text-body mt-1">Join the competition and prove your AI skills</p>
+          <h1 className="text-2xl font-bold text-heading">Créez votre compte</h1>
+          <p className="text-body mt-1">Rejoignez la compétition et prouvez vos compétences IA</p>
         </div>
 
         {/* Form */}
@@ -85,20 +85,20 @@ export default function Signup() {
               <div className="w-full border-t border-themed" />
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-4 text-muted" style={{ background: 'var(--bg-card)' }}>or sign up with email</span>
+              <span className="px-4 text-muted" style={{ background: 'var(--bg-card)' }}>ou inscrivez-vous par email</span>
             </div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-body mb-2">Full Name</label>
+              <label className="block text-sm font-medium text-body mb-2">Nom complet</label>
               <div className="relative">
                 <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
                 <input
                   type="text"
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder="Your full name"
+                  placeholder="Votre nom complet"
                   required
                   className="input-field pl-11"
                 />
@@ -121,14 +121,14 @@ export default function Signup() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-body mb-2">Password</label>
+              <label className="block text-sm font-medium text-body mb-2">Mot de passe</label>
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Min. 6 characters"
+                  placeholder="Min. 6 caractères"
                   required
                   minLength={6}
                   className="input-field pl-11 pr-11"
@@ -144,20 +144,20 @@ export default function Signup() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-body mb-2">Confirm Password</label>
+              <label className="block text-sm font-medium text-body mb-2">Confirmer le mot de passe</label>
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
                 <input
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Repeat your password"
+                  placeholder="Répétez votre mot de passe"
                   required
                   className="input-field pl-11"
                 />
               </div>
               {password && confirmPassword && password !== confirmPassword && (
-                <p className="text-red-400 text-xs mt-2">Passwords do not match</p>
+                <p className="text-red-400 text-xs mt-2">Les mots de passe ne correspondent pas</p>
               )}
             </div>
 
@@ -169,16 +169,16 @@ export default function Signup() {
               {loading ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
               ) : (
-                'Create Account'
+                'Créer un compte'
               )}
             </button>
           </form>
         </div>
 
         <p className="text-center text-body mt-6">
-          Already have an account?{' '}
+          Vous avez déjà un compte ?{' '}
           <Link to="/login" className="text-primary-400 hover:text-primary-300 font-medium">
-            Sign in
+            Se connecter
           </Link>
         </p>
       </div>

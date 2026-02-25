@@ -26,8 +26,8 @@ export default function Certificate() {
   if (!module) {
     return (
       <div className="max-w-4xl mx-auto text-center py-20">
-        <h2 className="text-2xl font-bold text-heading mb-4">Module Not Found</h2>
-        <Link to="/dashboard" className="btn-primary">Back to Dashboard</Link>
+        <h2 className="text-2xl font-bold text-heading mb-4">Module introuvable</h2>
+        <Link to="/dashboard" className="btn-primary">Retour au tableau de bord</Link>
       </div>
     );
   }
@@ -47,10 +47,10 @@ export default function Certificate() {
     return (
       <div className="max-w-4xl mx-auto text-center py-20">
         <Award className="w-16 h-16 text-muted mx-auto mb-4" />
-        <h2 className="text-2xl font-bold text-heading mb-4">Certificate Not Available</h2>
-        <p className="text-body mb-6">You need to pass the exam with a score ≥ 6/10 to earn a certificate.</p>
+        <h2 className="text-2xl font-bold text-heading mb-4">Certificat non disponible</h2>
+        <p className="text-body mb-6">Vous devez réussir l'examen avec un score ≥ 6/10 pour obtenir un certificat.</p>
         <button onClick={() => navigate(`/module/${moduleId}`)} className="btn-primary">
-          Go to Module
+          Aller au module
         </button>
       </div>
     );
@@ -80,7 +80,7 @@ export default function Certificate() {
   };
 
   const shareUrl = `${window.location.origin}/certificate/${moduleId}`;
-  const shareText = `I just earned my "${module.title}" certification on UjuziAI! Badge ID: ${badgeId}`;
+  const shareText = `Je viens d'obtenir ma certification "${module.title}" sur UjuziAI ! Badge ID : ${badgeId}`;
 
   const shareLinkedIn = () => {
     window.open(
@@ -104,7 +104,7 @@ export default function Certificate() {
         className="flex items-center gap-2 text-body hover:text-heading transition-colors mb-6"
       >
         <ArrowLeft className="w-4 h-4" />
-        Back to Dashboard
+        Retour au tableau de bord
       </button>
 
       {/* Certificate */}
@@ -126,7 +126,7 @@ export default function Certificate() {
           </div>
 
           <p className="text-body uppercase tracking-widest text-sm mb-4">
-            Certificate of Completion
+            Certificat de réussite
           </p>
 
           <h1 className="text-3xl md:text-4xl font-bold text-heading mb-2">
@@ -135,9 +135,9 @@ export default function Certificate() {
           <p className="text-body mb-8">Build with AI Season</p>
 
           <div className="mb-8">
-            <p className="text-body text-sm">Awarded to</p>
+            <p className="text-body text-sm">Décerné à</p>
             <p className="text-2xl font-bold gradient-text mt-1">
-              {user?.displayName || 'Learner'}
+              {user?.displayName || 'Apprenant'}
             </p>
           </div>
 
@@ -160,7 +160,7 @@ export default function Certificate() {
 
           <div className="flex items-center justify-center gap-2 text-accent-400">
             <CheckCircle className="w-5 h-5" />
-            <span className="text-sm font-medium">Verified Certification</span>
+            <span className="text-sm font-medium">Certification vérifiée</span>
           </div>
         </div>
       </div>
@@ -169,24 +169,24 @@ export default function Certificate() {
       <div className="flex flex-wrap gap-4 mt-8 justify-center">
         <button onClick={handleDownload} className="btn-primary flex items-center gap-2">
           <Download className="w-4 h-4" />
-          Download PDF
+          Télécharger PDF
         </button>
         <button onClick={shareLinkedIn} className="btn-secondary flex items-center gap-2">
           <Linkedin className="w-4 h-4" />
-          Share on LinkedIn
+          Partager sur LinkedIn
         </button>
         <button onClick={shareTwitter} className="btn-secondary flex items-center gap-2">
           <Twitter className="w-4 h-4" />
-          Share on X
+          Partager sur X
         </button>
       </div>
 
       {/* Badge Verification */}
       <div className="glass-card p-6 mt-8 text-center">
         <Award className="w-8 h-8 text-primary-400 mx-auto mb-3" />
-        <h3 className="font-semibold text-heading mb-1">Verifiable Badge</h3>
+        <h3 className="font-semibold text-heading mb-1">Badge vérifiable</h3>
         <p className="text-sm text-body mb-3">
-          Your badge ID can be used to verify this certification:
+          Votre badge ID peut être utilisé pour vérifier cette certification :
         </p>
         <code className="bg-surface px-4 py-2 rounded-lg text-primary-300 font-mono text-sm">
           {badgeId}

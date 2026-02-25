@@ -24,13 +24,13 @@ export default function Layout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const navItems = [
-    { path: '/leaderboard', icon: Trophy, label: 'Leaderboard' },
+    { path: '/leaderboard', icon: Trophy, label: 'Classement' },
     { path: '/dashboard', icon: LayoutDashboard, label: 'Modules' },
-    { path: '/profile', icon: User, label: 'Profile' },
+    { path: '/profile', icon: User, label: 'Profil' },
   ];
 
   if (isAdmin) {
-    navItems.push({ path: '/admin', icon: Shield, label: 'Admin Panel' });
+    navItems.push({ path: '/admin', icon: Shield, label: 'Administration' });
   }
 
   const handleLogout = async () => {
@@ -78,7 +78,7 @@ export default function Layout({ children }) {
             className="flex items-center gap-3 px-4 py-2.5 w-full text-left text-body hover:text-heading hover:bg-black/5 dark:hover:bg-white/5 rounded-xl transition-colors text-sm"
           >
             {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-            {isDark ? 'Light Mode' : 'Dark Mode'}
+            {isDark ? 'Mode clair' : 'Mode sombre'}
           </button>
 
           <div className="flex items-center gap-3 px-4 py-3">
@@ -94,7 +94,7 @@ export default function Layout({ children }) {
             <button
               onClick={handleLogout}
               className="p-2 text-muted hover:text-red-500 transition-colors"
-              title="Sign out"
+              title="Déconnexion"
             >
               <LogOut className="w-4 h-4" />
             </button>
@@ -149,14 +149,14 @@ export default function Layout({ children }) {
                 className="flex items-center gap-3 px-4 py-3 w-full text-left text-body hover:text-heading rounded-xl transition-colors"
               >
                 {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-                {isDark ? 'Light Mode' : 'Dark Mode'}
+                {isDark ? 'Mode clair' : 'Mode sombre'}
               </button>
               <button
                 onClick={handleLogout}
                 className="flex items-center gap-3 px-4 py-3 w-full text-left text-red-500 hover:bg-red-500/10 rounded-xl transition-colors"
               >
                 <LogOut className="w-5 h-5" />
-                Sign Out
+                Déconnexion
               </button>
             </div>
           </aside>

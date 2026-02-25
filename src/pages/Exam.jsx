@@ -150,7 +150,7 @@ export default function Exam() {
       setQuestions(q);
       setExamStarted(true);
     } catch (err) {
-      toast.error('Failed to start exam: ' + err.message);
+      toast.error('Impossible de démarrer l\'examen : ' + err.message);
     } finally {
       setStarting(false);
     }
@@ -164,9 +164,9 @@ export default function Exam() {
     return (
       <div className="min-h-screen bg-body flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-heading mb-4">Module Not Found</h2>
+          <h2 className="text-2xl font-bold text-heading mb-4">Module introuvable</h2>
           <button onClick={() => navigate('/dashboard')} className="btn-primary">
-            Back to Dashboard
+            Retour au tableau de bord
           </button>
         </div>
       </div>
@@ -187,15 +187,15 @@ export default function Exam() {
       <div className="min-h-screen bg-body flex items-center justify-center p-4">
         <div className="glass-card p-12 max-w-md w-full text-center animate-scale-in">
           <CheckCircle className="w-20 h-20 text-accent-400 mx-auto mb-6" />
-          <h2 className="text-2xl font-bold text-heading mb-3">Exam Completed!</h2>
+          <h2 className="text-2xl font-bold text-heading mb-3">Examen terminé !</h2>
           <p className="text-body mb-8">
-            Your answers are being evaluated by our AI agents. Results will be available shortly on the module page.
+            Vos réponses sont en cours d'évaluation par nos agents IA. Les résultats seront disponibles sous peu sur la page du module.
           </p>
           <button
             onClick={() => navigate(`/module/${moduleId}`)}
             className="btn-primary w-full"
           >
-            View Results
+            Voir les résultats
           </button>
         </div>
       </div>
@@ -221,26 +221,26 @@ export default function Exam() {
     const reasons = {
       'no-submission': {
         icon: AlertTriangle,
-        title: 'Submission Required',
-        desc: 'You must submit proof of codelab completion before accessing the exam.',
+        title: 'Soumission requise',
+        desc: 'Vous devez soumettre la preuve de complétion du codelab avant d\'accéder à l\'examen.',
         color: 'amber',
       },
       locked: {
         icon: XCircle,
-        title: 'Exam Locked',
-        desc: 'This exam has been locked due to policy violations.',
+        title: 'Examen verrouillé',
+        desc: 'Cet examen a été verrouillé en raison de violations de la politique.',
         color: 'red',
       },
       'max-attempts': {
         icon: XCircle,
-        title: 'Maximum Attempts Reached',
-        desc: 'You have used all available exam attempts.',
+        title: 'Nombre maximum de tentatives atteint',
+        desc: 'Vous avez utilisé toutes les tentatives d\'examen disponibles.',
         color: 'red',
       },
       'already-passed': {
         icon: CheckCircle,
-        title: 'Already Passed',
-        desc: 'You have already passed this exam. View your certificate.',
+        title: 'Déjà réussi',
+        desc: 'Vous avez déjà réussi cet examen. Consultez votre certificat.',
         color: 'accent',
       },
     };
@@ -255,7 +255,7 @@ export default function Exam() {
           <h2 className="text-2xl font-bold text-heading mb-3">{r.title}</h2>
           <p className="text-body mb-6">{r.desc}</p>
           <button onClick={() => navigate(`/module/${moduleId}`)} className="btn-primary">
-            Back to Module
+            Retour au module
           </button>
         </div>
       </div>
@@ -272,36 +272,36 @@ export default function Exam() {
             {module.title} — Exam
           </h2>
           <p className="text-body">
-            Attempt {(status.attempts || 0) + 1} of {EXAM_CONFIG.MAX_ATTEMPTS}
+            Tentative {(status.attempts || 0) + 1} sur {EXAM_CONFIG.MAX_ATTEMPTS}
           </p>
         </div>
 
         <div className="space-y-4 mb-8">
-          <h3 className="font-semibold text-heading">Exam Rules:</h3>
+          <h3 className="font-semibold text-heading">Règles de l'examen :</h3>
           <ul className="space-y-3 text-sm text-body">
             <li className="flex items-start gap-2">
               <span className="text-primary-400 mt-0.5">•</span>
-              <span><strong className="text-heading">7 MCQ questions</strong> — 25-30 seconds each</span>
+              <span><strong className="text-heading">7 questions QCM</strong> — 25-30 secondes chacune</span>
             </li>
             <li className="flex items-start gap-2">
               <span className="text-primary-400 mt-0.5">•</span>
-              <span><strong className="text-heading">3 open-ended questions</strong> — max 5 minutes each</span>
+              <span><strong className="text-heading">3 questions ouvertes</strong> — max 5 minutes chacune</span>
             </li>
             <li className="flex items-start gap-2">
               <span className="text-primary-400 mt-0.5">•</span>
-              <span><strong className="text-heading">No back navigation</strong> — one question at a time</span>
+              <span><strong className="text-heading">Pas de retour en arrière</strong> — une question à la fois</span>
             </li>
             <li className="flex items-start gap-2">
               <span className="text-primary-400 mt-0.5">•</span>
-              <span><strong className="text-heading">Auto-advance</strong> when timer expires</span>
+              <span><strong className="text-heading">Avance automatique</strong> quand le temps expire</span>
             </li>
             <li className="flex items-start gap-2">
               <span className="text-primary-400 mt-0.5">•</span>
-              <span><strong className="text-heading">Passing score: 6/10</strong></span>
+              <span><strong className="text-heading">Score de réussite : 6/10</strong></span>
             </li>
             <li className="flex items-start gap-2">
               <AlertTriangle className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
-              <span><strong className="text-red-300">AI-cheating detection active</strong> — generic or AI-generated answers will be flagged</span>
+              <span><strong className="text-red-300">Détection de triche IA active</strong> — les réponses génériques ou générées par IA seront signalées</span>
             </li>
           </ul>
         </div>
@@ -317,7 +317,7 @@ export default function Exam() {
             ) : (
               <>
                 <Play className="w-5 h-5" />
-                Start Exam
+                Commencer l'examen
               </>
             )}
           </button>
@@ -326,7 +326,7 @@ export default function Exam() {
             className="btn-secondary w-full"
           >
             <ArrowLeft className="w-4 h-4 inline mr-2" />
-            Go Back
+            Retour
           </button>
         </div>
       </div>

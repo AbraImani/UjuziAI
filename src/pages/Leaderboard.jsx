@@ -102,14 +102,14 @@ export default function Leaderboard() {
       <div className="text-center mb-8">
         <div className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500/10 border border-amber-500/20 rounded-full mb-4">
           <Flame className="w-4 h-4 text-amber-400" />
-          <span className="text-sm font-medium text-amber-300">Live Rankings</span>
+          <span className="text-sm font-medium text-amber-300">Classement en direct</span>
         </div>
         <h1 className="text-4xl md:text-5xl font-bold text-heading mb-3 flex items-center justify-center gap-3">
           <Trophy className="w-10 h-10 text-amber-400" />
-          <span className="gradient-text">Leaderboard</span>
+          <span className="gradient-text">Classement</span>
         </h1>
         <p className="text-body text-lg max-w-md mx-auto">
-          Compete, climb the ranks, and prove your AI expertise
+          Compétez, grimpez dans les rangs et prouvez votre expertise IA
         </p>
       </div>
 
@@ -125,14 +125,14 @@ export default function Leaderboard() {
               </div>
             </ProgressRing>
             <div>
-              <p className="text-xs text-body uppercase tracking-wide font-medium">Your Position</p>
+              <p className="text-xs text-body uppercase tracking-wide font-medium">Votre position</p>
               <p className="text-2xl font-bold text-heading mt-1">
                 {userRank ? (
                   <>Top <span className="gradient-text">{userRank}</span></>
-                ) : 'Unranked'}
+                ) : 'Non classé'}
               </p>
               <p className="text-sm text-muted mt-0.5">
-                {completedCount} of {MODULES.length} modules completed
+                {completedCount} sur {MODULES.length} modules complétés
               </p>
             </div>
           </div>
@@ -143,7 +143,7 @@ export default function Leaderboard() {
                 <Target className="w-5 h-5 text-primary-400" />
               </div>
               <p className="text-xl font-bold text-heading">{totalScore}</p>
-              <p className="text-xs text-muted">Total Points</p>
+              <p className="text-xs text-muted">Points totaux</p>
             </div>
             <div className="text-center">
               <div className="w-10 h-10 mx-auto bg-accent-600/20 rounded-xl flex items-center justify-center mb-2">
@@ -157,7 +157,7 @@ export default function Leaderboard() {
                 <BarChart3 className="w-5 h-5 text-amber-400" />
               </div>
               <p className="text-xl font-bold text-heading">{Math.round(overallProgress)}%</p>
-              <p className="text-xs text-muted">Progress</p>
+              <p className="text-xs text-muted">Progression</p>
             </div>
           </div>
         </div>
@@ -166,9 +166,9 @@ export default function Leaderboard() {
       {/* Filter Tabs */}
       <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-2">
         {[
-          { key: 'all', label: 'All Ranks', icon: Users },
+          { key: 'all', label: 'Tous les rangs', icon: Users },
           { key: 'top5', label: 'Top 5', icon: Crown },
-          { key: 'myRank', label: 'Around Me', icon: Target },
+          { key: 'myRank', label: 'Autour de moi', icon: Target },
         ].map(({ key, label, icon: Icon }) => (
           <button
             key={key}
@@ -188,20 +188,20 @@ export default function Leaderboard() {
       {loading ? (
         <div className="flex flex-col items-center justify-center py-20">
           <Loader2 className="w-10 h-10 animate-spin text-primary-500 mb-4" />
-          <p className="text-body">Loading rankings...</p>
+          <p className="text-body">Chargement du classement...</p>
         </div>
       ) : leaderboard.length === 0 ? (
         <div className="glass-card p-16 text-center">
           <div className="w-20 h-20 mx-auto bg-surface rounded-2xl flex items-center justify-center mb-6">
             <Trophy className="w-10 h-10 text-muted" />
           </div>
-          <h3 className="text-xl font-bold text-heading mb-2">No Rankings Yet</h3>
+          <h3 className="text-xl font-bold text-heading mb-2">Aucun classement pour le moment</h3>
           <p className="text-body max-w-sm mx-auto mb-6">
-            Be the first to complete modules and pass exams to claim the #1 spot on the leaderboard!
+            Soyez le premier à compléter des modules et réussir les examens pour décrocher la 1ère place du classement !
           </p>
           <a href="/dashboard" className="btn-primary inline-flex items-center gap-2">
             <Zap className="w-4 h-4" />
-            Start Competing
+            Commencer la compétition
           </a>
         </div>
       ) : (
@@ -299,7 +299,7 @@ export default function Leaderboard() {
                           {entry.displayName || 'Anonymous'}
                         </p>
                         {isCurrentUser && (
-                          <span className="badge-primary text-[10px]">You</span>
+                          <span className="badge-primary text-[10px]">Vous</span>
                         )}
                         {getTrendIcon(entry)}
                       </div>
@@ -330,20 +330,20 @@ export default function Leaderboard() {
           <div className="mt-10 glass-card p-6">
             <div className="flex items-center gap-2 mb-4">
               <Sparkles className="w-5 h-5 text-primary-400" />
-              <h3 className="text-sm font-semibold text-heading uppercase tracking-wide">Competition Stats</h3>
+              <h3 className="text-sm font-semibold text-heading uppercase tracking-wide">Statistiques de la compétition</h3>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <div className="text-center p-3 bg-black/5 dark:bg-white/5 rounded-xl">
                 <Users className="w-5 h-5 mx-auto text-primary-400 mb-2" />
                 <p className="text-lg font-bold text-heading">{leaderboard.length}</p>
-                <p className="text-xs text-muted">Total Competitors</p>
+                <p className="text-xs text-muted">Compétiteurs</p>
               </div>
               <div className="text-center p-3 bg-black/5 dark:bg-white/5 rounded-xl">
                 <Target className="w-5 h-5 mx-auto text-accent-400 mb-2" />
                 <p className="text-lg font-bold text-heading">
                   {leaderboard[0]?.totalScore || 0}
                 </p>
-                <p className="text-xs text-muted">Highest Score</p>
+                <p className="text-xs text-muted">Meilleur score</p>
               </div>
               <div className="text-center p-3 bg-black/5 dark:bg-white/5 rounded-xl">
                 <BarChart3 className="w-5 h-5 mx-auto text-amber-400 mb-2" />
@@ -352,12 +352,12 @@ export default function Leaderboard() {
                     ? Math.round(leaderboard.reduce((s, e) => s + (e.totalScore || 0), 0) / leaderboard.length)
                     : 0}
                 </p>
-                <p className="text-xs text-muted">Average Score</p>
+                <p className="text-xs text-muted">Score moyen</p>
               </div>
               <div className="text-center p-3 bg-black/5 dark:bg-white/5 rounded-xl">
                 <Shield className="w-5 h-5 mx-auto text-red-400 mb-2" />
                 <p className="text-lg font-bold text-heading">{MODULES.length}</p>
-                <p className="text-xs text-muted">Modules Available</p>
+                <p className="text-xs text-muted">Modules disponibles</p>
               </div>
             </div>
           </div>

@@ -20,9 +20,9 @@ export default function Dashboard() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
           <h1 className="text-3xl font-bold text-heading">
-            Welcome back, <span className="gradient-text">{user?.displayName || 'Learner'}</span>
+            Bon retour, <span className="gradient-text">{user?.displayName || 'Apprenant'}</span>
           </h1>
-          <p className="text-body mt-1">Continue your Build with AI journey</p>
+          <p className="text-body mt-1">Continuez votre parcours Build with AI</p>
         </div>
 
         <div className="flex items-center gap-4">
@@ -32,7 +32,7 @@ export default function Dashboard() {
             </div>
           </ProgressRing>
           <div>
-            <p className="text-sm text-body">Overall Progress</p>
+            <p className="text-sm text-body">Progression globale</p>
             <p className="text-lg font-semibold text-heading">
               {completedCount}/{MODULES.length} modules
             </p>
@@ -45,25 +45,25 @@ export default function Dashboard() {
         {[
           {
             icon: BookOpen,
-            label: 'Modules Started',
+            label: 'Modules commencés',
             value: submittedCount,
             color: 'primary',
           },
           {
             icon: Trophy,
-            label: 'Completed',
+            label: 'Complétés',
             value: completedCount,
             color: 'accent',
           },
           {
             icon: Target,
-            label: 'Total Score',
+            label: 'Score total',
             value: totalScore,
             color: 'primary',
           },
           {
             icon: TrendingUp,
-            label: 'Global Rank',
+            label: 'Rang global',
             value: userProfile?.rank ? `#${userProfile.rank}` : '—',
             color: 'accent',
           },
@@ -90,7 +90,7 @@ export default function Dashboard() {
       <div>
         <div className="flex items-center gap-3 mb-6">
           <Sparkles className="w-6 h-6 text-primary-400" />
-          <h2 className="section-title">Build with AI Modules</h2>
+          <h2 className="section-title">Modules Build with AI</h2>
         </div>
 
         {loading ? (

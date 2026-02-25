@@ -12,7 +12,7 @@ export default defineConfig({
       manifest: {
         name: 'UjuziAI',
         short_name: 'UjuziAI',
-        description: 'Master AI Development — Compete, Learn & Certify',
+        description: 'Maîtrisez le Développement IA — Compétez, Apprenez & Certifiez-vous',
         theme_color: '#1a73e8',
         background_color: '#0f172a',
         display: 'standalone',

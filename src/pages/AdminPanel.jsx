@@ -67,7 +67,7 @@ export default function AdminPanel() {
       setModuleSettings(settings);
     } catch (error) {
       console.error('Error fetching admin data:', error);
-      toast.error('Failed to load admin data');
+      toast.error('Échec du chargement des données admin');
     } finally {
       setLoading(false);
     }
@@ -76,10 +76,10 @@ export default function AdminPanel() {
   const handleValidate = async (userId, moduleId, approved) => {
     try {
       await validateSubmission(userId, moduleId, approved);
-      toast.success(approved ? 'Submission approved' : 'Submission rejected');
+      toast.success(approved ? 'Soumission approuvée' : 'Soumission rejetée');
       fetchData();
     } catch (err) {
-      toast.error('Failed to update submission');
+      toast.error('Échec de la mise à jour de la soumission');
     }
   };
 
@@ -87,23 +87,23 @@ export default function AdminPanel() {
     const currentlyOpen = moduleSettings[moduleId]?.isOpen !== false;
     try {
       await toggleModuleLock(moduleId, !currentlyOpen);
-      toast.success(`Module ${!currentlyOpen ? 'opened' : 'closed'}`);
+      toast.success(`Module ${!currentlyOpen ? 'ouvert' : 'fermé'}`);
       setModuleSettings((prev) => ({
         ...prev,
         [moduleId]: { ...prev[moduleId], isOpen: !currentlyOpen },
       }));
     } catch (err) {
-      toast.error('Failed to toggle module');
+      toast.error('Échec du basculement du module');
     }
   };
 
   const handleOverrideExamLock = async (userId, moduleId) => {
     try {
       await overrideExamLock(userId, moduleId);
-      toast.success('Exam lock overridden');
+      toast.success('Verrouillage de l\'examen annulé');
       fetchData();
     } catch (err) {
-      toast.error('Failed to override lock');
+      toast.error('Échec de l\'annulation du verrouillage');
     }
   };
 
@@ -114,10 +114,10 @@ export default function AdminPanel() {
   );
 
   const tabs = [
-    { id: 'submissions', label: 'Submissions', icon: FileText },
-    { id: 'users', label: 'Users', icon: Users },
+    { id: 'submissions', label: 'Soumissions', icon: FileText },
+    { id: 'users', label: 'Utilisateurs', icon: Users },
     { id: 'modules', label: 'Modules', icon: BookOpen },
-    { id: 'settings', label: 'Settings', icon: Settings },
+    { id: 'settings', label: 'Paramètres', icon: Settings },
   ];
 
   return (
@@ -126,8 +126,8 @@ export default function AdminPanel() {
       <div className="flex items-center gap-3 mb-8">
         <Shield className="w-8 h-8 text-primary-400" />
         <div>
-          <h1 className="section-title">Admin Panel</h1>
-          <p className="section-subtitle">Manage submissions, users, and modules</p>
+          <h1 className="section-title">Panneau d'administration</h1>
+          <p className="section-subtitle">Gérez les soumissions, utilisateurs et modules</p>
         </div>
       </div>
 
@@ -157,7 +157,7 @@ export default function AdminPanel() {
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search users..."
+            placeholder="Rechercher des utilisateurs..."
             className="input-field pl-11"
           />
         </div>
@@ -175,7 +175,7 @@ export default function AdminPanel() {
               {filteredUsers.length === 0 ? (
                 <div className="glass-card p-12 text-center">
                   <FileText className="w-16 h-16 text-muted mx-auto mb-4" />
-                  <p className="text-body">No submissions found</p>
+                  <p className="text-body">Aucune soumission trouvée</p>
                 </div>
               ) : (
                 filteredUsers.map((u) => {
@@ -209,8 +209,8 @@ export default function AdminPanel() {
                                 <div>
                                   <p className="text-sm font-medium text-heading">{mod.title}</p>
                                   <div className="flex items-center gap-2 text-xs text-muted">
-                                    <span>Attempts: {prog.examAttempts || 0}</span>
-                                    {prog.examScore !== null && <span>Score: {prog.examScore}/10</span>}
+                                    <span>Tentatives : {prog.examAttempts || 0}</span>
+                                    {prog.examScore !== null && <span>Score : {prog.examScore}/10</span>}
                                   </div>
                                 </div>
                               </div>
@@ -219,21 +219,21 @@ export default function AdminPanel() {
                                 {prog.validated ? (
                                   <span className="badge-accent text-xs">
                                     <CheckCircle className="w-3 h-3 mr-1" />
-                                    Validated
+                                    Validé
                                   </span>
                                 ) : (
                                   <>
                                     <button
                                       onClick={() => handleValidate(u.id, modId, true)}
                                       className="p-2 rounded-lg bg-accent-500/10 text-accent-400 hover:bg-accent-500/20 transition-colors"
-                                      title="Approve"
+                                      title="Approuver"
                                     >
                                       <CheckCircle className="w-4 h-4" />
                                     </button>
                                     <button
                                       onClick={() => handleValidate(u.id, modId, false)}
                                       className="p-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors"
-                                      title="Reject"
+                                      title="Rejeter"
                                     >
                                       <XCircle className="w-4 h-4" />
                                     </button>
@@ -244,7 +244,7 @@ export default function AdminPanel() {
                                   <button
                                     onClick={() => handleOverrideExamLock(u.id, modId)}
                                     className="p-2 rounded-lg bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 transition-colors"
-                                    title="Override Lock"
+                                    title="Annuler le verrouillage"
                                   >
                                     <Unlock className="w-4 h-4" />
                                   </button>
@@ -268,8 +268,8 @@ export default function AdminPanel() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-themed">
-                      <th className="text-left p-4 text-body font-medium">User</th>
-                      <th className="text-left p-4 text-body font-medium">Role</th>
+                      <th className="text-left p-4 text-body font-medium">Utilisateur</th>
+                      <th className="text-left p-4 text-body font-medium">Rôle</th>
                       <th className="text-center p-4 text-body font-medium">Modules</th>
                       <th className="text-center p-4 text-body font-medium">Score</th>
                       <th className="text-center p-4 text-body font-medium">Badges</th>
@@ -332,12 +332,12 @@ export default function AdminPanel() {
                       {isOpen ? (
                         <>
                           <ToggleRight className="w-5 h-5" />
-                          Open
+                          Ouvert
                         </>
                       ) : (
                         <>
                           <ToggleLeft className="w-5 h-5" />
-                          Closed
+                          Fermé
                         </>
                       )}
                     </button>
@@ -350,31 +350,31 @@ export default function AdminPanel() {
           {/* Settings Tab */}
           {activeTab === 'settings' && (
             <div className="glass-card p-8">
-              <h3 className="text-lg font-semibold text-heading mb-6">System Settings</h3>
+              <h3 className="text-lg font-semibold text-heading mb-6">Paramètres système</h3>
               <div className="space-y-6">
                 <div className="p-4 bg-black/5 dark:bg-white/5 rounded-xl">
-                  <h4 className="font-medium text-heading mb-2">Question Generation</h4>
+                  <h4 className="font-medium text-heading mb-2">Génération de questions</h4>
                   <p className="text-sm text-body mb-3">
-                    Questions are dynamically generated by the Question Generator Agent based on
-                    module context and codelab content.
+                    Les questions sont générées dynamiquement par l'Agent Générateur de Questions
+                    basé sur le contexte du module et le contenu du codelab.
                   </p>
                   <div className="flex items-center gap-3 text-sm text-body">
-                    <span>MCQ: {7} per exam</span>
+                    <span>QCM : {7} par examen</span>
                     <span>•</span>
-                    <span>Open: {3} per exam</span>
+                    <span>Ouvertes : {3} par examen</span>
                     <span>•</span>
-                    <span>Max attempts: {EXAM_CONFIG.MAX_ATTEMPTS}</span>
+                    <span>Tentatives max : {EXAM_CONFIG.MAX_ATTEMPTS}</span>
                   </div>
                 </div>
 
                 <div className="p-4 bg-black/5 dark:bg-white/5 rounded-xl">
-                  <h4 className="font-medium text-heading mb-2">Anti-Cheat Settings</h4>
+                  <h4 className="font-medium text-heading mb-2">Paramètres anti-triche</h4>
                   <p className="text-sm text-body mb-3">
-                    AI detection is handled by the Evaluation Agent with semantic depth analysis.
+                    La détection IA est gérée par l'Agent d'Évaluation avec une analyse sémantique approfondie.
                   </p>
                   <div className="flex items-center gap-2 text-amber-400 text-sm">
                     <AlertTriangle className="w-4 h-4" />
-                    Warning on first detection, zero on second detection
+                    Avertissement à la première détection, zéro à la deuxième
                   </div>
                 </div>
 
@@ -383,7 +383,7 @@ export default function AdminPanel() {
                   className="btn-secondary flex items-center gap-2"
                 >
                   <RefreshCw className="w-4 h-4" />
-                  Refresh Data
+                  Rafraîchir les données
                 </button>
               </div>
             </div>
