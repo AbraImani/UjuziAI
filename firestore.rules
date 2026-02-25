@@ -1,0 +1,130 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper: Check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper: Check if user owns the document
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Helper: Check if user is admin
+    function isAdmin() {
+      return isAuthenticated() && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Helper: Validate string field
+    function isValidString(field) {
+      return field is string && field.size() > 0 && field.size() < 1000;
+    }
+    
+    // ============================================
+    // USERS COLLECTION
+    // ============================================
+    match /users/{userId} {
+      // Authenticated users can read (leaderboard needs this)
+      allow read: if isAuthenticated();
+      
+      // Users can create their own profile on signup — role must be 'student'
+      allow create: if isOwner(userId) && 
+        request.resource.data.role == 'student' &&
+        request.resource.data.keys().hasAll(['displayName', 'email', 'role', 'createdAt']) &&
+        isValidString(request.resource.data.displayName) &&
+        isValidString(request.resource.data.email);
+      
+      // Users can update their own profile but CANNOT change role, totalScore, or badges
+      allow update: if (isOwner(userId) && 
+        request.resource.data.role == resource.data.role &&
+        (!('totalScore' in request.resource.data) || request.resource.data.totalScore == resource.data.totalScore) &&
+        (!('badges' in request.resource.data) || request.resource.data.badges == resource.data.badges)) ||
+        isAdmin();
+      
+      // Only admins can delete users
+      allow delete: if isAdmin();
+      
+      // USER PROGRESS SUBCOLLECTION
+      match /progress/{moduleId} {
+        allow read: if isOwner(userId) || isAdmin();
+        
+        // Users can create their initial submission record
+        allow create: if isOwner(userId) &&
+          request.resource.data.submitted == true &&
+          request.resource.data.validated == false &&
+          request.resource.data.examUnlocked == false &&
+          request.resource.data.examAttempts == 0 &&
+          request.resource.data.examLocked == false;
+        
+        // Users can only update examAttempts (increment). Admins can update anything.
+        allow update: if isAdmin() ||
+          (isOwner(userId) && 
+           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['examAttempts']) &&
+           request.resource.data.examAttempts == resource.data.examAttempts + 1 &&
+           request.resource.data.examAttempts <= 1);
+           
+        allow delete: if isAdmin();
+      }
+      
+      // USER SUBMISSIONS SUBCOLLECTION
+      match /submissions/{submissionId} {
+        allow read: if isOwner(userId) || isAdmin();
+        
+        // Users can create submissions with required fields
+        allow create: if isOwner(userId) &&
+          request.resource.data.userId == request.auth.uid &&
+          request.resource.data.status == 'pending' &&
+          request.resource.data.keys().hasAll(['userId', 'moduleId', 'description', 'status', 'submittedAt']);
+        
+        // Only admins can update or delete submissions
+        allow update: if isAdmin();
+        allow delete: if isAdmin();
+      }
+    }
+    
+    // ============================================
+    // EXAMS COLLECTION
+    // ============================================
+    match /exams/{examId} {
+      // Users can read their own exams, admins can read all
+      allow read: if isAuthenticated() && 
+        (resource.data.userId == request.auth.uid || isAdmin());
+      
+      // Users can create exams — must be their own, status must be in-progress
+      allow create: if isAuthenticated() && 
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.status == 'in-progress' &&
+        request.resource.data.keys().hasAll(['userId', 'moduleId', 'startedAt', 'status']);
+      
+      // Users can update their own in-progress exams (submit answers, complete)
+      // Cannot change userId or moduleId after creation
+      allow update: if isAuthenticated() && 
+        resource.data.userId == request.auth.uid && 
+        resource.data.status == 'in-progress' &&
+        request.resource.data.userId == resource.data.userId &&
+        request.resource.data.moduleId == resource.data.moduleId;
+      
+      // No client-side delete
+      allow delete: if isAdmin();
+    }
+    
+    // ============================================
+    // MODULE SETTINGS (Admin managed)
+    // ============================================
+    match /moduleSettings/{moduleId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+    
+    // ============================================
+    // BADGES COLLECTION (Public verification)
+    // ============================================
+    match /badges/{badgeId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+}
