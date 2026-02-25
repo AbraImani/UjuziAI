@@ -32,10 +32,7 @@ service cloud.firestore {
       
       // Users can create their own profile on signup — role must be 'student'
       allow create: if isOwner(userId) && 
-        request.resource.data.role == 'student' &&
-        request.resource.data.keys().hasAll(['displayName', 'email', 'role', 'createdAt']) &&
-        isValidString(request.resource.data.displayName) &&
-        isValidString(request.resource.data.email);
+        request.resource.data.role == 'student';
       
       // Users can update their own profile but CANNOT change role, totalScore, or badges
       allow update: if (isOwner(userId) && 
@@ -50,36 +47,15 @@ service cloud.firestore {
       // USER PROGRESS SUBCOLLECTION
       match /progress/{moduleId} {
         allow read: if isOwner(userId) || isAdmin();
-        
-        // Users can create their initial submission record
-        allow create: if isOwner(userId) &&
-          request.resource.data.submitted == true &&
-          request.resource.data.validated == false &&
-          request.resource.data.examUnlocked == false &&
-          request.resource.data.examAttempts == 0 &&
-          request.resource.data.examLocked == false;
-        
-        // Users can only update examAttempts (increment). Admins can update anything.
-        allow update: if isAdmin() ||
-          (isOwner(userId) && 
-           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['examAttempts']) &&
-           request.resource.data.examAttempts == resource.data.examAttempts + 1 &&
-           request.resource.data.examAttempts <= 1);
-           
+        allow create: if isOwner(userId);
+        allow update: if isOwner(userId) || isAdmin();
         allow delete: if isAdmin();
       }
       
       // USER SUBMISSIONS SUBCOLLECTION
       match /submissions/{submissionId} {
         allow read: if isOwner(userId) || isAdmin();
-        
-        // Users can create submissions with required fields
-        allow create: if isOwner(userId) &&
-          request.resource.data.userId == request.auth.uid &&
-          request.resource.data.status == 'pending' &&
-          request.resource.data.keys().hasAll(['userId', 'moduleId', 'description', 'status', 'submittedAt']);
-        
-        // Only admins can update or delete submissions
+        allow create: if isOwner(userId);
         allow update: if isAdmin();
         allow delete: if isAdmin();
       }

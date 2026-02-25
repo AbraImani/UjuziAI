@@ -117,14 +117,18 @@ export default function ModuleDetail() {
 
     if (isSubmitted && !isValidated) {
       return (
-        <div className="glass-card p-6 border-amber-500/30">
+        <div className="glass-card p-6 border-primary-500/30">
           <div className="flex items-center gap-3 mb-3">
-            <Clock className="w-6 h-6 text-amber-400 animate-pulse" />
-            <h3 className="text-lg font-semibold text-amber-400">Submission Under Review</h3>
+            <Shield className="w-6 h-6 text-primary-400" />
+            <h3 className="text-lg font-semibold text-primary-400">Proof Submitted</h3>
           </div>
-          <p className="text-surface-400">
-            Your proof has been submitted and is being reviewed. The exam will unlock once validated.
+          <p className="text-surface-400 mb-4">
+            Your proof has been submitted. The exam is being prepared.
           </p>
+          <button onClick={() => refetch()} className="btn-secondary flex items-center gap-2">
+            <Clock className="w-4 h-4" />
+            Refresh Status
+          </button>
         </div>
       );
     }
@@ -212,8 +216,8 @@ export default function ModuleDetail() {
                 Ready to submit your work?
               </h3>
               <p className="text-surface-500 mb-6 max-w-md mx-auto">
-                You'll need screenshots, an optional video/link, and a detailed description
-                of your codelab completion.
+                You will need screenshots of your completed codelab, an optional video link, and a detailed description
+                of at least 100 words explaining what you learned.
               </p>
               <button
                 onClick={() => setShowSubmitForm(true)}
@@ -242,10 +246,8 @@ export default function ModuleDetail() {
           {[
             { label: 'Complete the codelab', done: isSubmitted },
             { label: 'Upload screenshot proof', done: isSubmitted },
-            { label: 'Provide video or link (optional)', done: isSubmitted },
-            { label: 'Write detailed description', done: isSubmitted },
-            { label: 'Submission validated', done: isValidated },
-            { label: 'Pass exam with score ≥ 6/10', done: isPassed },
+            { label: 'Write detailed description (100+ words)', done: isSubmitted },
+            { label: 'Pass exam with score >= 6/10 (1 attempt only)', done: isPassed },
           ].map(({ label, done }) => (
             <div key={label} className="flex items-center gap-3">
               {done ? (

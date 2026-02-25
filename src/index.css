@@ -14,26 +14,32 @@
   }
 
   body {
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: 'Google Sans', 'Inter', system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
   ::-webkit-scrollbar {
-    width: 6px;
+    width: 8px;
   }
 
   ::-webkit-scrollbar-track {
-    background: #0f172a;
+    background: #171717;
   }
 
   ::-webkit-scrollbar-thumb {
-    background: #334155;
-    border-radius: 3px;
+    background: #303134;
+    border-radius: 4px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: #475569;
+    background: #3c4043;
+  }
+
+  /* Better selection colors */
+  ::selection {
+    background: rgba(66, 133, 244, 0.3);
+    color: white;
   }
 }
 
@@ -88,6 +94,8 @@
 
   .gradient-text {
     @apply bg-gradient-to-r from-primary-400 via-primary-300 to-accent-400 bg-clip-text text-transparent;
+    background-clip: text;
+    -webkit-background-clip: text;
   }
 
   .gradient-border {

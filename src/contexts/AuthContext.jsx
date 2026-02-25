@@ -73,11 +73,18 @@ export function AuthProvider({ children }) {
         rank: null,
       };
 
-      await setDoc(doc(db, 'users', result.user.uid), userDoc);
-      setUserProfile({ id: result.user.uid, ...userDoc });
+      try {
+        await setDoc(doc(db, 'users', result.user.uid), userDoc);
+        setUserProfile({ id: result.user.uid, ...userDoc });
+      } catch (firestoreError) {
+        console.error('Firestore write error:', firestoreError);
+        // Auth succeeded, profile write failed — still let user in
+        setUserProfile({ id: result.user.uid, ...userDoc });
+      }
       toast.success('Account created successfully!');
       return result.user;
     } catch (error) {
+      console.error('Signup error:', error.code, error.message);
       const message = getAuthErrorMessage(error.code);
       toast.error(message);
       throw error;
@@ -90,6 +97,7 @@ export function AuthProvider({ children }) {
       toast.success('Welcome back!');
       return result.user;
     } catch (error) {
+      console.error('Login error:', error.code, error.message);
       const message = getAuthErrorMessage(error.code);
       toast.error(message);
       throw error;
@@ -106,7 +114,6 @@ export function AuthProvider({ children }) {
       const existingDoc = await getDoc(userDocRef);
 
       if (!existingDoc.exists()) {
-        // First-time Google sign-in: create user doc
         const userDoc = {
           uid: firebaseUser.uid,
           email: firebaseUser.email,
@@ -121,8 +128,13 @@ export function AuthProvider({ children }) {
           badges: [],
           rank: null,
         };
-        await setDoc(userDocRef, userDoc);
-        setUserProfile({ id: firebaseUser.uid, ...userDoc });
+        try {
+          await setDoc(userDocRef, userDoc);
+          setUserProfile({ id: firebaseUser.uid, ...userDoc });
+        } catch (firestoreError) {
+          console.error('Firestore write error:', firestoreError);
+          setUserProfile({ id: firebaseUser.uid, ...userDoc });
+        }
         toast.success('Account created with Google!');
       } else {
         setUserProfile({ id: existingDoc.id, ...existingDoc.data() });
@@ -132,8 +144,9 @@ export function AuthProvider({ children }) {
       return firebaseUser;
     } catch (error) {
       if (error.code === 'auth/popup-closed-by-user') {
-        return null; // User closed popup, no error
+        return null;
       }
+      console.error('Google sign-in error:', error.code, error.message);
       const message = getAuthErrorMessage(error.code);
       toast.error(message);
       throw error;

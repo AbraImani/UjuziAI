@@ -124,7 +124,7 @@ export function useSubmission() {
     );
     await setDoc(submissionRef, submission);
 
-    // Update progress
+    // Update progress — auto-validate and unlock exam immediately
     const progressRef = doc(db, 'users', user.uid, 'progress', moduleId);
     await setDoc(
       progressRef,
@@ -133,8 +133,8 @@ export function useSubmission() {
         submissionId: submissionRef.id,
         submitted: true,
         submittedAt: serverTimestamp(),
-        validated: false,
-        examUnlocked: false,
+        validated: true,
+        examUnlocked: true,
         examScore: null,
         examAttempts: 0,
         examLocked: false,
@@ -162,7 +162,7 @@ export function useExam() {
     if (!progressSnap.exists()) return { eligible: false, reason: 'no-submission' };
 
     const data = progressSnap.data();
-    if (!data.submitted) return { eligible: false, reason: 'no-submission' };
+    if (!data.submitted || !data.examUnlocked) return { eligible: false, reason: 'no-submission' };
     if (data.examLocked) return { eligible: false, reason: 'locked' };
     if (data.examAttempts >= EXAM_CONFIG.MAX_ATTEMPTS) return { eligible: false, reason: 'max-attempts' };
     if (data.examScore >= 6) return { eligible: false, reason: 'already-passed' };

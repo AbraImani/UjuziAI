@@ -12,6 +12,9 @@ export default function SubmissionForm({ moduleId, onSuccess }) {
   const [submitting, setSubmitting] = useState(false);
   const fileInputRef = useRef(null);
 
+  const wordCount = description.trim().split(/\s+/).filter(Boolean).length;
+  const MIN_WORDS = 100;
+
   const handleImageSelect = (e) => {
     const files = Array.from(e.target.files);
     if (files.length + images.length > 5) {
@@ -33,12 +36,12 @@ export default function SubmissionForm({ moduleId, onSuccess }) {
     setImagePreviews(imagePreviews.filter((_, i) => i !== index));
   };
 
-  const isValid = images.length > 0 && description.trim().length >= 50;
+  const isValid = images.length > 0 && wordCount >= MIN_WORDS;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!isValid) {
-      toast.error('Please provide images and a description (min 50 characters)');
+      toast.error(`Please provide images and a description (min ${MIN_WORDS} words)`);
       return;
     }
 
@@ -132,19 +135,19 @@ export default function SubmissionForm({ moduleId, onSuccess }) {
         <textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="Describe what you learned, the steps you followed, and any challenges you faced. Be specific and detailed (minimum 50 characters)."
-          rows={6}
+          placeholder="Describe what you learned, the steps you followed, key concepts you understood, and any challenges you faced. Be specific and detailed — minimum 100 words."
+          rows={8}
           className="input-field resize-none"
         />
         <div className="flex justify-between mt-2">
-          <p className={`text-xs ${description.length >= 50 ? 'text-accent-400' : 'text-surface-500'}`}>
-            {description.length >= 50 ? (
-              <span className="flex items-center gap-1"><Check className="w-3 h-3" /> Minimum length met</span>
+          <p className={`text-xs ${wordCount >= MIN_WORDS ? 'text-accent-400' : 'text-surface-500'}`}>
+            {wordCount >= MIN_WORDS ? (
+              <span className="flex items-center gap-1"><Check className="w-3 h-3" /> Minimum word count met</span>
             ) : (
-              `${description.length}/50 minimum characters`
+              `${wordCount}/${MIN_WORDS} minimum words`
             )}
           </p>
-          <p className="text-xs text-surface-500">{description.length} characters</p>
+          <p className="text-xs text-surface-500">{wordCount} words</p>
         </div>
       </div>
 
