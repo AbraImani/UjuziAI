@@ -143,13 +143,13 @@ export function AuthProvider({ children }) {
 
       return firebaseUser;
     } catch (error) {
-      if (error.code === 'auth/popup-closed-by-user') {
+      if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
         return null;
       }
       console.error('Google sign-in error:', error.code, error.message);
       const message = getAuthErrorMessage(error.code);
       toast.error(message);
-      throw error;
+      return null;
     }
   }
 
@@ -188,7 +188,7 @@ function getAuthErrorMessage(code) {
   const messages = {
     'auth/email-already-in-use': 'Cet email est déjà enregistré',
     'auth/invalid-email': 'Adresse email invalide',
-    'auth/operation-not-allowed': 'Opération non autorisée',
+    'auth/operation-not-allowed': 'Opération non autorisée. Vérifiez que Google Sign-In est activé dans Firebase Console.',
     'auth/weak-password': 'Le mot de passe doit contenir au moins 6 caractères',
     'auth/user-disabled': 'Ce compte a été désactivé',
     'auth/user-not-found': 'Aucun compte trouvé avec cet email',
@@ -198,6 +198,11 @@ function getAuthErrorMessage(code) {
     'auth/popup-blocked': 'Pop-up bloqué. Veuillez autoriser les pop-ups pour ce site',
     'auth/account-exists-with-different-credential': 'Un compte existe déjà avec cet email via une autre méthode de connexion',
     'auth/cancelled-popup-request': 'Connexion annulée',
+    'auth/unauthorized-domain': 'Ce domaine n\'est pas autorisé. Ajoutez-le dans Firebase Console → Authentication → Settings → Authorized domains.',
+    'auth/internal-error': 'Erreur interne Firebase. Vérifiez votre configuration.',
+    'auth/network-request-failed': 'Erreur réseau. Vérifiez votre connexion internet.',
+    'auth/configuration-not-found': 'Configuration Firebase introuvable. Vérifiez vos variables d\'environnement.',
+    'auth/invalid-api-key': 'Clé API Firebase invalide. Vérifiez vos variables d\'environnement.',
   };
-  return messages[code] || 'Une erreur d\'authentification s\'est produite';
+  return messages[code] || `Erreur d'authentification (${code || 'inconnue'})`;
 }
