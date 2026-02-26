@@ -91,11 +91,14 @@ export default function Signup() {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-body mb-2">Nom complet</label>
+              <label htmlFor="signup-name" className="block text-sm font-medium text-body mb-2">Nom complet</label>
               <div className="relative">
                 <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
                 <input
+                  id="signup-name"
+                  name="displayName"
                   type="text"
+                  autoComplete="name"
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
                   placeholder="Votre nom complet"
@@ -106,11 +109,14 @@ export default function Signup() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-body mb-2">Email</label>
+              <label htmlFor="signup-email" className="block text-sm font-medium text-body mb-2">Email</label>
               <div className="relative">
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
                 <input
+                  id="signup-email"
+                  name="email"
                   type="email"
+                  autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@example.com"
@@ -121,11 +127,14 @@ export default function Signup() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-body mb-2">Mot de passe</label>
+              <label htmlFor="signup-password" className="block text-sm font-medium text-body mb-2">Mot de passe</label>
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
                 <input
+                  id="signup-password"
+                  name="password"
                   type={showPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Min. 6 caractères"
@@ -144,11 +153,14 @@ export default function Signup() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-body mb-2">Confirmer le mot de passe</label>
+              <label htmlFor="signup-confirm-password" className="block text-sm font-medium text-body mb-2">Confirmer le mot de passe</label>
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
                 <input
+                  id="signup-confirm-password"
+                  name="confirmPassword"
                   type="password"
+                  autoComplete="new-password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Répétez votre mot de passe"

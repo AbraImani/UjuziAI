@@ -61,7 +61,7 @@ export default function SubmissionForm({ moduleId, onSuccess }) {
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Image Upload */}
       <div>
-        <label className="flex items-center gap-2 text-sm font-medium text-heading mb-3">
+        <label htmlFor="submission-images" className="flex items-center gap-2 text-sm font-medium text-heading mb-3">
           <Image className="w-4 h-4 text-primary-400" />
           Captures d'écran / Images <span className="text-red-400">*</span>
         </label>
@@ -78,6 +78,8 @@ export default function SubmissionForm({ moduleId, onSuccess }) {
         </div>
 
         <input
+          id="submission-images"
+          name="images"
           ref={fileInputRef}
           type="file"
           accept="image/*"
@@ -110,13 +112,15 @@ export default function SubmissionForm({ moduleId, onSuccess }) {
 
       {/* Video URL */}
       <div>
-        <label className="flex items-center gap-2 text-sm font-medium text-heading mb-3">
+        <label htmlFor="submission-video" className="flex items-center gap-2 text-sm font-medium text-heading mb-3">
           <Video className="w-4 h-4 text-primary-400" />
           URL vidéo ou lien <span className="text-muted">(optionnel)</span>
         </label>
         <div className="relative">
           <LinkIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
           <input
+            id="submission-video"
+            name="videoUrl"
             type="url"
             value={videoUrl}
             onChange={(e) => setVideoUrl(e.target.value)}
@@ -128,11 +132,13 @@ export default function SubmissionForm({ moduleId, onSuccess }) {
 
       {/* Description */}
       <div>
-        <label className="flex items-center gap-2 text-sm font-medium text-heading mb-3">
+        <label htmlFor="submission-description" className="flex items-center gap-2 text-sm font-medium text-heading mb-3">
           <FileText className="w-4 h-4 text-primary-400" />
           Description <span className="text-red-400">*</span>
         </label>
         <textarea
+          id="submission-description"
+          name="description"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Décrivez ce que vous avez appris, les étapes que vous avez suivies, les concepts clés que vous avez compris, et les défis que vous avez rencontrés. Soyez précis et détaillé — minimum 100 mots."

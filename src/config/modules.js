@@ -1,5 +1,5 @@
 // UjuziAI — Module Configuration
-// 5 Tracks × 3 Modules = 15 modules total
+// 6 Tracks × 3 Modules = 18 modules total
 // Inspired by Google Skills platform
 
 // ============================================
@@ -19,6 +19,7 @@ export const TRACKS = [
     textColor: 'text-blue-500 dark:text-blue-400',
     badgeClass: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30',
     icon: 'brain',
+    logo: '/gemini-logo-icon.jpg',
     order: 1,
   },
   {
@@ -34,12 +35,13 @@ export const TRACKS = [
     textColor: 'text-cyan-500 dark:text-cyan-400',
     badgeClass: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/30',
     icon: 'smartphone',
+    logo: '/flutter-logo-icon.png',
     order: 2,
   },
   {
     id: 'web',
     name: 'Développement Web',
-    shortName: 'Web',
+    shortName: 'Chrome',
     description: 'Construisez des applications web modernes avec les dernières technologies',
     color: 'green',
     gradient: 'from-green-500 to-emerald-600',
@@ -49,7 +51,24 @@ export const TRACKS = [
     textColor: 'text-green-500 dark:text-green-400',
     badgeClass: 'bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/30',
     icon: 'globe',
+    logo: '/chrome-logo-icon.png',
     order: 3,
+  },
+  {
+    id: 'cloud',
+    name: 'Google Cloud',
+    shortName: 'Cloud',
+    description: 'Maîtrisez les services Google Cloud Platform pour le déploiement et l\'infrastructure',
+    color: 'sky',
+    gradient: 'from-sky-500 to-blue-600',
+    bgLight: 'bg-sky-500/10',
+    bgDark: 'bg-sky-500/15',
+    borderColor: 'border-sky-500/30',
+    textColor: 'text-sky-500 dark:text-sky-400',
+    badgeClass: 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/30',
+    icon: 'cloud',
+    logo: '/google-cloud-logo-icon.jpg',
+    order: 4,
   },
   {
     id: 'angular',
@@ -64,7 +83,8 @@ export const TRACKS = [
     textColor: 'text-red-500 dark:text-red-400',
     badgeClass: 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30',
     icon: 'hexagon',
-    order: 4,
+    logo: '/angular-logo-icon.jpg',
+    order: 5,
   },
   {
     id: 'kotlin',
@@ -79,7 +99,8 @@ export const TRACKS = [
     textColor: 'text-purple-500 dark:text-purple-400',
     badgeClass: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30',
     icon: 'code',
-    order: 5,
+    logo: '/kotlin-logo-icon.jpg',
+    order: 6,
   },
 ];
 
@@ -199,6 +220,44 @@ export const MODULES = [
     estimatedTime: '70 min',
     difficulty: 'Avancé',
     topics: ['Service Workers', 'Push Notifications', 'Cache API'],
+  },
+
+  // ---- TRACK: Cloud (3 modules) ----
+  {
+    id: 'cloud-fundamentals',
+    title: 'Google Cloud : Les Fondamentaux',
+    description: 'Découvrez Google Cloud Platform, la console, les projets, IAM et les services essentiels.',
+    codelabUrl: 'https://codelabs.developers.google.com/cloud-fundamentals',
+    iconName: 'cloud',
+    trackId: 'cloud',
+    order: 1,
+    estimatedTime: '50 min',
+    difficulty: 'Débutant',
+    topics: ['GCP Console', 'IAM', 'Projets Cloud'],
+  },
+  {
+    id: 'cloud-functions',
+    title: 'Cloud Functions & Serverless',
+    description: 'Construisez des API serverless avec Cloud Functions, Cloud Run et les triggers événementiels.',
+    codelabUrl: 'https://codelabs.developers.google.com/cloud-functions',
+    iconName: 'server',
+    trackId: 'cloud',
+    order: 2,
+    estimatedTime: '65 min',
+    difficulty: 'Intermédiaire',
+    topics: ['Cloud Functions', 'Cloud Run', 'Serverless'],
+  },
+  {
+    id: 'cloud-ai-deploy',
+    title: 'Déploiement IA sur Cloud',
+    description: 'Déployez des modèles IA en production avec Vertex AI, Cloud Build et les pipelines CI/CD.',
+    codelabUrl: 'https://codelabs.developers.google.com/cloud-ai-deploy',
+    iconName: 'rocket',
+    trackId: 'cloud',
+    order: 3,
+    estimatedTime: '80 min',
+    difficulty: 'Avancé',
+    topics: ['Vertex AI', 'Cloud Build', 'CI/CD'],
   },
 
   // ---- TRACK: Angular (3 modules) ----

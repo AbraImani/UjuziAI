@@ -4,6 +4,8 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signOut,
   updateProfile,
 } from 'firebase/auth';
@@ -34,10 +36,45 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Handle redirect result (fallback for popup-blocked)
+    getRedirectResult(auth).then(async (result) => {
+      if (result?.user) {
+        const firebaseUser = result.user;
+        const userDocRef = doc(db, 'users', firebaseUser.uid);
+        try {
+          const existingDoc = await getDoc(userDocRef);
+          if (!existingDoc.exists()) {
+            const userDoc = {
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              displayName: firebaseUser.displayName || 'User',
+              photoURL: firebaseUser.photoURL || null,
+              role: isAdminEmail(firebaseUser.email) ? 'admin' : 'student',
+              authProvider: 'google',
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+              totalScore: 0,
+              completedModules: [],
+              badges: [],
+              rank: null,
+            };
+            await setDoc(userDocRef, userDoc);
+          }
+        } catch (e) {
+          console.warn('Redirect result Firestore handling:', e.code);
+        }
+        toast.success('Connexion réussie !');
+      }
+    }).catch((err) => {
+      if (err.code && err.code !== 'auth/popup-closed-by-user') {
+        console.error('Redirect result error:', err);
+      }
+    });
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         setUser(firebaseUser);
-        await fetchUserProfile(firebaseUser.uid);
+        await fetchUserProfile(firebaseUser.uid, firebaseUser);
       } else {
         setUser(null);
         setUserProfile(null);
@@ -48,7 +85,7 @@ export function AuthProvider({ children }) {
     return unsubscribe;
   }, []);
 
-  async function fetchUserProfile(uid) {
+  async function fetchUserProfile(uid, firebaseUser) {
     try {
       const docRef = doc(db, 'users', uid);
       const docSnap = await getDoc(docRef);
@@ -64,9 +101,58 @@ export function AuthProvider({ children }) {
           }
         }
         setUserProfile({ id: docSnap.id, ...data });
+      } else if (firebaseUser) {
+        // User doc doesn't exist yet (e.g. rules were not deployed when they signed up)
+        // Create the user doc now
+        const newDoc = {
+          uid,
+          email: firebaseUser.email,
+          displayName: firebaseUser.displayName || 'Utilisateur',
+          photoURL: firebaseUser.photoURL || null,
+          role: isAdminEmail(firebaseUser.email) ? 'admin' : 'student',
+          authProvider: firebaseUser.providerData?.[0]?.providerId === 'google.com' ? 'google' : 'email',
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          totalScore: 0,
+          completedModules: [],
+          badges: [],
+          rank: null,
+        };
+        try {
+          await setDoc(docRef, newDoc);
+          setUserProfile({ id: uid, ...newDoc });
+        } catch (writeErr) {
+          console.warn('Could not create user doc (rules may not be deployed):', writeErr.code);
+          // Fallback: use Firebase Auth data so the user can still navigate
+          setUserProfile({
+            id: uid,
+            uid,
+            email: firebaseUser.email,
+            displayName: firebaseUser.displayName || 'Utilisateur',
+            photoURL: firebaseUser.photoURL || null,
+            role: isAdminEmail(firebaseUser.email) ? 'admin' : 'student',
+            totalScore: 0,
+            completedModules: [],
+            badges: [],
+          });
+        }
       }
     } catch (error) {
-      console.error('Error fetching user profile:', error);
+      console.warn('Firestore profile fetch failed (rules may not be deployed):', error.code);
+      // Fallback: build a minimal profile from Firebase Auth so the app still works
+      if (firebaseUser) {
+        setUserProfile({
+          id: uid,
+          uid,
+          email: firebaseUser.email,
+          displayName: firebaseUser.displayName || 'Utilisateur',
+          photoURL: firebaseUser.photoURL || null,
+          role: isAdminEmail(firebaseUser.email) ? 'admin' : 'student',
+          totalScore: 0,
+          completedModules: [],
+          badges: [],
+        });
+      }
     }
   }
 
@@ -162,6 +248,17 @@ export function AuthProvider({ children }) {
     } catch (error) {
       if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
         return null;
+      }
+      // If popup is blocked, fall back to redirect
+      if (error.code === 'auth/popup-blocked') {
+        try {
+          await signInWithRedirect(auth, googleProvider);
+          return null; // will redirect, result handled on return
+        } catch (redirectError) {
+          console.error('Redirect sign-in error:', redirectError);
+          toast.error('Échec de la connexion Google');
+          return null;
+        }
       }
       console.error('Google sign-in error:', error.code, error.message);
       const message = getAuthErrorMessage(error.code);

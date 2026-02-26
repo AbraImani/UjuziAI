@@ -66,8 +66,8 @@ export default function Landing() {
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6 mt-14 sm:mt-20 max-w-4xl mx-auto">
           {[
-            { label: 'Modules', value: '15', icon: BookOpen },
-            { label: 'Parcours', value: '5', icon: Users },
+            { label: 'Modules', value: '18', icon: BookOpen },
+            { label: 'Parcours', value: '6', icon: Users },
             { label: 'Certifications', value: '200+', icon: Trophy },
             { label: 'Agents IA', value: '4', icon: Brain },
           ].map(({ label, value, icon: Icon }) => (
