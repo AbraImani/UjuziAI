@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useAllProgress } from '../hooks/useFirestore';
 import { MODULES, TRACKS, getModulesByTrack, getTrackProgress } from '../config/modules';
@@ -12,10 +13,8 @@ export default function Dashboard() {
   const { user, userProfile } = useAuth();
   const { progressMap, loading } = useAllProgress();
 
-  // View state: null = overview, trackId = track detail, 'all' = all modules view
+  // View state: null = overview, trackId = track detail
   const [activeTrack, setActiveTrack] = useState(null);
-  // Track filter for "all modules" view — supports multiple track selection
-  const [filterTracks, setFilterTracks] = useState([]);
 
   const completedCount = Object.values(progressMap).filter((p) => p.examScore >= 6).length;
   const submittedCount = Object.values(progressMap).filter((p) => p.submitted).length;
@@ -24,25 +23,12 @@ export default function Dashboard() {
 
   // Displayed modules depending on view
   const displayedModules = useMemo(() => {
-    if (activeTrack && activeTrack !== 'all') {
+    if (activeTrack) {
       return getModulesByTrack(activeTrack);
-    }
-    if (activeTrack === 'all') {
-      if (filterTracks.length === 0) return MODULES;
-      return MODULES.filter((m) => filterTracks.includes(m.trackId));
     }
     // Default overview: show first 4 modules
     return MODULES.slice(0, INITIAL_MODULE_COUNT);
-  }, [activeTrack, filterTracks]);
-
-  const totalFilteredModules = useMemo(() => {
-    if (activeTrack && activeTrack !== 'all') return getModulesByTrack(activeTrack).length;
-    if (activeTrack === 'all') {
-      if (filterTracks.length === 0) return MODULES.length;
-      return MODULES.filter((m) => filterTracks.includes(m.trackId)).length;
-    }
-    return MODULES.length;
-  }, [activeTrack, filterTracks]);
+  }, [activeTrack]);
 
   const activeTrackData = activeTrack ? TRACKS.find((t) => t.id === activeTrack) : null;
 
@@ -121,12 +107,12 @@ export default function Dashboard() {
       {/* ============================================ */}
       {/* TRACK DETAIL VIEW */}
       {/* ============================================ */}
-      {activeTrack && activeTrack !== 'all' && activeTrackData ? (
+      {activeTrack && activeTrackData ? (
         <div>
           {/* Back button + Track header */}
           <div className="flex items-center gap-4 mb-6">
             <button
-              onClick={() => { setActiveTrack(null); setFilterTracks([]); }}
+              onClick={() => setActiveTrack(null)}
               className="p-2 rounded-xl border border-themed text-body hover:text-heading hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
               aria-label="Retour aux parcours"
             >
@@ -179,14 +165,14 @@ export default function Dashboard() {
               <h2 className="section-title">Parcours d'apprentissage</h2>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4 mb-8">
               {TRACKS.map((track) => {
                 const trackProgress = getTrackProgress(track.id, progressMap);
 
                 return (
                   <button
                     key={track.id}
-                    onClick={() => { setActiveTrack(track.id); setFilterTracks([]); }}
+                    onClick={() => { setActiveTrack(track.id); }}
                     className="glass-card-hover p-5 text-left transition-all duration-300 group"
                   >
                     <div className="flex items-center justify-between mb-3">
@@ -248,97 +234,22 @@ export default function Dashboard() {
                   ))}
                 </div>
 
-                {/* "Voir tout" button — opens dedicated section */}
+                {/* "Voir tout" button — navigates to dedicated /modules page */}
                 {MODULES.length > INITIAL_MODULE_COUNT && (
                   <div className="flex justify-center mt-8">
-                    <button
-                      onClick={() => { setActiveTrack('all'); setFilterTracks([]); }}
+                    <Link
+                      to="/modules"
                       className="flex items-center gap-2 px-6 py-3 rounded-xl border border-themed text-body hover:text-heading hover:bg-black/5 dark:hover:bg-white/5 transition-all duration-200 text-sm font-medium"
                     >
                       Voir les {MODULES.length} modules
                       <ChevronRight className="w-4 h-4" />
-                    </button>
+                    </Link>
                   </div>
                 )}
               </>
             )}
           </div>
         </>
-      )}
-
-      {/* ============================================ */}
-      {/* "VOIR TOUT" — Dedicated all modules section */}
-      {/* ============================================ */}
-      {activeTrack === 'all' && (
-        <div>
-          {/* Back button + header */}
-          <div className="flex items-center gap-4 mb-6">
-            <button
-              onClick={() => { setActiveTrack(null); setFilterTracks([]); }}
-              className="p-2 rounded-xl border border-themed text-body hover:text-heading hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
-              aria-label="Retour"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-            <div>
-              <h2 className="section-title">Tous les modules</h2>
-              <p className="text-xs text-body">{totalFilteredModules} module{totalFilteredModules !== 1 ? 's' : ''}</p>
-            </div>
-          </div>
-
-          {/* Multi-track filter chips */}
-          <div className="flex flex-wrap gap-2 mb-6">
-            <button
-              onClick={() => setFilterTracks([])}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${
-                filterTracks.length === 0
-                  ? 'bg-primary-600/20 text-primary-300 border-primary-500/30'
-                  : 'text-body border-themed hover:text-heading hover:bg-black/5 dark:hover:bg-white/5'
-              }`}
-            >
-              Tous
-            </button>
-            {TRACKS.map((track) => {
-              const isSelected = filterTracks.includes(track.id);
-              return (
-                <button
-                  key={track.id}
-                  onClick={() => {
-                    setFilterTracks((prev) =>
-                      isSelected ? prev.filter((t) => t !== track.id) : [...prev, track.id]
-                    );
-                  }}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${
-                    isSelected
-                      ? `bg-gradient-to-r ${track.gradient} text-white border-transparent`
-                      : 'text-body border-themed hover:text-heading hover:bg-black/5 dark:hover:bg-white/5'
-                  }`}
-                >
-                  <img src={track.logo} alt="" className="w-4 h-4 rounded-sm object-cover" />
-                  {track.shortName}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* All modules grid */}
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {displayedModules.map((module) => (
-              <ModuleCard
-                key={module.id}
-                module={module}
-                progress={progressMap[module.id]}
-              />
-            ))}
-          </div>
-
-          {displayedModules.length === 0 && (
-            <div className="glass-card p-12 text-center">
-              <BookOpen className="w-12 h-12 text-muted mx-auto mb-4" />
-              <p className="text-body">Aucun module trouvé pour les filtres sélectionnés.</p>
-            </div>
-          )}
-        </div>
       )}
     </div>
   );

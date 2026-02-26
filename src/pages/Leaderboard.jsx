@@ -20,7 +20,15 @@ import {
   BarChart3,
   Users,
   Sparkles,
+  BadgeCheck,
 } from 'lucide-react';
+
+const ROLE_BADGE_COLORS = {
+  Organizer: 'bg-purple-500/10 text-purple-400 border-purple-500/30',
+  'Lead Track': 'bg-blue-500/10 text-blue-400 border-blue-500/30',
+  Mentor: 'bg-amber-500/10 text-amber-400 border-amber-500/30',
+  'GDG On Campus UCB Member': 'bg-green-500/10 text-green-400 border-green-500/30',
+};
 
 export default function Leaderboard() {
   const { leaderboard, userRank, loading } = useLeaderboard();
@@ -241,6 +249,11 @@ export default function Leaderboard() {
                       }`}>
                         {entry.displayName || 'Anonymous'}
                       </p>
+                      {entry.communityRole && (
+                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-medium border mb-1 ${ROLE_BADGE_COLORS[entry.communityRole] || 'bg-gray-500/10 text-gray-400'}`}>
+                          {entry.communityRole}
+                        </span>
+                      )}
                       <p className="text-xs text-muted mb-2">{entry.totalScore || 0} pts</p>
 
                       <div
@@ -294,12 +307,17 @@ export default function Leaderboard() {
                     </div>
 
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <p className={`font-semibold truncate ${isCurrentUser ? 'text-primary-300' : 'text-heading'}`}>
                           {entry.displayName || 'Anonymous'}
                         </p>
                         {isCurrentUser && (
                           <span className="badge-primary text-[10px]">Vous</span>
+                        )}
+                        {entry.communityRole && (
+                          <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium border ${ROLE_BADGE_COLORS[entry.communityRole] || 'bg-gray-500/10 text-gray-400'}`}>
+                            {entry.communityRole}
+                          </span>
                         )}
                         {getTrendIcon(entry)}
                       </div>
@@ -341,7 +359,7 @@ export default function Leaderboard() {
               <div className="text-center p-3 bg-black/5 dark:bg-white/5 rounded-xl">
                 <Target className="w-5 h-5 mx-auto text-accent-400 mb-2" />
                 <p className="text-lg font-bold text-heading">
-                  {leaderboard[0]?.totalScore || 0}
+                  {leaderboard[0]?.totalScore || 0}<span className="text-xs text-muted font-normal">/{MODULES.length * 10}</span>
                 </p>
                 <p className="text-xs text-muted">Meilleur score</p>
               </div>

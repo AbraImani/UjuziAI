@@ -231,10 +231,34 @@ export function useExam() {
     const examData = examSnap.data();
     const answers = examData.answers || [];
 
-    // Score MCQ questions automatically
+    // Score MCQ questions: 1 point per correct answer
     let mcqCorrect = 0;
     let mcqTotal = 0;
-    let openCount = 0;
+    let openScore = 0;
+    let openTotal = 0;
+
+    // Nonsense/lazy answer detection for open questions
+    const NONSENSE_PATTERNS = [
+      /^(rien|nothing|ok|okay|oui|non|yes|no|idk|jsp|je\s*sais\s*pas|i\s*don'?t\s*know|n\/a|na|nope|pas?\s*de?\s*réponse|aucune?\s*idée|bof|meh|lol|haha|test|hello|bonjour|salut|merci|thanks|cool|nice|good|bien|d'accord|voilà|c'est\s*tout|fin|end|stop|quit|skip|next|suivant|je\s*n'?ai\s*rien|i\s*didn'?t|no\s*idea|whatever|peu\s*importe|ça\s*va|comme\s*ci|i\s*don'?t\s*care)$/i,
+      /^[\s\.\,\!\?\-\_\*\#\@\&\(\)]*$/, // Only punctuation/whitespace
+      /^(.)\1{3,}$/, // Repeated single character (e.g., "aaaa", "1111")
+      /^(.{1,3}\s*){1,3}$/, // Very short repeated words
+    ];
+
+    function isNonsenseAnswer(text) {
+      if (!text || typeof text !== 'string') return true;
+      const trimmed = text.trim();
+      // Too short (less than 15 characters)
+      if (trimmed.length < 15) return true;
+      // Too few words (less than 5 words)
+      const words = trimmed.split(/\s+/).filter(Boolean);
+      if (words.length < 5) return true;
+      // Matches nonsense patterns
+      for (const pattern of NONSENSE_PATTERNS) {
+        if (pattern.test(trimmed)) return true;
+      }
+      return false;
+    }
 
     if (questions && questions.length > 0) {
       questions.forEach((q, index) => {
@@ -245,54 +269,57 @@ export function useExam() {
             mcqCorrect++;
           }
         } else if (q.type === 'open') {
-          openCount++;
+          openTotal++;
+          const userAnswer = answers[index]?.answer;
+          // Validate open answer quality — nonsense = 0 points
+          if (!isNonsenseAnswer(userAnswer)) {
+            openScore++;
+          }
         }
       });
     }
 
-    // MCQ worth 7 points, open worth 3 points
-    // MCQ score = (correct / total) * 7, rounded
-    const mcqScore = mcqTotal > 0 ? Math.round((mcqCorrect / mcqTotal) * 7) : 0;
-    
-    // For open-ended: give 2/3 points by default (generous baseline)
-    // In production, this would be scored by AI agents
-    const openScore = openCount > 0 ? 2 : 0;
-    
-    const totalScore = Math.min(mcqScore + openScore, 10);
+    // Each question = 1 point (MCQ: 1pt if correct, Open: 1pt if valid answer)
+    const totalScore = Math.min(mcqCorrect + openScore, 10);
     const passed = totalScore >= EXAM_CONFIG.PASSING_SCORE;
 
     // Update exam document
     await updateDoc(examRef, {
       status: 'completed',
       completedAt: serverTimestamp(),
-      mcqScore,
+      mcqScore: mcqCorrect,
       openScore,
       totalScore,
       mcqCorrect,
       mcqTotal,
+      openTotal,
     });
 
-    // Update user progress with score
+    // Update user progress with score — keep the BEST score only
     const progressRef = doc(db, 'users', user.uid, 'progress', moduleId);
     const progressSnap = await getDoc(progressRef);
     const existingScore = progressSnap.exists() ? (progressSnap.data().examScore || 0) : 0;
+    const existingBadge = progressSnap.exists() ? progressSnap.data().badgeId : null;
     
-    // Keep the best score
+    // Only update if new score is better
     const bestScore = Math.max(existingScore, totalScore);
     
-    const badgeId = passed ? `badge-${moduleId}-${user.uid.slice(0, 6)}-${Date.now().toString(36)}` : null;
+    const badgeId = (passed && !existingBadge) ? `badge-${moduleId}-${user.uid.slice(0, 6)}-${Date.now().toString(36)}` : null;
 
-    await updateDoc(progressRef, {
+    const progressUpdate = {
       examScore: bestScore,
       lastExamScore: totalScore,
-      ...(passed && !existingScore >= EXAM_CONFIG.PASSING_SCORE ? { badgeId } : {}),
-    });
+    };
+    if (badgeId) {
+      progressUpdate.badgeId = badgeId;
+    }
 
-    // Update user totalScore
+    await updateDoc(progressRef, progressUpdate);
+
+    // Recalculate totalScore = sum of best scores per module
     const userRef = doc(db, 'users', user.uid);
     const userSnap = await getDoc(userRef);
     if (userSnap.exists()) {
-      // Recalculate total score from all progress
       const allProgressSnap = await getDocs(collection(db, 'users', user.uid, 'progress'));
       let newTotalScore = 0;
       allProgressSnap.forEach((p) => {
@@ -301,7 +328,7 @@ export function useExam() {
       await updateDoc(userRef, { totalScore: newTotalScore });
     }
 
-    return { totalScore, mcqScore, openScore, passed, badgeId };
+    return { totalScore, mcqScore: mcqCorrect, openScore, passed, badgeId, mcqCorrect, mcqTotal, openTotal };
   }
 
   return { getExamStatus, startExam, submitAnswer, completeExam };
@@ -316,29 +343,32 @@ export function useLeaderboard() {
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
 
+  // Admin emails to hide from public leaderboard
+  const ADMIN_EMAILS_HIDDEN = ['abrahamfaith325@gmail.com', 'gdgoncampusucb@gmail.com'];
+
   useEffect(() => {
     async function fetchLeaderboard() {
       try {
         const usersRef = collection(db, 'users');
-        const q = query(usersRef, orderBy('totalScore', 'desc'), limit(10));
+        // Fetch more to account for filtered admins
+        const q = query(usersRef, orderBy('totalScore', 'desc'), limit(50));
         const snap = await getDocs(q);
-        const data = [];
+        const allData = [];
         snap.forEach((doc) => {
-          data.push({ id: doc.id, ...doc.data() });
+          const d = { id: doc.id, ...doc.data() };
+          // Filter out hidden admin emails from public leaderboard
+          if (!ADMIN_EMAILS_HIDDEN.includes(d.email?.toLowerCase())) {
+            allData.push(d);
+          }
         });
-        setLeaderboard(data);
+        setLeaderboard(allData);
 
         // Find user rank
         if (user) {
-          const allUsersQ = query(usersRef, orderBy('totalScore', 'desc'));
-          const allSnap = await getDocs(allUsersQ);
-          let rank = 1;
-          allSnap.forEach((doc) => {
-            if (doc.id === user.uid) {
-              setUserRank(rank);
-            }
-            rank++;
-          });
+          const userDoc = allData.find((d) => d.id === user.uid);
+          if (userDoc) {
+            setUserRank(allData.indexOf(userDoc) + 1);
+          }
         }
       } catch (error) {
         console.error('Error fetching leaderboard:', error);
@@ -425,6 +455,53 @@ export function useAdmin() {
     return null;
   }
 
+  // ---- Admin: modify user exam score ----
+  async function modifyUserScore(userId, moduleId, newScore) {
+    if (!isAdmin) throw new Error('Unauthorized');
+    const progressRef = doc(db, 'users', userId, 'progress', moduleId);
+    const progressSnap = await getDoc(progressRef);
+    if (!progressSnap.exists()) throw new Error('Progress not found');
+
+    const passed = newScore >= EXAM_CONFIG.PASSING_SCORE;
+    const existingBadge = progressSnap.data().badgeId;
+    const badgeId = (passed && !existingBadge) ? `badge-${moduleId}-${userId.slice(0, 6)}-${Date.now().toString(36)}` : null;
+
+    const update = {
+      examScore: newScore,
+      lastExamScore: newScore,
+      reviewedAt: serverTimestamp(),
+      reviewedBy: user.uid,
+    };
+    if (badgeId) update.badgeId = badgeId;
+    // If score is lowered below passing and they had a badge, remove it
+    if (!passed && existingBadge) update.badgeId = null;
+
+    await updateDoc(progressRef, update);
+
+    // Recalculate totalScore for the user
+    const userRef = doc(db, 'users', userId);
+    const allProgressSnap = await getDocs(collection(db, 'users', userId, 'progress'));
+    let newTotalScore = 0;
+    allProgressSnap.forEach((p) => {
+      if (p.id === moduleId) {
+        newTotalScore += newScore;
+      } else {
+        newTotalScore += (p.data().examScore || 0);
+      }
+    });
+    await updateDoc(userRef, { totalScore: newTotalScore });
+  }
+
+  // ---- Admin: get submission details ----
+  async function getUserSubmissions(userId) {
+    if (!isAdmin) throw new Error('Unauthorized');
+    const subsRef = collection(db, 'users', userId, 'submissions');
+    const snap = await getDocs(subsRef);
+    const data = [];
+    snap.forEach((d) => data.push({ id: d.id, ...d.data() }));
+    return data;
+  }
+
   return {
     getAllSubmissions,
     validateSubmission,
@@ -434,5 +511,7 @@ export function useAdmin() {
     saveModuleSettings,
     saveExamSettings,
     getExamSettings,
+    modifyUserScore,
+    getUserSubmissions,
   };
 }

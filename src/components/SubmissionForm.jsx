@@ -13,7 +13,7 @@ export default function SubmissionForm({ moduleId, onSuccess }) {
   const fileInputRef = useRef(null);
 
   const wordCount = description.trim().split(/\s+/).filter(Boolean).length;
-  const MIN_WORDS = 100;
+  const MIN_WORDS = 50;
 
   const handleImageSelect = (e) => {
     const files = Array.from(e.target.files);
@@ -141,7 +141,7 @@ export default function SubmissionForm({ moduleId, onSuccess }) {
           name="description"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="Décrivez ce que vous avez appris, les étapes que vous avez suivies, les concepts clés que vous avez compris, et les défis que vous avez rencontrés. Soyez précis et détaillé — minimum 100 mots."
+          placeholder="Décrivez ce que vous avez appris, les étapes que vous avez suivies, les concepts clés que vous avez compris, et les défis que vous avez rencontrés. Soyez précis et détaillé — minimum 50 mots."
           rows={8}
           className="input-field resize-none"
         />

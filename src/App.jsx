@@ -14,6 +14,7 @@ import Leaderboard from './pages/Leaderboard';
 import Profile from './pages/Profile';
 import AdminPanel from './pages/AdminPanel';
 import Certificate from './pages/Certificate';
+import AllModules from './pages/AllModules';
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth();
@@ -63,6 +64,7 @@ function AppRoutes() {
       <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
       <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />
       <Route path="/dashboard" element={<PrivateRoute><Layout><Dashboard /></Layout></PrivateRoute>} />
+      <Route path="/modules" element={<PrivateRoute><Layout><AllModules /></Layout></PrivateRoute>} />
       <Route path="/module/:moduleId" element={<PrivateRoute><Layout><ModuleDetail /></Layout></PrivateRoute>} />
       <Route path="/exam/:moduleId" element={<PrivateRoute><Exam /></PrivateRoute>} />
       <Route path="/leaderboard" element={<PrivateRoute><Layout><Leaderboard /></Layout></PrivateRoute>} />

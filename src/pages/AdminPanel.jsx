@@ -23,7 +23,12 @@ import {
   Save,
   Calendar,
   ChevronUp,
+  ChevronDown,
   UserCog,
+  Eye,
+  Pencil,
+  Image,
+  ExternalLink,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -52,6 +57,10 @@ export default function AdminPanel() {
   const [editingModule, setEditingModule] = useState(null);
   const [examSettings, setExamSettings] = useState({ ...EXAM_CONFIG });
   const [savingSettings, setSavingSettings] = useState(false);
+  const [expandedSubmission, setExpandedSubmission] = useState(null);
+  const [submissionDetails, setSubmissionDetails] = useState({});
+  const [editingScore, setEditingScore] = useState(null);
+  const [newScoreValue, setNewScoreValue] = useState('');
 
   const {
     validateSubmission,
@@ -61,6 +70,8 @@ export default function AdminPanel() {
     saveModuleSettings,
     saveExamSettings,
     getExamSettings,
+    modifyUserScore,
+    getUserSubmissions,
   } = useAdmin();
 
   useEffect(() => {
@@ -82,6 +93,13 @@ export default function AdminPanel() {
         userData.progress = {};
         progressSnap.forEach((p) => {
           userData.progress[p.id] = p.data();
+        });
+
+        // Fetch submissions for each user
+        const subsSnap = await getDocs(collection(db, 'users', userDoc.id, 'submissions'));
+        userData.submissions = [];
+        subsSnap.forEach((s) => {
+          userData.submissions.push({ id: s.id, ...s.data() });
         });
 
         usersData.push(userData);
@@ -177,7 +195,7 @@ export default function AdminPanel() {
         MCQ_COUNT: parseInt(examSettings.MCQ_COUNT) || 7,
         OPEN_COUNT: parseInt(examSettings.OPEN_COUNT) || 3,
         MCQ_TIME_SECONDS: parseInt(examSettings.MCQ_TIME_SECONDS) || 30,
-        OPEN_TIME_SECONDS: parseInt(examSettings.OPEN_TIME_SECONDS) || 300,
+        OPEN_TIME_SECONDS: parseInt(examSettings.OPEN_TIME_SECONDS) || 120,
         MAX_ATTEMPTS: parseInt(examSettings.MAX_ATTEMPTS) || 2,
         PASSING_SCORE: parseInt(examSettings.PASSING_SCORE) || 6,
         MAX_SCORE: parseInt(examSettings.MAX_SCORE) || 10,
@@ -187,6 +205,31 @@ export default function AdminPanel() {
       toast.error('Échec de l\'enregistrement des paramètres');
     } finally {
       setSavingSettings(false);
+    }
+  };
+
+  const handleViewSubmission = async (userId) => {
+    if (expandedSubmission === userId) {
+      setExpandedSubmission(null);
+      return;
+    }
+    setExpandedSubmission(userId);
+  };
+
+  const handleModifyScore = async (userId, moduleId) => {
+    const score = parseInt(newScoreValue);
+    if (isNaN(score) || score < 0 || score > 10) {
+      toast.error('Le score doit être entre 0 et 10');
+      return;
+    }
+    try {
+      await modifyUserScore(userId, moduleId, score);
+      toast.success(`Score modifié à ${score}/10`);
+      setEditingScore(null);
+      setNewScoreValue('');
+      fetchData();
+    } catch (err) {
+      toast.error('Échec de la modification du score');
     }
   };
 
@@ -252,7 +295,7 @@ export default function AdminPanel() {
         </div>
       ) : (
         <>
-          {/* Submissions Tab */}
+          {/* Submissions Tab — with details viewer and score editing */}
           {activeTab === 'submissions' && (
             <div className="space-y-4">
               {filteredUsers.length === 0 ? (
@@ -264,75 +307,189 @@ export default function AdminPanel() {
                 filteredUsers.map((u) => {
                   const hasProgress = Object.keys(u.progress || {}).length > 0;
                   if (!hasProgress) return null;
+                  const isExpanded = expandedSubmission === u.id;
+                  const userSubs = u.submissions || [];
 
                   return (
                     <div key={u.id} className="glass-card p-6">
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 bg-primary-600/20 rounded-full flex items-center justify-center text-primary-300 font-bold">
-                          {u.displayName?.[0]?.toUpperCase() || 'U'}
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-primary-600/20 rounded-full flex items-center justify-center text-primary-300 font-bold">
+                            {u.displayName?.[0]?.toUpperCase() || 'U'}
+                          </div>
+                          <div>
+                            <p className="font-medium text-heading">{u.displayName}</p>
+                            <p className="text-xs text-muted">{u.email}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-medium text-heading">{u.displayName}</p>
-                          <p className="text-xs text-muted">{u.email}</p>
-                        </div>
+                        <button
+                          onClick={() => handleViewSubmission(u.id)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary-500/10 text-primary-400 hover:bg-primary-500/20 transition-colors text-xs font-medium"
+                        >
+                          {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                          {isExpanded ? 'Réduire' : 'Voir détails'}
+                        </button>
                       </div>
 
                       <div className="space-y-3">
                         {Object.entries(u.progress || {}).map(([modId, prog]) => {
                           const mod = MODULES.find((m) => m.id === modId);
                           if (!mod || !prog.submitted) return null;
+                          const isEditingThisScore = editingScore === `${u.id}-${modId}`;
+                          const matchingSub = userSubs.find((s) => s.moduleId === modId);
 
                           return (
-                            <div
-                              key={modId}
-                              className="flex items-center justify-between p-3 bg-black/5 dark:bg-white/5 rounded-lg"
-                            >
-                              <div className="flex items-center gap-3">
-                                {(() => { const Icon = getModuleIcon(mod.iconName); return <div className="w-8 h-8 rounded-lg bg-primary-500/15 text-primary-400 flex items-center justify-center"><Icon className="w-4 h-4" /></div>; })()}
-                                <div>
-                                  <p className="text-sm font-medium text-heading">{mod.title}</p>
-                                  <div className="flex items-center gap-2 text-xs text-muted">
-                                    <span>Tentatives : {prog.examAttempts || 0}</span>
-                                    {prog.examScore !== null && <span>Score : {prog.examScore}/10</span>}
+                            <div key={modId} className="bg-black/5 dark:bg-white/5 rounded-lg overflow-hidden">
+                              <div className="flex items-center justify-between p-3">
+                                <div className="flex items-center gap-3">
+                                  {(() => { const Icon = getModuleIcon(mod.iconName); return <div className="w-8 h-8 rounded-lg bg-primary-500/15 text-primary-400 flex items-center justify-center"><Icon className="w-4 h-4" /></div>; })()}
+                                  <div>
+                                    <p className="text-sm font-medium text-heading">{mod.title}</p>
+                                    <div className="flex items-center gap-2 text-xs text-muted">
+                                      <span>Tentatives : {prog.examAttempts || 0}</span>
+                                      {prog.examScore != null && <span>Score : {prog.examScore}/10</span>}
+                                      {prog.lastExamScore != null && prog.lastExamScore !== prog.examScore && (
+                                        <span className="text-amber-400">(dernier : {prog.lastExamScore}/10)</span>
+                                      )}
+                                    </div>
                                   </div>
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                  {/* Score edit button */}
+                                  {isEditingThisScore ? (
+                                    <div className="flex items-center gap-1">
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        max="10"
+                                        value={newScoreValue}
+                                        onChange={(e) => setNewScoreValue(e.target.value)}
+                                        className="w-14 px-2 py-1 text-xs rounded border border-themed bg-card text-heading"
+                                        placeholder="0-10"
+                                      />
+                                      <button
+                                        onClick={() => handleModifyScore(u.id, modId)}
+                                        className="p-1.5 rounded bg-accent-500/10 text-accent-400 hover:bg-accent-500/20"
+                                        title="Sauvegarder"
+                                      >
+                                        <Save className="w-3.5 h-3.5" />
+                                      </button>
+                                      <button
+                                        onClick={() => { setEditingScore(null); setNewScoreValue(''); }}
+                                        className="p-1.5 rounded bg-red-500/10 text-red-400 hover:bg-red-500/20"
+                                        title="Annuler"
+                                      >
+                                        <XCircle className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <button
+                                      onClick={() => { setEditingScore(`${u.id}-${modId}`); setNewScoreValue(String(prog.examScore || 0)); }}
+                                      className="p-2 rounded-lg bg-primary-500/10 text-primary-400 hover:bg-primary-500/20 transition-colors"
+                                      title="Modifier le score"
+                                    >
+                                      <Pencil className="w-4 h-4" />
+                                    </button>
+                                  )}
+
+                                  {prog.validated ? (
+                                    <span className="badge-accent text-xs">
+                                      <CheckCircle className="w-3 h-3 mr-1" />
+                                      Validé
+                                    </span>
+                                  ) : (
+                                    <>
+                                      <button
+                                        onClick={() => handleValidate(u.id, modId, true)}
+                                        className="p-2 rounded-lg bg-accent-500/10 text-accent-400 hover:bg-accent-500/20 transition-colors"
+                                        title="Approuver"
+                                      >
+                                        <CheckCircle className="w-4 h-4" />
+                                      </button>
+                                      <button
+                                        onClick={() => handleValidate(u.id, modId, false)}
+                                        className="p-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors"
+                                        title="Rejeter"
+                                      >
+                                        <XCircle className="w-4 h-4" />
+                                      </button>
+                                    </>
+                                  )}
+
+                                  {prog.examLocked && (
+                                    <button
+                                      onClick={() => handleOverrideExamLock(u.id, modId)}
+                                      className="p-2 rounded-lg bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 transition-colors"
+                                      title="Annuler le verrouillage"
+                                    >
+                                      <Unlock className="w-4 h-4" />
+                                    </button>
+                                  )}
                                 </div>
                               </div>
 
-                              <div className="flex items-center gap-2">
-                                {prog.validated ? (
-                                  <span className="badge-accent text-xs">
-                                    <CheckCircle className="w-3 h-3 mr-1" />
-                                    Validé
-                                  </span>
-                                ) : (
-                                  <>
-                                    <button
-                                      onClick={() => handleValidate(u.id, modId, true)}
-                                      className="p-2 rounded-lg bg-accent-500/10 text-accent-400 hover:bg-accent-500/20 transition-colors"
-                                      title="Approuver"
-                                    >
-                                      <CheckCircle className="w-4 h-4" />
-                                    </button>
-                                    <button
-                                      onClick={() => handleValidate(u.id, modId, false)}
-                                      className="p-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors"
-                                      title="Rejeter"
-                                    >
-                                      <XCircle className="w-4 h-4" />
-                                    </button>
-                                  </>
-                                )}
+                              {/* Expanded submission details */}
+                              {isExpanded && matchingSub && (
+                                <div className="border-t border-themed p-4 space-y-3">
+                                  {/* Description */}
+                                  {matchingSub.description && (
+                                    <div>
+                                      <p className="text-xs font-medium text-body mb-1 flex items-center gap-1">
+                                        <FileText className="w-3 h-3" /> Description :
+                                      </p>
+                                      <p className="text-sm text-body bg-black/5 dark:bg-white/5 rounded-lg p-3 whitespace-pre-wrap max-h-40 overflow-y-auto">
+                                        {matchingSub.description}
+                                      </p>
+                                    </div>
+                                  )}
 
-                                {prog.examLocked && (
-                                  <button
-                                    onClick={() => handleOverrideExamLock(u.id, modId)}
-                                    className="p-2 rounded-lg bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 transition-colors"
-                                    title="Annuler le verrouillage"
-                                  >
-                                    <Unlock className="w-4 h-4" />
-                                  </button>
-                                )}
-                              </div>
+                                  {/* Images */}
+                                  {matchingSub.images?.length > 0 && (
+                                    <div>
+                                      <p className="text-xs font-medium text-body mb-2 flex items-center gap-1">
+                                        <Image className="w-3 h-3" /> Captures d'écran ({matchingSub.images.length}) :
+                                      </p>
+                                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                                        {matchingSub.images.map((imgUrl, idx) => (
+                                          <a key={idx} href={imgUrl} target="_blank" rel="noopener noreferrer" className="block group relative">
+                                            <img
+                                              src={imgUrl}
+                                              alt={`Screenshot ${idx + 1}`}
+                                              className="w-full h-24 object-cover rounded-lg border border-themed group-hover:border-primary-500/50 transition-colors"
+                                            />
+                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+                                              <ExternalLink className="w-4 h-4 text-white" />
+                                            </div>
+                                          </a>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Video URL */}
+                                  {matchingSub.videoUrl && (
+                                    <div>
+                                      <p className="text-xs font-medium text-body mb-1">Vidéo :</p>
+                                      <a href={matchingSub.videoUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary-400 hover:underline flex items-center gap-1">
+                                        <ExternalLink className="w-3 h-3" />
+                                        {matchingSub.videoUrl}
+                                      </a>
+                                    </div>
+                                  )}
+
+                                  {/* Submission date */}
+                                  <p className="text-[10px] text-muted">
+                                    Soumis le : {matchingSub.submittedAt?.toDate?.()?.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) || '—'}
+                                  </p>
+                                </div>
+                              )}
+
+                              {isExpanded && !matchingSub && (
+                                <div className="border-t border-themed p-3">
+                                  <p className="text-xs text-muted italic">Pas de détails de soumission disponibles pour ce module.</p>
+                                </div>
+                              )}
                             </div>
                           );
                         })}

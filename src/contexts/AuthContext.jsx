@@ -16,7 +16,7 @@ import toast from 'react-hot-toast';
 const AuthContext = createContext(null);
 
 // Admin emails — these users automatically get admin role
-const ADMIN_EMAILS = ['abrahamfaith325@gmail.com'];
+const ADMIN_EMAILS = ['abrahamfaith325@gmail.com', 'gdgoncampusucb@gmail.com'];
 
 function isAdminEmail(email) {
   return ADMIN_EMAILS.includes(email?.toLowerCase());

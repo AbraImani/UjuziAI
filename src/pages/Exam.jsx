@@ -6,80 +6,85 @@ import ExamInterface from '../components/ExamInterface';
 import { Shield, AlertTriangle, CheckCircle, XCircle, Loader2, ArrowLeft, Play } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-// Sample question generator (in production, this comes from the backend agent)
+// Générateur de questions en français — difficiles, piégeuses, spécifiques au module
 function generateQuestions(module) {
   const mcqQuestions = [];
   const openQuestions = [];
 
-  // Generate 7 MCQ questions based on module topics
+  const topic0 = module.topics[0];
+  const topic1 = module.topics[1] || module.topics[0];
+  const topic2 = module.topics[2] || module.topics[0];
+  const title = module.title;
+
+  // 7 QCM en français — conçues pour être difficiles et piégeuses
   const mcqTemplates = [
     {
-      text: `What is the primary purpose of ${module.topics[0]}?`,
+      text: `Dans le cadre du module "${title}", laquelle de ces affirmations sur ${topic0} est FAUSSE ?`,
       options: [
-        `To enable efficient data processing in ${module.topics[0]}`,
-        `To provide a standardized interface for ${module.title.toLowerCase()}`,
-        `To replace traditional programming paradigms`,
-        `To optimize hardware resource allocation`,
+        `${topic0} nécessite une configuration initiale avant toute utilisation en production`,
+        `${topic0} peut fonctionner de manière totalement autonome sans aucune dépendance externe`,
+        `${topic0} s'intègre avec d'autres services via des API standardisées`,
+        `${topic0} requiert une compréhension des principes fondamentaux pour une utilisation efficace`,
       ],
       correct: 1,
     },
     {
-      text: `Which of the following best describes the relationship between ${module.topics[0]} and ${module.topics[1] || 'AI'}?`,
+      text: `Lors de l'implémentation de ${topic1} dans le codelab "${title}", quelle étape est INDISPENSABLE avant le déploiement ?`,
       options: [
-        `${module.topics[0]} is a subset of ${module.topics[1] || 'AI'}`,
-        `They are completely independent concepts`,
-        `${module.topics[0]} enables and enhances ${module.topics[1] || 'AI'} capabilities`,
-        `They can only be used in isolation`,
+        `Supprimer tous les fichiers de configuration pour alléger le projet`,
+        `Désactiver les logs pour améliorer les performances`,
+        `Valider les entrées utilisateur et gérer les cas limites de manière rigoureuse`,
+        `Utiliser uniquement des valeurs codées en dur pour garantir la stabilité`,
       ],
       correct: 2,
     },
     {
-      text: `In the context of ${module.title}, what is a key consideration when implementing solutions?`,
+      text: `Quelle est la PRINCIPALE différence entre ${topic0} et ${topic1} dans le contexte de ce module ?`,
       options: [
-        'Speed is the only factor that matters',
-        'Scalability, reliability, and ethical considerations',
-        'Using the newest technology available',
-        'Minimizing code complexity at all costs',
+        `${topic0} gère la couche présentation tandis que ${topic1} gère la logique métier`,
+        `Ils remplissent des rôles complémentaires dans l'architecture : ${topic0} pour la base et ${topic1} pour l'extension des fonctionnalités`,
+        `${topic0} est obsolète et remplacé entièrement par ${topic1}`,
+        `Ils sont interchangeables et peuvent être utilisés indifféremment`,
       ],
       correct: 1,
     },
     {
-      text: `What advantage does ${module.topics[0]} provide over traditional approaches?`,
+      text: `Dans le codelab, un développeur rencontre une erreur lors de l'intégration de ${topic2}. Quelle est la PREMIÈRE action à entreprendre ?`,
       options: [
-        'It eliminates the need for testing',
-        'It reduces development time to zero',
-        'It provides better automation and intelligent decision-making',
-        'It removes the need for human oversight',
+        `Réinstaller complètement l'environnement de développement`,
+        `Vérifier les logs d'erreur et la documentation officielle pour identifier la cause racine`,
+        `Ignorer l'erreur et continuer le développement`,
+        `Contacter immédiatement le support technique sans investigation préalable`,
+      ],
+      correct: 1,
+    },
+    {
+      text: `Parmi ces bonnes pratiques pour "${title}", laquelle est INCORRECTE ?`,
+      options: [
+        `Documenter le code et les décisions architecturales`,
+        `Effectuer des tests unitaires et d'intégration régulièrement`,
+        `Stocker les clés API et secrets directement dans le code source pour un accès rapide`,
+        `Utiliser le contrôle de version pour suivre les changements`,
       ],
       correct: 2,
     },
     {
-      text: `When working with ${module.topics[module.topics.length - 1] || module.topics[0]}, which practice is recommended?`,
+      text: `Quel problème de sécurité est le PLUS critique lors du travail avec ${topic0} et ${topic1} ?`,
       options: [
-        'Skip validation for faster deployment',
-        'Always validate inputs and handle edge cases',
-        'Use hardcoded values for reliability',
-        'Avoid documentation to save time',
+        `L'utilisation de bibliothèques open-source`,
+        `L'exposition de données sensibles via des API non sécurisées ou des permissions mal configurées`,
+        `L'utilisation du mode sombre dans l'interface`,
+        `Le choix du langage de programmation`,
       ],
       correct: 1,
     },
     {
-      text: `What is a common challenge when implementing ${module.title.toLowerCase()} solutions?`,
+      text: `En termes de performance et d'optimisation pour "${title}", quelle approche est la PLUS efficace ?`,
       options: [
-        'Too many available tools',
-        'Managing complexity, ensuring accuracy, and maintaining performance',
-        'Lack of programming languages',
-        'Hardware is always the bottleneck',
-      ],
-      correct: 1,
-    },
-    {
-      text: `How does ${module.topics[0]} integrate with modern development workflows?`,
-      options: [
-        'It replaces all existing tools',
-        'It cannot be integrated with existing systems',
-        'Through APIs, SDKs, and standardized protocols',
-        'Only through command-line interfaces',
+        `Charger toutes les ressources au démarrage pour éviter les requêtes ultérieures`,
+        `Désactiver la mise en cache pour toujours avoir les données les plus récentes`,
+        `Implémenter le chargement progressif, la mise en cache intelligente et minimiser les appels réseau inutiles`,
+        `Dupliquer les données sur plusieurs serveurs sans stratégie de synchronisation`,
       ],
       correct: 2,
     },
@@ -92,19 +97,19 @@ function generateQuestions(module) {
     });
   }
 
-  // Generate 3 open-ended questions
+  // 3 questions ouvertes en français — exigent des réponses détaillées et spécifiques
   const openTemplates = [
     {
-      text: `Explain how you implemented ${module.topics[0]} in the codelab. What were the key steps and what challenges did you face?`,
-      context: `This question assesses your practical understanding of ${module.topics[0]} as covered in the "${module.title}" codelab.`,
+      text: `Décrivez en détail les étapes que vous avez suivies pour implémenter ${topic0} dans le codelab "${title}". Quels obstacles avez-vous rencontrés et comment les avez-vous résolus ? Citez des éléments concrets du codelab.`,
+      context: `Cette question évalue votre compréhension pratique de ${topic0}. Une réponse vague, générique ou sans référence au codelab recevra zéro point.`,
     },
     {
-      text: `Describe a real-world scenario where ${module.title.toLowerCase()} could be applied. How would you architect the solution?`,
-      context: `Demonstrate your ability to apply codelab concepts to practical problems.`,
+      text: `Proposez un cas d'utilisation concret et original où les concepts de "${title}" (notamment ${topic1} et ${topic2}) pourraient résoudre un problème réel. Décrivez l'architecture technique que vous adopteriez.`,
+      context: `Démontrez votre capacité à appliquer les concepts du codelab à des situations pratiques. Les réponses superficielles ou sans détail technique recevront zéro point.`,
     },
     {
-      text: `Compare and contrast ${module.topics[0]} with ${module.topics[1] || 'alternative approaches'}. When would you choose one over the other?`,
-      context: `Show depth of understanding by analyzing trade-offs and design decisions.`,
+      text: `Analysez les avantages et les limites de ${topic0} par rapport à ${topic1}. Dans quelles situations recommanderiez-vous l'un plutôt que l'autre ? Justifiez avec des arguments techniques précis.`,
+      context: `Montrez votre profondeur de compréhension en analysant les compromis et les décisions de conception. Les réponses courtes ou non pertinentes recevront zéro point.`,
     },
   ];
 
@@ -202,7 +207,7 @@ export default function Exam() {
               {examResult?.totalScore || 0}/10
             </p>
             <p className="text-sm text-body">
-              QCM : {examResult?.mcqCorrect || 0}/{examResult?.mcqTotal || 7} • Ouvertes : {examResult?.openScore || 0}/3
+              QCM : {examResult?.mcqCorrect || 0}/{examResult?.mcqTotal || 7} • Ouvertes : {examResult?.openScore || 0}/{examResult?.openTotal || 3}
             </p>
           </div>
           <p className="text-body mb-8">
@@ -300,11 +305,15 @@ export default function Exam() {
           <ul className="space-y-3 text-sm text-body">
             <li className="flex items-start gap-2">
               <span className="text-primary-400 mt-0.5">•</span>
-              <span><strong className="text-heading">7 questions QCM</strong> — 25-30 secondes chacune</span>
+              <span><strong className="text-heading">7 questions QCM</strong> — 30 secondes chacune (1 point par bonne réponse)</span>
             </li>
             <li className="flex items-start gap-2">
               <span className="text-primary-400 mt-0.5">•</span>
-              <span><strong className="text-heading">3 questions ouvertes</strong> — max 5 minutes chacune</span>
+              <span><strong className="text-heading">3 questions ouvertes</strong> — max 2 minutes chacune (1 point par réponse valide)</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-primary-400 mt-0.5">•</span>
+              <span><strong className="text-heading">Score total : 10 points</strong> — chaque question vaut 1 point</span>
             </li>
             <li className="flex items-start gap-2">
               <span className="text-primary-400 mt-0.5">•</span>
@@ -317,6 +326,10 @@ export default function Exam() {
             <li className="flex items-start gap-2">
               <span className="text-primary-400 mt-0.5">•</span>
               <span><strong className="text-heading">Score de réussite : 6/10</strong></span>
+            </li>
+            <li className="flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
+              <span><strong className="text-red-300">Réponses vagues ou absurdes = 0 point</strong> — les réponses comme "rien", "ok", "je ne sais pas" seront automatiquement rejetées</span>
             </li>
             <li className="flex items-start gap-2">
               <AlertTriangle className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />

@@ -1,0 +1,196 @@
+-------------------------------------------------
+1. RESSOURCES ou MODULES PARCOURS DE L'IA 
+-------------------------------------------------
+
+1. Premiers pas avec Google Antigravity
+Contrairement aux assistants de codage standards qui ne font que compléter les lignes, Antigravity fournit un "centre de contrôle" pour gérer les agents autonomes qui peuvent planifier, coder et même naviguer sur le Web pour vous aider à créer. 
+lien : https://goo.gle/start-with-antigravity
+
+2. Compiler avec Google Antigravity
+Dans cet atelier de programmation, nous allons utiliser Antigravity pour créer des applications réelles. Nous passerons d'une simple recherche sur le Web à la génération d'applications full stack et de tests unitaires de niveau entreprise. 
+lien : https://goo.gle/building-with-google-antigravity
+
+3. Compiler et déployer sur Google Cloud avec Antigravity
+Dans cet atelier de programmation, vous allez apprendre à utiliser Google Antigravity (appelé "Antigravity" dans le reste du document) pour concevoir, créer et déployer une application sans serveur sur Google Cloud. Nous allons créer un pipeline de documents sans serveur et événementiel qui ingère des fichiers depuis Google Cloud Storage (GCS), les traite à l'aide de Cloud Run et de Gemini, et diffuse leurs métadonnées dans BigQuery. 
+lien : https://goo.gle/building-and-deploy-with-antigravity
+
+4. Revue de code et analyse de sécurité avec la CLI Gemini et les extensions
+Utilisez la Gemini CLI et ses extensions pour examiner le code et analyser la sécurité dans votre workflow de développement. Configurez l'environnement, installez des extensions et découvrez comment elles fonctionnent.
+lien : https://goo.gle/code-review-security-analysis-gemini-cli
+
+5. Gemini pour les développeurs
+Gemini est la famille de modèles d'IA multimodaux de Google. Dans cet atelier, vous découvrirez les modèles et leurs puissantes fonctionnalités, telles que la réflexion approfondie, l'ancrage dans la recherche Google et Maps, l'outil d'utilisation de l'ordinateur, la compréhension spatiale, l'API Live, ainsi que la sortie audio et d'image native. Vous découvrirez également des démonstrations des outils d'agent de codage Gemini, Antigravity et Gemini CLI, et vous apprendrez à intégrer Gemini à vos applications à l'aide du SDK Google Gen AI.
+lien : https://goo.gle/gemini-for-developers
+
+6. Requête du Jardin des Oubliés
+Il s'agit d'un jeu d'aventure textuel conçu pour vous aider à en savoir plus sur l'Agent Development Kit (ADK) de Google. Vous allez créer un agent d'IA autonome capable de jouer au jeu à votre place.
+C'est un cours, le lien : https://goo.gle/garden-forgotten-prompt
+
+7. Faire évoluer les noyaux GPU avec Gemini
+Projet de recherche démontrant une boucle agentique utilisant les modèles Gemini 2.5 Flash et Pro pour expérimenter et optimiser de manière itérative les noyaux GPU AMD pour les performances, ce qui a donné lieu à un article accepté à l'atelier ICML 2025 ES-FoMo.
+Vidéo YouTube, lien : https://goo.gle/gpu-kernels-Gemini
+
+8. Créer des agents personnalisés avec ADK, MCP et la banque de mémoire
+Pour créer un agent IA de qualité professionnelle, il ne suffit pas d'avoir un grand modèle de langage (LLM). Alors qu'un LLM fournit les capacités de raisonnement, un agent robuste doit interagir avec le monde extérieur, gérer l'état de la conversation et mémoriser les préférences des utilisateurs au fil du temps. Dans cet atelier, vous allez apprendre à concevoir et à créer un système agentique complet à l'aide de trois technologies fondamentales : la connectivité (MCP), l'orchestration (ADK) et la mémoire (Memory Bank).
+lien : https://goo.gle/building-personalized-agents-adk-mcp
+
+9. Créer un agent ADK Location Intelligence avec des serveurs MCP pour BigQuery et Google Maps
+Créez un agent d'intelligence géographique à l'aide d'Agent Development Kit (ADK) et de Gemini 3.0 Pro. Utilisez des serveurs MCP (Model Context Protocol) distants pour accéder de manière sécurisée à BigQuery et Google Maps. Votre agent pourra ainsi résoudre des problèmes commerciaux grâce à l'analyse de données de localisation réelles
+lien : https://goo.gle/build-location-intelligence-adk-mcp
+
+10. Évaluer des agents avec ADK
+Évaluez les agents IA non déterministes à l'aide du framework automatisé d'Agent Development Kit (ADK). Parcourez le cycle de vie des tests professionnels, y compris l'inspection visuelle, les tests unitaires et l'intégration CI/CD.
+lien : https://goo.gle/evaluating-agents-adk
+
+11. Analyser l'exécution de l'agent ADK avec le plug-in BigQuery Agent Analytics
+Créez un système multi-agents avec Agent Development Kit (ADK) et suivez l'activité à l'aide du plug-in BigQuery Agent Analytics. Examinez les traces de conversation et l'utilisation des outils dans BigQuery pour comprendre l'exécution de votre agent.
+lien : https://goo.gle/adk-agent-execution-big-query-agent-analytics-plugin
+
+12. Premiers pas avec MCP, ADK et A2A
+Créez un agent de devises qui effectue des conversions entre différentes devises à l'aide du protocole MCP (Model Context Protocol), de l'Agent Development Kit (ADK) et du protocole Agent2Agent (A2A). Découvrez comment ces technologies fonctionnent ensemble pour permettre des interactions autonomes avec les agents.
+lien : https://goo.gle/getting-started-mcp-adk-a2a
+
+13. La pile d'agents Google en action : ADK, A2A et MCP sur Google Cloud
+Créons un système multi-agents et d'écoute sociale avancée optimisé par l'IA pour offrir des expériences sociales hyper personnalisées à l'aide d'ADK, A2A et MCP. Dans cet atelier, vous apprendrez les bases avec le kit ADK de Google, à étendre les capacités des agents avec MCP, à concevoir des interactions et une orchestration d'agents, à créer des systèmes multi-agents collaboratifs et à mettre en production des agents sur Google Cloud.
+lien : https://goo.gle/agent-stack-in-action
+
+14. Premiers pas avec Agent Development Kit (ADK)
+Dans cet atelier, vous allez créer un agent unique capable d'utiliser un outil de recherche. Vous allez tester les agents dans l'interface utilisateur du navigateur ADK, à partir d'une interface de chat CLI et de manière programmatique à partir d'un script.
+lien : https://goo.gle/agent-dev-kit
+
+15. Créer des systèmes multi-agents avec ADK
+Dans cet atelier, vous allez découvrir les systèmes multi-agents à l'aide de l'Agent Development Kit.
+lien : https://goo.gle/mutli-agent-systems-adk
+
+16. Agentverse - The Shadowblade's Codex - Vibecoding with Gemini CLI
+Cet atelier est le guide de référence pour les entreprises qui souhaitent maîtriser l'avenir agentique sur Google Cloud. Nous vous proposons une feuille de route de bout en bout qui vous guide de la première idée à une réalité opérationnelle à grande échelle. Dans ces quatre ateliers interconnectés, vous apprendrez comment les compétences spécialisées d'un développeur, d'un architecte, d'un ingénieur des données et d'un ingénieur SRE doivent converger pour créer, gérer et faire évoluer un Agentverse puissant.
+lien : https://goo.gle/vibecoding-gemini-cli
+
+
+
+------------------------------------------------------
+2. RESSOURCES ou MODULES PARCOURS DE KOTLIN 
+------------------------------------------------------
+
+1. LiteRT pour Android
+Découvrez LiteRT pour Android, un système qui fournit des environnements d'exécution prédéfinis et personnalisables pour exécuter des modèles TensorFlow, PyTorch et JAX rapidement et efficacement dans vos applications Android.
+lien : https://goo.gle/edge-litert-android
+
+2. API ML Kit GenAI
+Découvrez les API d'IA générative de ML Kit, qui utilisent Gemini Nano pour aider votre application à effectuer des tâches. Vous découvrirez comment ces API fournissent une interface de haut niveau pour les cas d'utilisation courants, le tout grâce au traitement sur l'appareil via AICore.
+C'est une documentation, lien : https://goo.gle/ml-kit-genai-apis
+
+3. Documentation Android AI
+Créez des expériences intelligentes sur Android avec l'IA.
+C'est une documentation, lien : https://goo.gle/devfest24-ai-on-android
+
+4. Logique d'IA Firebase
+Créez des applications et des fonctionnalités mobiles et Web optimisées par l'IA avec les modèles Gemini et Imagen à l'aide de Firebase AI Logic.
+C'est une documentation, lien: https://goo.gle/devfest24-gemini-api-vertex
+
+5. IA générative intégrée à l'appareil avec des modèles ouverts
+L'API Inference LLM vous permet d'exécuter des grands modèles de langage (LLM) entièrement sur l'appareil pour les applications Android. Vous pouvez les utiliser pour effectuer un large éventail de tâches, comme générer du texte, récupérer des informations sous forme de langage naturel et résumer des documents.
+C'est une documentation, lien : https://goo.gle/devfest24-llm-inference-android
+
+------------------------------------------------------
+3. RESSOURCES ou MODULES PARCOURS D'ANGULAR 
+------------------------------------------------------
+
+1. Kit de démarrage Angular + Vertex AI
+Ce dépôt contient tout ce dont vous avez besoin pour créer une application à l'aide de Vertex AI dans Firebase avec Angular.
+lien : https://goo.gle/vertex-angular-starter-kit
+
+2. Kit de démarrage Angular + Genkit
+Ce dépôt contient tout ce dont vous avez besoin pour créer une application à l'aide de Genkit avec Angular.
+lien : https://goo.gle/genkit-angular-starter-kit
+
+3. Outil de création de stories Angular + Genkit
+Cette démonstration utilise Angular et Genkit pour créer une bande dessinée interactive de type "choisissez votre propre aventure".
+lien : https://goo.gle/genkit-angular-story-generator
+
+
+------------------------------------------------------
+4. RESSOURCES ou MODULES PARCOURS DE CLOUD 
+------------------------------------------------------
+
+1. Créer un outil de synthèse YouTube optimisé par Gemini
+Cet atelier vous explique comment créer une application Web qui résume les vidéos YouTube, ce qui permet aux utilisateurs de comprendre rapidement le contenu principal sans regarder la vidéo entière. Vous allez acquérir une compréhension pratique de l'utilisation de l'API Gemini et du SDK Google Gen AI, en les intégrant pour créer une application fonctionnelle permettant d'extraire efficacement des informations.
+lien : https://goo.gle/gemini-youtube-summarizer
+
+2. IA agentique avec Google Cloud
+Cet atelier présente le concept de systèmes multi-agents et leur application pratique à l'aide de LangGraph. Vous apprendrez à créer des agents individuels avec des outils d'interaction avec les bases de données et de recherche sur Internet via l'API Gemini, puis à les orchestrer dans différentes configurations, y compris des configurations collaboratives. Cet atelier explique comment utiliser plusieurs LLM pour différents rôles, générer du contenu dynamique et déployer un système multi-agent complet sur Google Cloud. Il fournit une compréhension globale du développement et du déploiement des agents.
+lien : https://goo.gle/Multi-Agent-Systems
+
+3. Gemini avec Vertex AI et LangChain4j
+Cet atelier pratique vous permet de créer des applications avec Gemini en Java ou en Python. Vous allez apprendre à envoyer des requêtes à Gemini, à gérer le streaming et les réponses synchrones, à créer un chatbot, à traiter les entrées textuelles et imagées, à extraire des données structurées à partir de texte brut, à utiliser des modèles de requêtes, à effectuer une analyse du sentiment et à implémenter la génération augmentée par récupération (RAG). Vous apprendrez même à utiliser Gemma, le modèle ouvert de Google, sur votre ordinateur local avec Ollama. Vous repartirez avec les compétences nécessaires pour utiliser Gemini dans vos projets Java ou Python immédiatement avec LangChain et LangChain4j.
+lien :  https://goo.gle/gemini-in-java
+
+4. Présentation des tests avec Gemini Code Assist
+Cet atelier de programmation se concentre sur l'utilisation de Gemini Code Assist pour améliorer la qualité et les fonctionnalités d'une application Web Python existante. Vous apprendrez à générer des tests, à identifier et à corriger les erreurs, et à étendre les fonctionnalités de l'application, le tout avec l'aide de Gemini Code Assist. Même si vous n'avez pas de connaissances approfondies en Python, vous découvrirez comment Gemini peut vous aider à générer des tests et du code, et à comprendre les concepts Google Cloud dans l'éditeur Cloud Shell.
+lien : https://goo.gle/testing-with-gemini-code-assist
+
+5. Personnalisation du code avec Gemini Code Assist Enterprise
+Cet atelier de programmation vise à exploiter la fonctionnalité de personnalisation du code de Gemini Code Assist Enterprise pour améliorer la pertinence des suggestions de code en indexant vos dépôts privés. Vous apprendrez à préparer Gemini Code Assist pour adapter les suggestions à vos conventions et modèles de codage spécifiques, et à exclure les fichiers sensibles ou non pertinents à l'aide d'un fichier .aiexclude. L'atelier souligne que l'indexation de vos bases de code privées ne permet pas à Gemini d'entraîner votre code privé de manière globale. Il nécessite un projet Google Cloud avec Gemini Code Assist activé, un dépôt privé et un IDE avec Gemini Code Assist installé.
+lien : https://goo.gle/code-assist-enterprise
+
+6. Aidemy: créer des systèmes multi-agents avec LangGraph, l'EDA et l'IA générative sur Google Cloud
+Cet atelier vous apprend à créer, à orchestrer et à déployer des systèmes multi-agents collaboratifs complexes à l'aide d'outils tels que LangGraph, divers LLM et Google Cloud pour surmonter les limites des agents individuels et relever les défis inhérents.
+lien : https://goo.gle/Multi-Agent-Systems
+
+7. De Monolith 🗿 à Magic ✨ : atelier DevOps optimisé par l'IA
+Vous en avez assez de la lenteur et du caractère manuel de la modernisation des applications ? Et si vous pouviez conteneuriser 📦, déployer 🚀, refactoriser et ajouter de nouvelles fonctionnalités d'IA puissantes grâce à une automatisation fluide ? C'est précisément ce que nous allons faire dans cet atelier pratique. Pour tous les experts DevOps, nous allons retrousser nos manches et dompter la bête 🗿. Vous allez acquérir une expérience pratique de la conteneurisation d'une application existante avec Docker, de son déploiement dans le bonheur sans serveur de Google Cloud Run et de la création d'un pipeline CI/CD solide et entièrement automatisé. Nous utiliserons même Gemini pour nous aider à refactoriser et à nettoyer notre code, car qui n'aime pas les révisions de code optimisées par l'IA ? 🔧 Et pour les aventuriers de l'IA, préparez-vous à être éblouis ! Nous allons exploiter la puissance de l'IA générative en créant une fonction événementielle qui utilise le modèle Gemini Vision pour analyser automatiquement les images dès qu'elles sont importées. Le secret ? Un montage de fichier "magique" 🪄 Cloud Run qui rend notre intégration d'IA fluide, puissante et incroyablement cool. 🤖✨ Il ne s'agit pas seulement d'une conférence, mais d'un atelier pratique où vous repartirez avec une application déployée et optimisée par l'IA, ainsi que les compétences nécessaires pour automatiser et innover dans votre propre travail. Créons ensemble quelque chose d'extraordinaire !
+lien : https://goo.gle/app-mod-workshop
+
+
+------------------------------------------------------
+5. RESSOURCES ou MODULES PARCOURS DE FLUTTER 
+------------------------------------------------------
+
+1. Passer en production: créer une application d'IA avec Flutter
+Découvrez comment utiliser Flutter pour créer et valider rapidement des applications, accélérant ainsi le passage de l'idée à la production. Créez un prototype d'une solution d'IA générative, puis créez une application qui exploite Vertex AI dans Firebase.
+lien : https://goo.gle/flutter-youtube
+
+2. Créer des agents d'IA générative avec Vertex AI Agent Builder et Flutter
+Boostez votre workflow de développement d'IA générative avec Vertex AI et Flutter. Intégrez facilement vos outils existants et exploitez nos composants et architectures prédéfinis pour accélérer le prototypage et déployer des agents d'IA générative de qualité production dans vos applications.
+lien : https://goo.gle/agent-builder-and-flutter
+
+3. AI Toolkit | Flutter
+Découvrez comment configurer et utiliser le kit d'outils Flutter AI pour ajouter des fenêtres de chat d'IA en temps réel à vos applications. Vous trouverez des exemples de code pour l'intégration à différents fournisseurs de LLM.
+lien : https://goo.gle/ai-toolkit-flutter
+
+4. Firebase Vertex AI (Package of the Week)
+Découvrez comment intégrer l'IA générative à vos applications Flutter à l'aide de Firebase Vertex AI et de l'API Gemini.
+Lien : https://goo.gle/firebase_vertexai_yt
+
+5. Créer des mots croisés multijoueurs avec Gemini, Flutter et Firebase
+Découvrez comment les équipes d'ingénieurs de Google ont créé un jeu de mots croisés multijoueur à l'aide de Gemini, Flutter et Firebase.
+Lien : https://goo.gle/solution-crossword
+
+6. Atelier de programmation Flutter + Vertex AI
+Une application Flutter interactive qui exploite directement la puissance de l'API Gemini dans votre application Flutter.
+Lien : https://goo.gle/gemini-flutter-app
+
+
+------------------------------------------------------
+6. RESSOURCES ou MODULES PARCOURS DE WEB 
+------------------------------------------------------
+
+1. Encourager les avis utiles sur les produits grâce à l'IA Web côté client
+Découvrez comment exploiter l'IA sur l'appareil dans les applications Web pour améliorer la qualité des avis sur les produits, à l'aide de techniques telles que les contrôles de toxicité, l'analyse du sentiment et les notes générées automatiquement.
+Documentation, lien : https://goo.gle/client-side-web-AI
+
+2. Traduction côté client avec l'IA
+Découvrez comment exploiter l'IA sur l'appareil pour une traduction fluide et respectueuse de la confidentialité dans les fonctionnalités Web telles que le chat, et améliorer l'expérience utilisateur en réduisant la latence.
+Documentation, lien : https://goo.gle/client-slide-translation
+
+3. Utiliser l'API Gemini dans une extension Chrome
+Cet exemple montre comment utiliser l'API Gemini Cloud dans une extension Chrome.
+Dépôt GitHub, lien : https://goo.gle/chrome-extensions-samples-tree
+
+4. IA sur l'appareil avec Gemini Nano
+L'extension fournit une interface de chat à l'aide de l'API Prompt avec le modèle Gemini Nano intégré à Chrome.
+Dépôt GitHub, lien : https://goo.gle/3Q4xmgM
+
+5. Synthèse sur l'appareil avec Gemini Nano
+L'extension résume le contenu de l'onglet actuellement ouvert. Il utilise la bibliothèque de lisibilité de Mozilla pour extraire le contenu de l'onglet actuellement actif et affiche un résumé de la page généré par l'API de résumé expérimentale de Chrome dans un panneau latéral.
+Dépôt GitHub, lien : https://goo.gle/ai-gemini-on-device-summarization
