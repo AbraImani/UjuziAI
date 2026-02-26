@@ -88,7 +88,7 @@ export function useSubmission() {
   const { user } = useAuth();
 
   async function submitProof(moduleId, data) {
-    if (!user) throw new Error('Not authenticated');
+    if (!user) throw new Error('Vous devez être connecté');
 
     const { images, videoUrl, description } = data;
     const imageUrls = [];
@@ -96,13 +96,21 @@ export function useSubmission() {
     // Upload images to Firebase Storage
     if (images && images.length > 0) {
       for (const image of images) {
-        const storageRef = ref(
-          storage,
-          `submissions/${user.uid}/${moduleId}/${Date.now()}_${image.name}`
-        );
-        const snapshot = await uploadBytes(storageRef, image);
-        const url = await getDownloadURL(snapshot.ref);
-        imageUrls.push(url);
+        try {
+          const storageRef = ref(
+            storage,
+            `submissions/${user.uid}/${moduleId}/${Date.now()}_${image.name}`
+          );
+          const snapshot = await uploadBytes(storageRef, image);
+          const url = await getDownloadURL(snapshot.ref);
+          imageUrls.push(url);
+        } catch (uploadError) {
+          console.error('Image upload failed:', uploadError.code, uploadError.message);
+          if (uploadError.code === 'storage/unauthorized' || uploadError.code === 'storage/unknown') {
+            throw new Error('Firebase Storage n\'est pas activé. Activez-le dans la console Firebase → Storage → Get Started.');
+          }
+          throw new Error(`Échec de l'upload de l'image "${image.name}": ${uploadError.message}`);
+        }
       }
     }
 
