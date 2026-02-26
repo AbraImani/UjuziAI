@@ -93,7 +93,7 @@ export function useSubmission() {
     const { images, videoUrl, description } = data;
     const imageUrls = [];
 
-    // Try uploading images to Firebase Storage — gracefully skip if Storage is not activated
+    // Upload images to Firebase Storage
     if (images && images.length > 0) {
       for (const image of images) {
         try {
@@ -105,8 +105,8 @@ export function useSubmission() {
           const url = await getDownloadURL(snapshot.ref);
           imageUrls.push(url);
         } catch (uploadError) {
-          console.warn('Image upload skipped (Storage may not be activated):', uploadError.code);
-          // Don't block submission — just skip images if Storage is not available
+          console.error('Image upload failed:', uploadError.code, uploadError.message);
+          throw new Error(`Échec de l'upload de l'image "${image.name}". Réessayez.`);
         }
       }
     }
