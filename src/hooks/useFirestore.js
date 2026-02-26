@@ -216,16 +216,87 @@ export function useExam() {
     return true;
   }
 
-  async function completeExam(examId, moduleId) {
+  async function completeExam(examId, moduleId, questions) {
     if (!user) throw new Error('Not authenticated');
 
     const examRef = doc(db, 'exams', examId);
+    const examSnap = await getDoc(examRef);
+    if (!examSnap.exists()) throw new Error('Exam not found');
+
+    const examData = examSnap.data();
+    const answers = examData.answers || [];
+
+    // Score MCQ questions automatically
+    let mcqCorrect = 0;
+    let mcqTotal = 0;
+    let openCount = 0;
+
+    if (questions && questions.length > 0) {
+      questions.forEach((q, index) => {
+        if (q.type === 'mcq') {
+          mcqTotal++;
+          const userAnswer = answers[index]?.answer;
+          if (userAnswer === q.correct) {
+            mcqCorrect++;
+          }
+        } else if (q.type === 'open') {
+          openCount++;
+        }
+      });
+    }
+
+    // MCQ worth 7 points, open worth 3 points
+    // MCQ score = (correct / total) * 7, rounded
+    const mcqScore = mcqTotal > 0 ? Math.round((mcqCorrect / mcqTotal) * 7) : 0;
+    
+    // For open-ended: give 2/3 points by default (generous baseline)
+    // In production, this would be scored by AI agents
+    const openScore = openCount > 0 ? 2 : 0;
+    
+    const totalScore = Math.min(mcqScore + openScore, 10);
+    const passed = totalScore >= EXAM_CONFIG.PASSING_SCORE;
+
+    // Update exam document
     await updateDoc(examRef, {
       status: 'completed',
       completedAt: serverTimestamp(),
+      mcqScore,
+      openScore,
+      totalScore,
+      mcqCorrect,
+      mcqTotal,
     });
 
-    return examId;
+    // Update user progress with score
+    const progressRef = doc(db, 'users', user.uid, 'progress', moduleId);
+    const progressSnap = await getDoc(progressRef);
+    const existingScore = progressSnap.exists() ? (progressSnap.data().examScore || 0) : 0;
+    
+    // Keep the best score
+    const bestScore = Math.max(existingScore, totalScore);
+    
+    const badgeId = passed ? `badge-${moduleId}-${user.uid.slice(0, 6)}-${Date.now().toString(36)}` : null;
+
+    await updateDoc(progressRef, {
+      examScore: bestScore,
+      lastExamScore: totalScore,
+      ...(passed && !existingScore >= EXAM_CONFIG.PASSING_SCORE ? { badgeId } : {}),
+    });
+
+    // Update user totalScore
+    const userRef = doc(db, 'users', user.uid);
+    const userSnap = await getDoc(userRef);
+    if (userSnap.exists()) {
+      // Recalculate total score from all progress
+      const allProgressSnap = await getDocs(collection(db, 'users', user.uid, 'progress'));
+      let newTotalScore = 0;
+      allProgressSnap.forEach((p) => {
+        newTotalScore += (p.data().examScore || 0);
+      });
+      await updateDoc(userRef, { totalScore: newTotalScore });
+    }
+
+    return { totalScore, mcqScore, openScore, passed, badgeId };
   }
 
   return { getExamStatus, startExam, submitAnswer, completeExam };

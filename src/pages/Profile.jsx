@@ -28,9 +28,18 @@ export default function Profile() {
       {/* Profile Header */}
       <div className="glass-card p-8 mb-6">
         <div className="flex flex-col md:flex-row items-center gap-6">
-          <div className="w-24 h-24 bg-primary-600/30 rounded-2xl flex items-center justify-center text-3xl font-bold text-primary-300">
-            {user?.displayName?.[0]?.toUpperCase() || 'U'}
-          </div>
+          {user?.photoURL ? (
+            <img
+              src={user.photoURL}
+              alt={user.displayName || ''}
+              className="w-24 h-24 rounded-2xl object-cover border-2 border-primary-500/30"
+              referrerPolicy="no-referrer"
+            />
+          ) : (
+            <div className="w-24 h-24 bg-primary-600/30 rounded-2xl flex items-center justify-center text-3xl font-bold text-primary-300">
+              {user?.displayName?.[0]?.toUpperCase() || 'U'}
+            </div>
+          )}
           <div className="text-center md:text-left flex-1">
             <h1 className="text-2xl font-bold text-heading">{user?.displayName || 'User'}</h1>
             <div className="flex flex-col md:flex-row items-center gap-3 mt-2 text-body text-sm">

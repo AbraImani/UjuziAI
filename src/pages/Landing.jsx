@@ -66,8 +66,8 @@ export default function Landing() {
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6 mt-14 sm:mt-20 max-w-4xl mx-auto">
           {[
-            { label: 'Modules', value: '16', icon: BookOpen },
-            { label: 'Apprenants', value: '500+', icon: Users },
+            { label: 'Modules', value: '15', icon: BookOpen },
+            { label: 'Parcours', value: '5', icon: Users },
             { label: 'Certifications', value: '200+', icon: Trophy },
             { label: 'Agents IA', value: '4', icon: Brain },
           ].map(({ label, value, icon: Icon }) => (
@@ -191,13 +191,17 @@ export default function Landing() {
 
       {/* Footer */}
       <footer className="border-t border-themed py-6 sm:py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col items-center gap-3 sm:gap-4">
           <div className="flex items-center gap-2">
             <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-primary-500" />
             <span className="font-semibold text-body text-sm sm:text-base">UjuziAI</span>
           </div>
-          <p className="text-xs sm:text-sm text-muted">
+          <p className="text-xs sm:text-sm text-muted text-center">
             © {new Date().getFullYear()} UjuziAI. Build with AI Season.
+          </p>
+          <p className="text-xs sm:text-sm text-body font-medium text-center">
+            <span className="sm:hidden">GDG on Campus UCB</span>
+            <span className="hidden sm:inline">GDG on Campus Université Catholique de Bukavu</span>
           </p>
         </div>
       </footer>

@@ -16,6 +16,12 @@ import {
   Workflow,
   Server,
   BookOpen,
+  Globe,
+  Hexagon,
+  Code,
+  Flame,
+  Palette,
+  Layout,
 } from 'lucide-react';
 
 const iconMap = {
@@ -35,8 +41,18 @@ const iconMap = {
   search: Search,
   workflow: Workflow,
   server: Server,
+  globe: Globe,
+  hexagon: Hexagon,
+  code: Code,
+  flame: Flame,
+  palette: Palette,
+  layout: Layout,
 };
 
 export function getModuleIcon(iconName) {
+  return iconMap[iconName] || BookOpen;
+}
+
+export function getTrackIcon(iconName) {
   return iconMap[iconName] || BookOpen;
 }

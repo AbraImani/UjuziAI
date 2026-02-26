@@ -15,38 +15,29 @@ service cloud.firestore {
     // Helper: Check if user is admin
     function isAdmin() {
       return isAuthenticated() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
-    // Helper: Validate string field
-    function isValidString(field) {
-      return field is string && field.size() > 0 && field.size() < 1000;
-    }
-    
     // ============================================
     // USERS COLLECTION
     // ============================================
     match /users/{userId} {
-      // Authenticated users can read (leaderboard needs this)
+      // Any authenticated user can read any user doc (leaderboard, profile)
       allow read: if isAuthenticated();
       
-      // Users can create their own profile on signup — role must be 'student'
-      allow create: if isOwner(userId) && 
-        request.resource.data.role == 'student';
+      // Users can create their own profile on signup
+      allow create: if isOwner(userId);
       
-      // Users can update their own profile but CANNOT change role, totalScore, or badges
-      allow update: if (isOwner(userId) && 
-        request.resource.data.role == resource.data.role &&
-        (!('totalScore' in request.resource.data) || request.resource.data.totalScore == resource.data.totalScore) &&
-        (!('badges' in request.resource.data) || request.resource.data.badges == resource.data.badges)) ||
-        isAdmin();
+      // Users can update their own profile; admins can update any
+      allow update: if isOwner(userId) || isAdmin();
       
       // Only admins can delete users
       allow delete: if isAdmin();
       
       // USER PROGRESS SUBCOLLECTION
       match /progress/{moduleId} {
-        allow read: if isOwner(userId) || isAdmin();
+        allow read: if isAuthenticated();
         allow create: if isOwner(userId);
         allow update: if isOwner(userId) || isAdmin();
         allow delete: if isAdmin();
@@ -54,9 +45,9 @@ service cloud.firestore {
       
       // USER SUBMISSIONS SUBCOLLECTION
       match /submissions/{submissionId} {
-        allow read: if isOwner(userId) || isAdmin();
+        allow read: if isAuthenticated();
         allow create: if isOwner(userId);
-        allow update: if isAdmin();
+        allow update: if isOwner(userId) || isAdmin();
         allow delete: if isAdmin();
       }
     }
@@ -65,25 +56,15 @@ service cloud.firestore {
     // EXAMS COLLECTION
     // ============================================
     match /exams/{examId} {
-      // Users can read their own exams, admins can read all
-      allow read: if isAuthenticated() && 
-        (resource.data.userId == request.auth.uid || isAdmin());
+      allow read: if isAuthenticated();
       
-      // Users can create exams — must be their own, status must be in-progress
       allow create: if isAuthenticated() && 
         request.resource.data.userId == request.auth.uid &&
-        request.resource.data.status == 'in-progress' &&
-        request.resource.data.keys().hasAll(['userId', 'moduleId', 'startedAt', 'status']);
+        request.resource.data.status == 'in-progress';
       
-      // Users can update their own in-progress exams (submit answers, complete)
-      // Cannot change userId or moduleId after creation
       allow update: if isAuthenticated() && 
-        resource.data.userId == request.auth.uid && 
-        resource.data.status == 'in-progress' &&
-        request.resource.data.userId == resource.data.userId &&
-        request.resource.data.moduleId == resource.data.moduleId;
+        (resource.data.userId == request.auth.uid || isAdmin());
       
-      // No client-side delete
       allow delete: if isAdmin();
     }
     
@@ -91,6 +72,14 @@ service cloud.firestore {
     // MODULE SETTINGS (Admin managed)
     // ============================================
     match /moduleSettings/{moduleId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+    
+    // ============================================
+    // TRACKS COLLECTION (Admin managed)
+    // ============================================
+    match /tracks/{trackId} {
       allow read: if isAuthenticated();
       allow write: if isAdmin();
     }

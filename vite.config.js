@@ -8,7 +8,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'icon-192.svg', 'icon-512.svg'],
+      includeAssets: ['favicon.png', 'icon-192.svg', 'icon-512.svg'],
       manifest: {
         name: 'UjuziAI',
         short_name: 'UjuziAI',

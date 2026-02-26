@@ -147,6 +147,7 @@ export default function ExamInterface({ moduleId, examId, questions, onComplete 
   const [currentAnswer, setCurrentAnswer] = useState(null);
   const [showWarning, setShowWarning] = useState(false);
   const [completing, setCompleting] = useState(false);
+  const [result, setResult] = useState(null);
   const { submitAnswer, completeExam } = useExam();
   const navigate = useNavigate();
 
@@ -178,9 +179,14 @@ export default function ExamInterface({ moduleId, examId, questions, onComplete 
       // Complete exam
       setCompleting(true);
       try {
-        await completeExam(examId, moduleId);
-        toast.success('Examen terminé ! Les résultats sont en cours de traitement.');
-        onComplete?.();
+        const examResult = await completeExam(examId, moduleId, questions);
+        setResult(examResult);
+        if (examResult.passed) {
+          toast.success(`Examen réussi ! Score : ${examResult.totalScore}/10 🎉`);
+        } else {
+          toast(`Score : ${examResult.totalScore}/10. Il faut ${EXAM_CONFIG.PASSING_SCORE}/10 pour réussir.`);
+        }
+        onComplete?.(examResult);
       } catch (err) {
         toast.error('Erreur lors de la finalisation de l\'examen');
       } finally {

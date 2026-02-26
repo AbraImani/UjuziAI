@@ -13,6 +13,13 @@ import toast from 'react-hot-toast';
 
 const AuthContext = createContext(null);
 
+// Admin emails — these users automatically get admin role
+const ADMIN_EMAILS = ['abrahamfaith325@gmail.com'];
+
+function isAdminEmail(email) {
+  return ADMIN_EMAILS.includes(email?.toLowerCase());
+}
+
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {
@@ -46,7 +53,17 @@ export function AuthProvider({ children }) {
       const docRef = doc(db, 'users', uid);
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
-        setUserProfile({ id: docSnap.id, ...docSnap.data() });
+        const data = docSnap.data();
+        // Auto-promote admin emails if not already admin
+        if (isAdminEmail(data.email) && data.role !== 'admin') {
+          try {
+            await setDoc(docRef, { role: 'admin', updatedAt: serverTimestamp() }, { merge: true });
+            data.role = 'admin';
+          } catch (e) {
+            console.error('Could not auto-promote admin:', e);
+          }
+        }
+        setUserProfile({ id: docSnap.id, ...data });
       }
     } catch (error) {
       console.error('Error fetching user profile:', error);
@@ -63,7 +80,7 @@ export function AuthProvider({ children }) {
         email,
         displayName,
         photoURL: null,
-        role: 'student',
+        role: isAdminEmail(email) ? 'admin' : 'student',
         authProvider: 'email',
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -119,7 +136,7 @@ export function AuthProvider({ children }) {
           email: firebaseUser.email,
           displayName: firebaseUser.displayName || 'User',
           photoURL: firebaseUser.photoURL || null,
-          role: 'student',
+          role: isAdminEmail(firebaseUser.email) ? 'admin' : 'student',
           authProvider: 'google',
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),

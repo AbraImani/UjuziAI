@@ -131,6 +131,7 @@ export default function Exam() {
   const [questions, setQuestions] = useState([]);
   const [examStarted, setExamStarted] = useState(false);
   const [examComplete, setExamComplete] = useState(false);
+  const [examResult, setExamResult] = useState(null);
 
   useEffect(() => {
     async function checkStatus() {
@@ -156,7 +157,8 @@ export default function Exam() {
     }
   };
 
-  const handleComplete = () => {
+  const handleComplete = (result) => {
+    setExamResult(result);
     setExamComplete(true);
   };
 
@@ -183,19 +185,36 @@ export default function Exam() {
 
   // Exam completed screen
   if (examComplete) {
+    const passed = examResult?.passed;
     return (
       <div className="min-h-screen bg-body flex items-center justify-center p-4">
         <div className="glass-card p-12 max-w-md w-full text-center animate-scale-in">
-          <CheckCircle className="w-20 h-20 text-accent-400 mx-auto mb-6" />
-          <h2 className="text-2xl font-bold text-heading mb-3">Examen terminé !</h2>
+          {passed ? (
+            <CheckCircle className="w-20 h-20 text-accent-400 mx-auto mb-6" />
+          ) : (
+            <AlertTriangle className="w-20 h-20 text-amber-400 mx-auto mb-6" />
+          )}
+          <h2 className="text-2xl font-bold text-heading mb-3">
+            {passed ? 'Examen réussi ! 🎉' : 'Examen terminé'}
+          </h2>
+          <div className="mb-4">
+            <p className="text-4xl font-bold gradient-text mb-1">
+              {examResult?.totalScore || 0}/10
+            </p>
+            <p className="text-sm text-body">
+              QCM : {examResult?.mcqCorrect || 0}/{examResult?.mcqTotal || 7} • Ouvertes : {examResult?.openScore || 0}/3
+            </p>
+          </div>
           <p className="text-body mb-8">
-            Vos réponses sont en cours d'évaluation par nos agents IA. Les résultats seront disponibles sous peu sur la page du module.
+            {passed
+              ? 'Félicitations ! Vous avez obtenu votre badge de certification. Consultez votre certificat dans la page du module.'
+              : `Score minimum requis : ${EXAM_CONFIG.PASSING_SCORE}/10. Revoyez le codelab et réessayez.`}
           </p>
           <button
             onClick={() => navigate(`/module/${moduleId}`)}
             className="btn-primary w-full"
           >
-            Voir les résultats
+            {passed ? 'Voir le certificat' : 'Retour au module'}
           </button>
         </div>
       </div>

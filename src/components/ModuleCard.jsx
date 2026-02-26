@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { DIFFICULTY_COLORS } from '../config/modules';
+import { DIFFICULTY_COLORS, getTrackById } from '../config/modules';
 import { getModuleIcon } from '../config/icons';
 import { CheckCircle, Lock, Clock, ArrowRight, BookOpen } from 'lucide-react';
 
@@ -8,6 +8,7 @@ export default function ModuleCard({ module, progress }) {
   const isSubmitted = progress?.submitted;
   const isLocked = progress?.examLocked;
   const hasExamAccess = progress?.examUnlocked;
+  const track = getTrackById(module.trackId);
 
   function getStatusBadge() {
     if (isLocked) {
@@ -51,6 +52,11 @@ export default function ModuleCard({ module, progress }) {
 
         {/* Meta */}
         <div className="flex flex-wrap gap-2 mb-4">
+          {track && (
+            <span className={`badge border ${track.badgeClass}`}>
+              {track.shortName}
+            </span>
+          )}
           <span className={`badge border ${DIFFICULTY_COLORS[module.difficulty]}`}>
             {module.difficulty}
           </span>

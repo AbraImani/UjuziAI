@@ -82,9 +82,18 @@ export default function Layout({ children }) {
           </button>
 
           <div className="flex items-center gap-3 px-4 py-3">
-            <div className="w-9 h-9 bg-primary-600/30 rounded-full flex items-center justify-center text-primary-600 dark:text-primary-300 text-sm font-bold">
-              {user?.displayName?.[0]?.toUpperCase() || 'U'}
-            </div>
+            {user?.photoURL ? (
+              <img
+                src={user.photoURL}
+                alt=""
+                className="w-9 h-9 rounded-full object-cover border-2 border-primary-500/30"
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <div className="w-9 h-9 bg-primary-600/30 rounded-full flex items-center justify-center text-primary-600 dark:text-primary-300 text-sm font-bold">
+                {user?.displayName?.[0]?.toUpperCase() || 'U'}
+              </div>
+            )}
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-heading truncate">
                 {user?.displayName || 'User'}
@@ -167,19 +176,27 @@ export default function Layout({ children }) {
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top bar - mobile */}
         <header className="lg:hidden flex items-center justify-between p-4 bg-surface border-b border-themed sticky top-0 z-40">
-          <button onClick={() => setSidebarOpen(true)} className="text-body">
-            <Menu className="w-6 h-6" />
-          </button>
-          <Link to="/dashboard" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
-              <Zap className="w-4 h-4 text-white" />
-            </div>
-            <span className="font-bold gradient-text">UjuziAI</span>
-          </Link>
+          <div className="flex items-center gap-3">
+            <button onClick={() => setSidebarOpen(true)} className="text-body">
+              <Menu className="w-6 h-6" />
+            </button>
+            <Link to="/dashboard">
+              <span className="font-bold gradient-text text-lg">UjuziAI</span>
+            </Link>
+          </div>
           <Link to="/profile">
-            <div className="w-8 h-8 bg-primary-600/30 rounded-full flex items-center justify-center text-primary-600 dark:text-primary-300 text-xs font-bold">
-              {user?.displayName?.[0]?.toUpperCase() || 'U'}
-            </div>
+            {user?.photoURL ? (
+              <img
+                src={user.photoURL}
+                alt=""
+                className="w-8 h-8 rounded-full object-cover border-2 border-primary-500/30"
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <div className="w-8 h-8 bg-primary-600/30 rounded-full flex items-center justify-center text-primary-600 dark:text-primary-300 text-xs font-bold">
+                {user?.displayName?.[0]?.toUpperCase() || 'U'}
+              </div>
+            )}
           </Link>
         </header>
 
