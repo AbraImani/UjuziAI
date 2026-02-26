@@ -4,7 +4,7 @@ import { useAllProgress } from '../hooks/useFirestore';
 import { MODULES, TRACKS, getModulesByTrack, getTrackProgress } from '../config/modules';
 import ModuleCard from '../components/ModuleCard';
 import ProgressRing from '../components/ProgressRing';
-import { BookOpen, Trophy, Target, TrendingUp, Sparkles, ChevronRight, ChevronDown, ArrowLeft, Filter } from 'lucide-react';
+import { BookOpen, Trophy, Target, TrendingUp, Sparkles, ChevronRight, ArrowLeft, Filter } from 'lucide-react';
 
 const INITIAL_MODULE_COUNT = 4;
 
@@ -12,12 +12,10 @@ export default function Dashboard() {
   const { user, userProfile } = useAuth();
   const { progressMap, loading } = useAllProgress();
 
-  // View state: null = overview, trackId = track detail
+  // View state: null = overview, trackId = track detail, 'all' = all modules view
   const [activeTrack, setActiveTrack] = useState(null);
-  // "Voir tout" expansion state
-  const [showAll, setShowAll] = useState(false);
-  // Track filter for "all modules" view
-  const [filterTrack, setFilterTrack] = useState('all');
+  // Track filter for "all modules" view — supports multiple track selection
+  const [filterTracks, setFilterTracks] = useState([]);
 
   const completedCount = Object.values(progressMap).filter((p) => p.examScore >= 6).length;
   const submittedCount = Object.values(progressMap).filter((p) => p.submitted).length;
@@ -26,20 +24,25 @@ export default function Dashboard() {
 
   // Displayed modules depending on view
   const displayedModules = useMemo(() => {
-    if (activeTrack) {
+    if (activeTrack && activeTrack !== 'all') {
       return getModulesByTrack(activeTrack);
     }
-    let modules = filterTrack === 'all' ? MODULES : MODULES.filter((m) => m.trackId === filterTrack);
-    if (!showAll) {
-      return modules.slice(0, INITIAL_MODULE_COUNT);
+    if (activeTrack === 'all') {
+      if (filterTracks.length === 0) return MODULES;
+      return MODULES.filter((m) => filterTracks.includes(m.trackId));
     }
-    return modules;
-  }, [activeTrack, filterTrack, showAll]);
+    // Default overview: show first 4 modules
+    return MODULES.slice(0, INITIAL_MODULE_COUNT);
+  }, [activeTrack, filterTracks]);
 
   const totalFilteredModules = useMemo(() => {
-    if (activeTrack) return getModulesByTrack(activeTrack).length;
-    return filterTrack === 'all' ? MODULES.length : MODULES.filter((m) => m.trackId === filterTrack).length;
-  }, [activeTrack, filterTrack]);
+    if (activeTrack && activeTrack !== 'all') return getModulesByTrack(activeTrack).length;
+    if (activeTrack === 'all') {
+      if (filterTracks.length === 0) return MODULES.length;
+      return MODULES.filter((m) => filterTracks.includes(m.trackId)).length;
+    }
+    return MODULES.length;
+  }, [activeTrack, filterTracks]);
 
   const activeTrackData = activeTrack ? TRACKS.find((t) => t.id === activeTrack) : null;
 
@@ -118,12 +121,12 @@ export default function Dashboard() {
       {/* ============================================ */}
       {/* TRACK DETAIL VIEW */}
       {/* ============================================ */}
-      {activeTrack && activeTrackData ? (
+      {activeTrack && activeTrack !== 'all' && activeTrackData ? (
         <div>
           {/* Back button + Track header */}
           <div className="flex items-center gap-4 mb-6">
             <button
-              onClick={() => { setActiveTrack(null); setShowAll(false); }}
+              onClick={() => { setActiveTrack(null); setFilterTracks([]); }}
               className="p-2 rounded-xl border border-themed text-body hover:text-heading hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
               aria-label="Retour aux parcours"
             >
@@ -183,7 +186,7 @@ export default function Dashboard() {
                 return (
                   <button
                     key={track.id}
-                    onClick={() => { setActiveTrack(track.id); setShowAll(false); }}
+                    onClick={() => { setActiveTrack(track.id); setFilterTracks([]); }}
                     className="glass-card-hover p-5 text-left transition-all duration-300 group"
                   >
                     <div className="flex items-center justify-between mb-3">
@@ -212,37 +215,13 @@ export default function Dashboard() {
           </div>
 
           {/* ============================================ */}
-          {/* MODULES SECTION — "Voir tout" with filters  */}
+          {/* MODULES SECTION — "Voir tout" opens separate view */}
           {/* ============================================ */}
           <div>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
               <div className="flex items-center gap-3">
                 <BookOpen className="w-6 h-6 text-primary-400" />
-                <h2 className="section-title">
-                  {showAll ? 'Tous les modules' : 'Modules recommandés'}
-                </h2>
-              </div>
-
-              <div className="flex items-center gap-3">
-                {/* Track filter dropdown — visible when expanded */}
-                {showAll && (
-                  <div className="relative">
-                    <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
-                    <select
-                      id="track-filter"
-                      name="trackFilter"
-                      value={filterTrack}
-                      onChange={(e) => setFilterTrack(e.target.value)}
-                      className="pl-9 pr-8 py-2 rounded-xl border border-themed bg-card text-body text-sm appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500/30"
-                    >
-                      <option value="all">Tous les parcours</option>
-                      {TRACKS.map((t) => (
-                        <option key={t.id} value={t.id}>{t.shortName}</option>
-                      ))}
-                    </select>
-                    <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
-                  </div>
-                )}
+                <h2 className="section-title">Modules recommandés</h2>
               </div>
             </div>
 
@@ -269,28 +248,15 @@ export default function Dashboard() {
                   ))}
                 </div>
 
-                {/* "Voir tout" button when collapsed */}
-                {!showAll && totalFilteredModules > INITIAL_MODULE_COUNT && (
+                {/* "Voir tout" button — opens dedicated section */}
+                {MODULES.length > INITIAL_MODULE_COUNT && (
                   <div className="flex justify-center mt-8">
                     <button
-                      onClick={() => setShowAll(true)}
+                      onClick={() => { setActiveTrack('all'); setFilterTracks([]); }}
                       className="flex items-center gap-2 px-6 py-3 rounded-xl border border-themed text-body hover:text-heading hover:bg-black/5 dark:hover:bg-white/5 transition-all duration-200 text-sm font-medium"
                     >
-                      Voir les {totalFilteredModules} modules
-                      <ChevronDown className="w-4 h-4" />
-                    </button>
-                  </div>
-                )}
-
-                {/* "Réduire" button when expanded */}
-                {showAll && totalFilteredModules > INITIAL_MODULE_COUNT && (
-                  <div className="flex justify-center mt-8">
-                    <button
-                      onClick={() => setShowAll(false)}
-                      className="flex items-center gap-2 px-6 py-3 rounded-xl border border-themed text-body hover:text-heading hover:bg-black/5 dark:hover:bg-white/5 transition-all duration-200 text-sm font-medium"
-                    >
-                      Réduire
-                      <ChevronDown className="w-4 h-4 rotate-180" />
+                      Voir les {MODULES.length} modules
+                      <ChevronRight className="w-4 h-4" />
                     </button>
                   </div>
                 )}
@@ -298,6 +264,81 @@ export default function Dashboard() {
             )}
           </div>
         </>
+      )}
+
+      {/* ============================================ */}
+      {/* "VOIR TOUT" — Dedicated all modules section */}
+      {/* ============================================ */}
+      {activeTrack === 'all' && (
+        <div>
+          {/* Back button + header */}
+          <div className="flex items-center gap-4 mb-6">
+            <button
+              onClick={() => { setActiveTrack(null); setFilterTracks([]); }}
+              className="p-2 rounded-xl border border-themed text-body hover:text-heading hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+              aria-label="Retour"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <div>
+              <h2 className="section-title">Tous les modules</h2>
+              <p className="text-xs text-body">{totalFilteredModules} module{totalFilteredModules !== 1 ? 's' : ''}</p>
+            </div>
+          </div>
+
+          {/* Multi-track filter chips */}
+          <div className="flex flex-wrap gap-2 mb-6">
+            <button
+              onClick={() => setFilterTracks([])}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${
+                filterTracks.length === 0
+                  ? 'bg-primary-600/20 text-primary-300 border-primary-500/30'
+                  : 'text-body border-themed hover:text-heading hover:bg-black/5 dark:hover:bg-white/5'
+              }`}
+            >
+              Tous
+            </button>
+            {TRACKS.map((track) => {
+              const isSelected = filterTracks.includes(track.id);
+              return (
+                <button
+                  key={track.id}
+                  onClick={() => {
+                    setFilterTracks((prev) =>
+                      isSelected ? prev.filter((t) => t !== track.id) : [...prev, track.id]
+                    );
+                  }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${
+                    isSelected
+                      ? `bg-gradient-to-r ${track.gradient} text-white border-transparent`
+                      : 'text-body border-themed hover:text-heading hover:bg-black/5 dark:hover:bg-white/5'
+                  }`}
+                >
+                  <img src={track.logo} alt="" className="w-4 h-4 rounded-sm object-cover" />
+                  {track.shortName}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* All modules grid */}
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {displayedModules.map((module) => (
+              <ModuleCard
+                key={module.id}
+                module={module}
+                progress={progressMap[module.id]}
+              />
+            ))}
+          </div>
+
+          {displayedModules.length === 0 && (
+            <div className="glass-card p-12 text-center">
+              <BookOpen className="w-12 h-12 text-muted mx-auto mb-4" />
+              <p className="text-body">Aucun module trouvé pour les filtres sélectionnés.</p>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

@@ -57,6 +57,17 @@ export default function Profile() {
                 <Shield className="w-3 h-3 mr-1" />
                 {userProfile?.role === 'admin' ? 'Admin' : 'Apprenant'}
               </span>
+              {userProfile?.communityRole && (
+                <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border ${
+                  userProfile.communityRole === 'Organizer' ? 'bg-purple-500/10 text-purple-400 border-purple-500/30' :
+                  userProfile.communityRole === 'Lead Track' ? 'bg-blue-500/10 text-blue-400 border-blue-500/30' :
+                  userProfile.communityRole === 'Mentor' ? 'bg-amber-500/10 text-amber-400 border-amber-500/30' :
+                  'bg-green-500/10 text-green-400 border-green-500/30'
+                }`}>
+                  <User className="w-3 h-3" />
+                  {userProfile.communityRole}
+                </span>
+              )}
               {completedModules.length > 0 && (
                 <span className="badge-accent">
                   <Award className="w-3 h-3 mr-1" />

@@ -93,7 +93,7 @@ export function useSubmission() {
     const { images, videoUrl, description } = data;
     const imageUrls = [];
 
-    // Upload images to Firebase Storage
+    // Try uploading images to Firebase Storage — gracefully skip if Storage is not activated
     if (images && images.length > 0) {
       for (const image of images) {
         try {
@@ -105,11 +105,8 @@ export function useSubmission() {
           const url = await getDownloadURL(snapshot.ref);
           imageUrls.push(url);
         } catch (uploadError) {
-          console.error('Image upload failed:', uploadError.code, uploadError.message);
-          if (uploadError.code === 'storage/unauthorized' || uploadError.code === 'storage/unknown') {
-            throw new Error('Firebase Storage n\'est pas activé. Activez-le dans la console Firebase → Storage → Get Started.');
-          }
-          throw new Error(`Échec de l'upload de l'image "${image.name}": ${uploadError.message}`);
+          console.warn('Image upload skipped (Storage may not be activated):', uploadError.code);
+          // Don't block submission — just skip images if Storage is not available
         }
       }
     }
@@ -397,5 +394,45 @@ export function useAdmin() {
     });
   }
 
-  return { getAllSubmissions, validateSubmission, toggleModuleLock, overrideExamLock };
+  // ---- Role management (4 community roles) ----
+  async function updateUserRole(userId, newRole) {
+    if (!isAdmin) throw new Error('Unauthorized');
+    const userRef = doc(db, 'users', userId);
+    await updateDoc(userRef, {
+      communityRole: newRole,
+      updatedAt: serverTimestamp(),
+    });
+  }
+
+  // ---- Module CRUD ----
+  async function saveModuleSettings(moduleId, settings) {
+    if (!isAdmin) throw new Error('Unauthorized');
+    const moduleRef = doc(db, 'moduleSettings', moduleId);
+    await setDoc(moduleRef, { ...settings, updatedAt: serverTimestamp() }, { merge: true });
+  }
+
+  // ---- Editable exam settings ----
+  async function saveExamSettings(settings) {
+    if (!isAdmin) throw new Error('Unauthorized');
+    const settingsRef = doc(db, 'appSettings', 'exam');
+    await setDoc(settingsRef, { ...settings, updatedAt: serverTimestamp() }, { merge: true });
+  }
+
+  async function getExamSettings() {
+    const settingsRef = doc(db, 'appSettings', 'exam');
+    const snap = await getDoc(settingsRef);
+    if (snap.exists()) return snap.data();
+    return null;
+  }
+
+  return {
+    getAllSubmissions,
+    validateSubmission,
+    toggleModuleLock,
+    overrideExamLock,
+    updateUserRole,
+    saveModuleSettings,
+    saveExamSettings,
+    getExamSettings,
+  };
 }

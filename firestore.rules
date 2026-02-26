@@ -91,5 +91,13 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isAdmin();
     }
+    
+    // ============================================
+    // APP SETTINGS (Admin managed exam config etc.)
+    // ============================================
+    match /appSettings/{settingId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
   }
 }

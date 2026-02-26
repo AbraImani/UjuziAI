@@ -41,7 +41,7 @@ export default function Layout({ children }) {
   return (
     <div className="min-h-screen bg-body flex">
       {/* Sidebar - Desktop */}
-      <aside className="hidden lg:flex lg:flex-col lg:w-64 bg-surface border-r border-themed">
+      <aside className="hidden lg:flex lg:flex-col lg:w-64 bg-surface border-r border-themed fixed top-0 left-0 h-screen z-30">
         <div className="p-6">
           <Link to="/dashboard" className="flex items-center gap-3">
             <div className="w-10 h-10 bg-primary-600 rounded-xl flex items-center justify-center">
@@ -51,7 +51,7 @@ export default function Layout({ children }) {
           </Link>
         </div>
 
-        <nav className="flex-1 px-4 space-y-1">
+        <nav className="flex-1 px-4 space-y-1 overflow-y-auto">
           {navItems.map(({ path, icon: Icon, label }) => {
             const active = location.pathname === path;
             return (
@@ -172,8 +172,8 @@ export default function Layout({ children }) {
         </div>
       )}
 
-      {/* Main content */}
-      <div className="flex-1 flex flex-col min-w-0">
+      {/* Main content - offset by sidebar width on desktop */}
+      <div className="flex-1 flex flex-col min-w-0 lg:ml-64">
         {/* Top bar - mobile */}
         <header className="lg:hidden flex items-center justify-between p-4 bg-surface border-b border-themed sticky top-0 z-40">
           <div className="flex items-center gap-3">

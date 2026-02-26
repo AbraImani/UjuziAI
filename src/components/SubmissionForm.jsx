@@ -36,12 +36,12 @@ export default function SubmissionForm({ moduleId, onSuccess }) {
     setImagePreviews(imagePreviews.filter((_, i) => i !== index));
   };
 
-  const isValid = images.length > 0 && wordCount >= MIN_WORDS;
+  const isValid = wordCount >= MIN_WORDS;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!isValid) {
-      toast.error(`Veuillez fournir des images et une description (min ${MIN_WORDS} mots)`);
+      toast.error(`Veuillez fournir une description détaillée (min ${MIN_WORDS} mots)`);
       return;
     }
 
@@ -63,7 +63,7 @@ export default function SubmissionForm({ moduleId, onSuccess }) {
       <div>
         <label htmlFor="submission-images" className="flex items-center gap-2 text-sm font-medium text-heading mb-3">
           <Image className="w-4 h-4 text-primary-400" />
-          Captures d'écran / Images <span className="text-red-400">*</span>
+          Captures d'écran / Images <span className="text-muted">(optionnel)</span>
         </label>
 
         <div
