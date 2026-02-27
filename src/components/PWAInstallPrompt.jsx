@@ -24,6 +24,11 @@ function isStandalone() {
   );
 }
 
+function isDesktop() {
+  // Don't show install prompt on large screens (PC/laptop)
+  return window.innerWidth >= 1024;
+}
+
 function isDismissed() {
   try {
     const dismissed = localStorage.getItem(DISMISS_KEY);
@@ -54,8 +59,8 @@ export default function PWAInstallPrompt() {
 
   // Capture the beforeinstallprompt event
   useEffect(() => {
-    // Bail early if already installed or previously dismissed
-    if (isStandalone() || isDismissed()) return;
+    // Bail early if already installed, previously dismissed, or on desktop
+    if (isStandalone() || isDismissed() || isDesktop()) return;
 
     const handler = (e) => {
       e.preventDefault();
@@ -83,7 +88,7 @@ export default function PWAInstallPrompt() {
 
   // Show banner after 5-second delay once we have a deferred prompt
   useEffect(() => {
-    if (!deferredPrompt || promptShownRef.current || isStandalone() || isDismissed()) return;
+    if (!deferredPrompt || promptShownRef.current || isStandalone() || isDismissed() || isDesktop()) return;
 
     timerRef.current = setTimeout(() => {
       promptShownRef.current = true;
@@ -129,7 +134,7 @@ export default function PWAInstallPrompt() {
   }, []);
 
   // Don't render anything if conditions not met
-  if (!showBanner || isStandalone()) return null;
+  if (!showBanner || isStandalone() || isDesktop()) return null;
 
   return (
     <div className="fixed bottom-4 left-4 right-4 md:left-auto md:right-6 md:bottom-6 md:max-w-sm z-50 animate-slide-up">

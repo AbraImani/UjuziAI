@@ -110,7 +110,7 @@ export default function Leaderboard() {
       <div className="text-center mb-8">
         <div className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500/10 border border-amber-500/20 rounded-full mb-4">
           <Flame className="w-4 h-4 text-amber-400" />
-          <span className="text-sm font-medium text-amber-300">Classement en direct</span>
+          <span className="text-sm font-medium text-amber-600 dark:text-amber-300">Classement en direct</span>
         </div>
         <h1 className="text-4xl md:text-5xl font-bold text-heading mb-3 flex items-center justify-center gap-3">
           <Trophy className="w-10 h-10 text-amber-400" />
@@ -122,7 +122,7 @@ export default function Leaderboard() {
       </div>
 
       {/* Your Stats Banner */}
-      <div className="glass-card p-6 mb-8 border-primary-500/30 bg-gradient-to-r from-primary-600/10 via-surface-900/50 to-accent-600/10">
+      <div className="glass-card p-6 mb-8 border-primary-500/30 bg-gradient-to-r from-primary-600/10 via-surface to-accent-600/10">
         <div className="flex flex-col sm:flex-row items-center gap-6">
           <div className="flex items-center gap-5">
             <ProgressRing progress={overallProgress} size={90} strokeWidth={6}>
@@ -133,13 +133,13 @@ export default function Leaderboard() {
               </div>
             </ProgressRing>
             <div>
-              <p className="text-xs text-body uppercase tracking-wide font-medium">Votre position</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400 uppercase tracking-wide font-medium">Votre position</p>
               <p className="text-2xl font-bold text-heading mt-1">
                 {userRank ? (
                   <>Top <span className="gradient-text">{userRank}</span></>
                 ) : 'Non classé'}
               </p>
-              <p className="text-sm text-muted mt-0.5">
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
                 {completedCount} sur {MODULES.length} modules complétés
               </p>
             </div>
@@ -148,24 +148,24 @@ export default function Leaderboard() {
           <div className="flex-1 grid grid-cols-3 gap-4 sm:gap-6 w-full sm:w-auto">
             <div className="text-center">
               <div className="w-10 h-10 mx-auto bg-primary-600/20 rounded-xl flex items-center justify-center mb-2">
-                <Target className="w-5 h-5 text-primary-400" />
+                <Target className="w-5 h-5 text-primary-600 dark:text-primary-400" />
               </div>
               <p className="text-xl font-bold text-heading">{totalScore}</p>
-              <p className="text-xs text-muted">Points totaux</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400 font-medium">Points totaux</p>
             </div>
             <div className="text-center">
               <div className="w-10 h-10 mx-auto bg-accent-600/20 rounded-xl flex items-center justify-center mb-2">
-                <Award className="w-5 h-5 text-accent-400" />
+                <Award className="w-5 h-5 text-accent-600 dark:text-accent-400" />
               </div>
               <p className="text-xl font-bold text-heading">{completedCount}</p>
-              <p className="text-xs text-muted">Badges</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400 font-medium">Badges</p>
             </div>
             <div className="text-center">
               <div className="w-10 h-10 mx-auto bg-amber-600/20 rounded-xl flex items-center justify-center mb-2">
-                <BarChart3 className="w-5 h-5 text-amber-400" />
+                <BarChart3 className="w-5 h-5 text-amber-600 dark:text-amber-400" />
               </div>
               <p className="text-xl font-bold text-heading">{Math.round(overallProgress)}%</p>
-              <p className="text-xs text-muted">Progression</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400 font-medium">Progression</p>
             </div>
           </div>
         </div>
@@ -183,8 +183,8 @@ export default function Leaderboard() {
             onClick={() => setFilter(key)}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 whitespace-nowrap ${
               filter === key
-                ? 'bg-primary-600/20 text-primary-300 border border-primary-500/30'
-                : 'text-body hover:text-heading hover:bg-black/5 dark:bg-white/5 border border-transparent'
+                ? 'bg-primary-600/20 text-primary-600 dark:text-primary-300 border border-primary-500/30'
+                : 'text-gray-600 dark:text-gray-400 hover:text-heading hover:bg-black/5 dark:hover:bg-white/5 border border-transparent'
             }`}
           >
             <Icon className="w-4 h-4" />

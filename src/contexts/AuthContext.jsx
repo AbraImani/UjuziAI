@@ -270,9 +270,9 @@ export function AuthProvider({ children }) {
   async function logout() {
     try {
       await signOut(auth);
-      toast.success('Déconnexion réussie');
+      // No toast — silent logout is more professional
     } catch (error) {
-      toast.error('Échec de la déconnexion');
+      console.error('Logout error:', error);
       throw error;
     }
   }

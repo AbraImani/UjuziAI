@@ -170,7 +170,6 @@ export function useExam() {
     if (!data.submitted || !data.examUnlocked) return { eligible: false, reason: 'no-submission' };
     if (data.examLocked) return { eligible: false, reason: 'locked' };
     if (data.examAttempts >= EXAM_CONFIG.MAX_ATTEMPTS) return { eligible: false, reason: 'max-attempts' };
-    if (data.examScore >= 6) return { eligible: false, reason: 'already-passed' };
 
     return { eligible: true, attempts: data.examAttempts || 0, data };
   }
@@ -271,16 +270,26 @@ export function useExam() {
         } else if (q.type === 'open') {
           openTotal++;
           const userAnswer = answers[index]?.answer;
-          // Validate open answer quality — nonsense = 0 points
-          if (!isNonsenseAnswer(userAnswer)) {
-            openScore++;
+          if (isNonsenseAnswer(userAnswer)) {
+            // Nonsense = 0 points
+          } else {
+            // Check answer quality: partial (short but valid) = 0.5, good = 1
+            const trimmed = (userAnswer || '').trim();
+            const wordCount = trimmed.split(/\s+/).filter(Boolean).length;
+            if (wordCount >= 25) {
+              // Detailed answer = 1 point
+              openScore += 1;
+            } else {
+              // Valid but short answer = 0.5 points
+              openScore += 0.5;
+            }
           }
         }
       });
     }
 
-    // Each question = 1 point (MCQ: 1pt if correct, Open: 1pt if valid answer)
-    const totalScore = Math.min(mcqCorrect + openScore, 10);
+    // Total score: MCQ (1pt each) + Open (0.5 or 1pt each), capped at 10
+    const totalScore = Math.min(Math.round((mcqCorrect + openScore) * 10) / 10, 10);
     const passed = totalScore >= EXAM_CONFIG.PASSING_SCORE;
 
     // Update exam document
@@ -304,7 +313,9 @@ export function useExam() {
     // Only update if new score is better
     const bestScore = Math.max(existingScore, totalScore);
     
-    const badgeId = (passed && !existingBadge) ? `badge-${moduleId}-${user.uid.slice(0, 6)}-${Date.now().toString(36)}` : null;
+    // Certificate requires score >= 7 (badge)
+    const earnsCertificate = bestScore >= 7;
+    const badgeId = (earnsCertificate && !existingBadge) ? `badge-${moduleId}-${user.uid.slice(0, 6)}-${Date.now().toString(36)}` : null;
 
     const progressUpdate = {
       examScore: bestScore,
@@ -312,6 +323,10 @@ export function useExam() {
     };
     if (badgeId) {
       progressUpdate.badgeId = badgeId;
+    }
+    // Store the completion date the FIRST time they pass (>= 6) — never overwrite
+    if (passed && !progressSnap.data()?.completedAt) {
+      progressUpdate.completedAt = serverTimestamp();
     }
 
     await updateDoc(progressRef, progressUpdate);

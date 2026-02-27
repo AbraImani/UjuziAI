@@ -7,7 +7,8 @@ import { Shield, AlertTriangle, CheckCircle, XCircle, Loader2, ArrowLeft, Play }
 import toast from 'react-hot-toast';
 
 // Générateur de questions en français — difficiles, piégeuses, spécifiques au module
-function generateQuestions(module) {
+// attemptNumber: 1 or 2 — generates DIFFERENT questions for each attempt
+function generateQuestions(module, attemptNumber = 1) {
   const mcqQuestions = [];
   const openQuestions = [];
 
@@ -16,8 +17,8 @@ function generateQuestions(module) {
   const topic2 = module.topics[2] || module.topics[0];
   const title = module.title;
 
-  // 7 QCM en français — conçues pour être difficiles et piégeuses
-  const mcqTemplates = [
+  // ---- SET A: attempt 1 ----
+  const mcqSetA = [
     {
       text: `Dans le cadre du module "${title}", laquelle de ces affirmations sur ${topic0} est FAUSSE ?`,
       options: [
@@ -90,6 +91,82 @@ function generateQuestions(module) {
     },
   ];
 
+  // ---- SET B: attempt 2 — completely different questions ----
+  const mcqSetB = [
+    {
+      text: `Concernant ${topic0} dans "${title}", quelle affirmation démontre une MAUVAISE compréhension du concept ?`,
+      options: [
+        `${topic0} peut être combiné avec ${topic1} pour une architecture plus robuste`,
+        `${topic0} ne nécessite aucune gestion d'erreurs car il est auto-correctif par défaut`,
+        `La documentation officielle de ${topic0} recommande des bonnes pratiques spécifiques`,
+        `L'utilisation de ${topic0} en production requiert des tests approfondis`,
+      ],
+      correct: 1,
+    },
+    {
+      text: `Quelle est la conséquence DIRECTE d'ignorer la gestion des erreurs dans ${topic1} lors du codelab "${title}" ?`,
+      options: [
+        `L'application fonctionnera plus rapidement grâce à moins de code`,
+        `Des comportements imprévisibles et des failles de sécurité potentielles en production`,
+        `Le compilateur corrigera automatiquement les erreurs au build`,
+        `Les utilisateurs ne remarqueront aucune différence`,
+      ],
+      correct: 1,
+    },
+    {
+      text: `Pour "${title}", quel scénario illustre le MIEUX l'intégration entre ${topic0} et ${topic2} ?`,
+      options: [
+        `Utiliser ${topic0} uniquement en développement et ${topic2} uniquement en production`,
+        `Remplacer ${topic0} par ${topic2} une fois le prototype validé`,
+        `${topic0} fournit la couche de données/logique tandis que ${topic2} étend les capacités via des fonctionnalités complémentaires`,
+        `Exécuter ${topic0} et ${topic2} dans des projets séparés sans communication`,
+      ],
+      correct: 2,
+    },
+    {
+      text: `Lors du débogage d'une application basée sur "${title}", quel outil est le MOINS approprié ?`,
+      options: [
+        `Les outils de développement du navigateur ou l'IDE`,
+        `Les logs structurés et le monitoring en temps réel`,
+        `Modifier le code en production directement sans environnement de test`,
+        `Les breakpoints et le débogage pas-à-pas`,
+      ],
+      correct: 2,
+    },
+    {
+      text: `Quelle stratégie de test est la PLUS adaptée pour valider une fonctionnalité utilisant ${topic1} dans ce module ?`,
+      options: [
+        `Tester uniquement l'interface utilisateur manuellement`,
+        `Écrire des tests unitaires pour la logique métier et des tests d'intégration pour les interactions entre composants`,
+        `Déployer directement en production et observer les rapports de crash`,
+        `Demander aux utilisateurs finaux de signaler les problèmes`,
+      ],
+      correct: 1,
+    },
+    {
+      text: `Dans "${title}", pourquoi est-il CRITIQUE de gérer correctement l'authentification avec ${topic0} ?`,
+      options: [
+        `L'authentification n'est pas nécessaire pour les applications internes`,
+        `Pour empêcher l'accès non autorisé aux données et protéger la vie privée des utilisateurs`,
+        `Uniquement pour satisfaire les exigences réglementaires`,
+        `L'authentification ralentit l'application et doit être minimisée`,
+      ],
+      correct: 1,
+    },
+    {
+      text: `Quelle architecture est la PLUS recommandée pour une application de production utilisant les concepts de "${title}" ?`,
+      options: [
+        `Un fichier monolithique contenant toute la logique applicative`,
+        `Une architecture modulaire avec séparation des responsabilités, couche de services et gestion d'état centralisée`,
+        `Copier-coller le code du codelab sans modification ni refactoring`,
+        `Multiplier les dépendances externes sans évaluer leur maintenance`,
+      ],
+      correct: 1,
+    },
+  ];
+
+  const mcqTemplates = attemptNumber === 2 ? mcqSetB : mcqSetA;
+
   for (let i = 0; i < EXAM_CONFIG.MCQ_COUNT; i++) {
     mcqQuestions.push({
       type: 'mcq',
@@ -98,7 +175,7 @@ function generateQuestions(module) {
   }
 
   // 3 questions ouvertes en français — exigent des réponses détaillées et spécifiques
-  const openTemplates = [
+  const openSetA = [
     {
       text: `Décrivez en détail les étapes que vous avez suivies pour implémenter ${topic0} dans le codelab "${title}". Quels obstacles avez-vous rencontrés et comment les avez-vous résolus ? Citez des éléments concrets du codelab.`,
       context: `Cette question évalue votre compréhension pratique de ${topic0}. Une réponse vague, générique ou sans référence au codelab recevra zéro point.`,
@@ -112,6 +189,23 @@ function generateQuestions(module) {
       context: `Montrez votre profondeur de compréhension en analysant les compromis et les décisions de conception. Les réponses courtes ou non pertinentes recevront zéro point.`,
     },
   ];
+
+  const openSetB = [
+    {
+      text: `Si vous deviez refaire le codelab "${title}" en partant de zéro, quelles décisions techniques changeriez-vous concernant ${topic0} ? Justifiez en citant des problèmes rencontrés ou des améliorations possibles.`,
+      context: `Cette question évalue votre esprit critique et votre capacité à itérer. Référencez des éléments concrets du codelab.`,
+    },
+    {
+      text: `Imaginez que vous devez présenter les concepts de ${topic1} et ${topic2} du module "${title}" à un développeur junior. Expliquez les concepts clés, les pièges à éviter et les ressources recommandées.`,
+      context: `Démontrez votre maîtrise pédagogique des concepts. Les réponses sans structure ni détails techniques recevront zéro point.`,
+    },
+    {
+      text: `Décrivez comment vous intégreriez les technologies de "${title}" dans un projet existant de votre choix. Quels défis d'intégration anticipez-vous et comment les résoudriez-vous ?`,
+      context: `Montrez votre capacité à contextualiser les apprentissages. Les réponses génériques sans scénario concret recevront zéro point.`,
+    },
+  ];
+
+  const openTemplates = attemptNumber === 2 ? openSetB : openSetA;
 
   for (let i = 0; i < EXAM_CONFIG.OPEN_COUNT; i++) {
     openQuestions.push({
@@ -152,7 +246,9 @@ export default function Exam() {
     try {
       const id = await startExam(moduleId);
       setExamId(id);
-      const q = generateQuestions(module);
+      // Use different question set for 2nd attempt
+      const attemptNumber = (status?.attempts || 0) + 1;
+      const q = generateQuestions(module, attemptNumber);
       setQuestions(q);
       setExamStarted(true);
     } catch (err) {
@@ -309,11 +405,11 @@ export default function Exam() {
             </li>
             <li className="flex items-start gap-2">
               <span className="text-primary-400 mt-0.5">•</span>
-              <span><strong className="text-heading">3 questions ouvertes</strong> — max 2 minutes chacune (1 point par réponse valide)</span>
+              <span><strong className="text-heading">3 questions ouvertes</strong> — max 2 minutes chacune (0.5 pt réponse partielle, 1 pt réponse détaillée)</span>
             </li>
             <li className="flex items-start gap-2">
               <span className="text-primary-400 mt-0.5">•</span>
-              <span><strong className="text-heading">Score total : 10 points</strong> — chaque question vaut 1 point</span>
+              <span><strong className="text-heading">Score total : 10 points</strong> — QCM : 1pt chacune, ouvertes : 0.5 ou 1pt selon la qualité</span>
             </li>
             <li className="flex items-start gap-2">
               <span className="text-primary-400 mt-0.5">•</span>
@@ -325,7 +421,11 @@ export default function Exam() {
             </li>
             <li className="flex items-start gap-2">
               <span className="text-primary-400 mt-0.5">•</span>
-              <span><strong className="text-heading">Score de réussite : 6/10</strong></span>
+              <span><strong className="text-heading">Score de réussite : 6/10</strong> — certificat à partir de 7/10</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-primary-400 mt-0.5">•</span>
+              <span><strong className="text-heading">Meilleur score conservé</strong> — si vous repassez l'examen, seul le meilleur score est gardé</span>
             </li>
             <li className="flex items-start gap-2">
               <AlertTriangle className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
