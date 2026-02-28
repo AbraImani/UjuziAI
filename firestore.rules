@@ -88,8 +88,12 @@ service cloud.firestore {
     // BADGES COLLECTION (Public verification)
     // ============================================
     match /badges/{badgeId} {
+      // Anyone can read (public verification)
       allow read: if true;
-      allow write: if isAdmin();
+      // Authenticated users can create their own badges (from exam completion)
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      // Only admins can update/delete
+      allow update, delete: if isAdmin();
     }
     
     // ============================================

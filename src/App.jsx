@@ -3,6 +3,7 @@ import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import Layout from './components/Layout';
+import ScrollToTop from './components/ScrollToTop';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
@@ -14,6 +15,7 @@ import Leaderboard from './pages/Leaderboard';
 import Profile from './pages/Profile';
 import AdminPanel from './pages/AdminPanel';
 import Certificate from './pages/Certificate';
+import Verify from './pages/Verify';
 import AllModules from './pages/AllModules';
 
 function PrivateRoute({ children }) {
@@ -70,6 +72,7 @@ function AppRoutes() {
       <Route path="/leaderboard" element={<PrivateRoute><Layout><Leaderboard /></Layout></PrivateRoute>} />
       <Route path="/profile" element={<PrivateRoute><Layout><Profile /></Layout></PrivateRoute>} />
       <Route path="/certificate/:moduleId" element={<PrivateRoute><Layout><Certificate /></Layout></PrivateRoute>} />
+      <Route path="/verify/:badgeId" element={<Verify />} />
       <Route path="/admin" element={<AdminRoute><Layout><AdminPanel /></Layout></AdminRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
@@ -81,6 +84,7 @@ export default function App() {
     <Router>
       <ThemeProvider>
         <AuthProvider>
+          <ScrollToTop />
           <Toaster
             position="top-right"
             toastOptions={{

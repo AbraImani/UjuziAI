@@ -101,19 +101,18 @@ export default function Certificate() {
   };
 
   const verificationUrl = `${window.location.origin}/verify/${badgeId}`;
-  const shareUrl = `${window.location.origin}/certificate/${moduleId}`;
   const shareText = `Je viens d'obtenir ma certification "${module.title}" sur UjuziAI ! Vérifié par GDG on Campus UCB. Badge ID : ${badgeId}`;
 
   const shareLinkedIn = () => {
     window.open(
-      `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}&summary=${encodeURIComponent(shareText)}`,
+      `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(verificationUrl)}`,
       '_blank'
     );
   };
 
   const shareTwitter = () => {
     window.open(
-      `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`,
+      `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(verificationUrl)}`,
       '_blank'
     );
   };

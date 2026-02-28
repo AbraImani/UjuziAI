@@ -16,7 +16,7 @@ import {
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { EXAM_CONFIG } from '../config/modules';
+import { EXAM_CONFIG, MODULES } from '../config/modules';
 
 // ============================================
 // Module Progress Hook
@@ -323,6 +323,29 @@ export function useExam() {
     };
     if (badgeId) {
       progressUpdate.badgeId = badgeId;
+
+      // Save badge to public badges collection for verification
+      try {
+        const badgeDocRef = doc(db, 'badges', badgeId);
+        const badgeModule = MODULES.find((m) => m.id === moduleId);
+        await setDoc(badgeDocRef, {
+          badgeId,
+          userId: user.uid,
+          userName: user.displayName || 'Apprenant',
+          userEmail: user.email,
+          userPhotoURL: user.photoURL || null,
+          moduleId,
+          moduleTitle: badgeModule?.title || moduleId,
+          score: bestScore,
+          completedAt: serverTimestamp(),
+          completedAtStr: new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' }),
+          issuedBy: 'GDG on Campus UCB',
+          platform: 'UjuziAI',
+          createdAt: serverTimestamp(),
+        });
+      } catch (badgeErr) {
+        console.error('Failed to save public badge:', badgeErr);
+      }
     }
     // Store the completion date the FIRST time they pass (>= 6) — never overwrite
     if (passed && !progressSnap.data()?.completedAt) {

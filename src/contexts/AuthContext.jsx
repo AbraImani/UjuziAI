@@ -277,6 +277,13 @@ export function AuthProvider({ children }) {
     }
   }
 
+  async function updateAvatar(avatarId) {
+    if (!user) throw new Error('Not authenticated');
+    const userRef = doc(db, 'users', user.uid);
+    await setDoc(userRef, { avatarId, updatedAt: serverTimestamp() }, { merge: true });
+    setUserProfile((prev) => prev ? { ...prev, avatarId } : prev);
+  }
+
   async function refreshProfile() {
     if (user) {
       await fetchUserProfile(user.uid);
@@ -291,6 +298,7 @@ export function AuthProvider({ children }) {
     login,
     signInWithGoogle,
     logout,
+    updateAvatar,
     refreshProfile,
     isAdmin: userProfile?.role === 'admin',
   };

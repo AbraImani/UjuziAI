@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useLeaderboard, useAllProgress } from '../hooks/useFirestore';
 import { useAuth } from '../contexts/AuthContext';
 import { MODULES } from '../config/modules';
+import { getAvatarUrl } from '../config/avatars';
 import ProgressRing from '../components/ProgressRing';
 import {
   Trophy,
@@ -233,7 +234,7 @@ export default function Leaderboard() {
                           <Crown className="w-6 h-6 text-amber-400 absolute -top-4 left-1/2 -translate-x-1/2 animate-bounce-subtle" />
                         )}
                         <div
-                          className={`w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center text-lg font-bold border-2 ${
+                          className={`w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center text-lg font-bold border-2 overflow-hidden ${
                             originalIndex === 0
                               ? 'bg-amber-500/20 text-amber-400 border-amber-500/50'
                               : originalIndex === 1
@@ -241,7 +242,11 @@ export default function Leaderboard() {
                               : 'bg-amber-700/20 text-amber-600 border-amber-700/50'
                           } ${isCurrentUser ? 'ring-2 ring-primary-500/50' : ''}`}
                         >
-                          {entry.displayName?.[0]?.toUpperCase() || 'U'}
+                          {(entry.photoURL || getAvatarUrl(entry.avatarId)) ? (
+                            <img src={entry.photoURL || getAvatarUrl(entry.avatarId)} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                          ) : (
+                            entry.displayName?.[0]?.toUpperCase() || 'U'
+                          )}
                         </div>
                       </div>
                       <p className={`text-sm font-medium mb-1 truncate max-w-[80px] sm:max-w-[100px] ${
@@ -297,13 +302,17 @@ export default function Leaderboard() {
                     </div>
 
                     <div
-                      className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 border ${
+                      className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 border overflow-hidden ${
                         isCurrentUser
                           ? 'bg-primary-600/20 text-primary-300 border-primary-500/30'
                           : 'bg-surface text-body border-themed'
                       }`}
                     >
-                      {entry.displayName?.[0]?.toUpperCase() || 'U'}
+                      {(entry.photoURL || getAvatarUrl(entry.avatarId)) ? (
+                        <img src={entry.photoURL || getAvatarUrl(entry.avatarId)} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                      ) : (
+                        entry.displayName?.[0]?.toUpperCase() || 'U'
+                      )}
                     </div>
 
                     <div className="flex-1 min-w-0">
