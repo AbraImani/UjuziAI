@@ -1,4 +1,5 @@
 # UjuziAI
+HEAD
 
 > Build with AI Season — Learning Platform with Agent-Based Architecture
 
@@ -184,3 +185,4 @@ cd functions && npm run serve
 
 MIT
 
+upstream/main
