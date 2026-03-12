@@ -214,6 +214,17 @@ function generateQuestions(module, attemptNumber = 1) {
     });
   }
 
+  // Shuffle MCQ options for each question (keeps correct answer tracked)
+  mcqQuestions.forEach((q) => {
+    const correctOption = q.options[q.correct];
+    // Fisher-Yates shuffle
+    for (let i = q.options.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [q.options[i], q.options[j]] = [q.options[j], q.options[i]];
+    }
+    q.correct = q.options.indexOf(correctOption);
+  });
+
   return [...mcqQuestions, ...openQuestions];
 }
 
@@ -413,6 +424,12 @@ export default function Exam() {
           <p className="text-body">
             Tentative {(status.attempts || 0) + 1} sur {EXAM_CONFIG.MAX_ATTEMPTS}
           </p>
+          {(status.attempts || 0) >= 1 && (
+            <div className="mt-3 px-4 py-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 text-sm font-medium inline-flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4" />
+              2ème tentative — questions entièrement différentes + options mélangées
+            </div>
+          )}
         </div>
 
         <div className="space-y-4 mb-8">

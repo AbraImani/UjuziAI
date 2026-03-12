@@ -285,6 +285,18 @@ export function useExam() {
       /^(.{1,3}\s*){1,3}$/, // Very short repeated words
     ];
 
+    // Generic filler phrases that indicate no real understanding
+    const GENERIC_FILLER_PHRASES = [
+      /c'est\s+(très\s+)?(important|intéressant|bien|bon|utile|nécessaire|essentiel)/i,
+      /je\s+pense\s+que\s+c'est\s+(bien|bon|important|utile)/i,
+      /il\s+faut\s+(bien\s+)?faire\s+attention/i,
+      /c'est\s+un\s+(bon|bel|excellent)\s+(outil|concept|sujet|thème)/i,
+      /en\s+conclusion.*c'est\s+(très\s+)?(bien|important)/i,
+      /j'ai\s+(beaucoup\s+)?appris\s+(beaucoup\s+)?(de\s+)?choses/i,
+      /c'est\s+un\s+sujet\s+(très\s+)?(vaste|large|complexe)/i,
+      /il\s+y\s+a\s+(beaucoup|plusieurs)\s+(de\s+)?(choses|éléments|aspects)\s+(à\s+)?(considérer|prendre\s+en\s+compte|voir)/i,
+    ];
+
     function isNonsenseAnswer(text) {
       if (!text || typeof text !== 'string') return true;
       const trimmed = text.trim();
@@ -298,6 +310,59 @@ export function useExam() {
         if (pattern.test(trimmed)) return true;
       }
       return false;
+    }
+
+    // Detect generic/filler answers that don't demonstrate real understanding
+    function scoreOpenAnswer(answerText, questionText) {
+      if (!answerText || typeof answerText !== 'string') return 0;
+      const trimmed = answerText.trim();
+      const words = trimmed.split(/\s+/).filter(Boolean);
+      const wordCount = words.length;
+      const lowerText = trimmed.toLowerCase();
+      const lowerQuestion = (questionText || '').toLowerCase();
+
+      // Check if answer is mostly a copy of the question
+      if (lowerQuestion.length > 20) {
+        const questionWords = lowerQuestion.split(/\s+/).filter((w) => w.length > 3);
+        const matchCount = questionWords.filter((w) => lowerText.includes(w)).length;
+        const overlapRatio = questionWords.length > 0 ? matchCount / questionWords.length : 0;
+        if (overlapRatio > 0.7 && wordCount < 40) return 0; // Copied the question
+      }
+
+      // Count generic filler matches
+      let fillerCount = 0;
+      for (const pattern of GENERIC_FILLER_PHRASES) {
+        if (pattern.test(lowerText)) fillerCount++;
+      }
+      // If more than 2 filler phrases and short answer = low quality
+      if (fillerCount >= 2 && wordCount < 35) return 0.25;
+
+      // Check for repetitive content (same sentence repeated)
+      const sentences = trimmed.split(/[.!?]+/).filter((s) => s.trim().length > 10);
+      if (sentences.length >= 2) {
+        const uniqueSentences = new Set(sentences.map((s) => s.trim().toLowerCase()));
+        if (uniqueSentences.size < sentences.length * 0.5) return 0.25; // Too repetitive
+      }
+
+      // Check for technical depth indicators
+      const technicalIndicators = [
+        /api|sdk|framework|library|database|serveur|backend|frontend|deploy/i,
+        /fonction|variable|class|module|composant|component|hook|state/i,
+        /firebase|firestore|auth|cloud|storage|hosting|docker|git/i,
+        /algorithme|architecture|pattern|design|mvc|mvvm|rest|graphql/i,
+        /erreur|debug|log|test|unitaire|intégration|performance/i,
+        /sécurité|authentification|autorisation|token|jwt|oauth/i,
+        /code|implémentat|configur|install|import|export|require/i,
+      ];
+      const technicalMatches = technicalIndicators.filter((p) => p.test(lowerText)).length;
+
+      // Scoring based on quality signals
+      if (wordCount >= 40 && technicalMatches >= 2) return 1;      // Detailed + technical
+      if (wordCount >= 25 && technicalMatches >= 1) return 1;      // Good length + some technical
+      if (wordCount >= 25 && fillerCount === 0) return 0.75;       // Good length, no filler
+      if (wordCount >= 15 && technicalMatches >= 1) return 0.5;    // Short but technical
+      if (wordCount >= 15) return 0.5;                              // Valid but short
+      return 0.25;                                                  // Minimal effort
     }
 
     if (questions && questions.length > 0) {
@@ -314,16 +379,8 @@ export function useExam() {
           if (isNonsenseAnswer(userAnswer)) {
             // Nonsense = 0 points
           } else {
-            // Check answer quality: partial (short but valid) = 0.5, good = 1
-            const trimmed = (userAnswer || '').trim();
-            const wordCount = trimmed.split(/\s+/).filter(Boolean).length;
-            if (wordCount >= 25) {
-              // Detailed answer = 1 point
-              openScore += 1;
-            } else {
-              // Valid but short answer = 0.5 points
-              openScore += 0.5;
-            }
+            // Enhanced scoring with technical depth + generic answer detection
+            openScore += scoreOpenAnswer(userAnswer, q.text);
           }
         }
       });
