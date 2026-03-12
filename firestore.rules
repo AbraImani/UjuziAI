@@ -13,10 +13,14 @@ service cloud.firestore {
     }
     
     // Helper: Check if user is admin
+    // Primary: check email directly (most reliable)
+    // Fallback: check role field in user document
     function isAdmin() {
-      return isAuthenticated() && 
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      return isAuthenticated() && (
+        request.auth.token.email in ['abrahamfaith325@gmail.com', 'gdgoncampusucb@gmail.com'] ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+      );
     }
 
     // ============================================
@@ -49,6 +53,13 @@ service cloud.firestore {
         allow create: if isOwner(userId);
         allow update: if isOwner(userId) || isAdmin();
         allow delete: if isAdmin();
+      }
+
+      // BONUS LOGS SUBCOLLECTION
+      match /bonusLogs/{logId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isAdmin();
+        allow update, delete: if isAdmin();
       }
     }
     
@@ -121,7 +132,9 @@ service cloud.firestore {
     match /buildathons/{buildathonId} {
       allow read: if isAuthenticated();
       allow create: if isAdmin();
-      allow update: if isAdmin();
+      // Authenticated users can update (register as participant, etc.)
+      // Admin can also update (finalize, change status)
+      allow update: if isAuthenticated();
       allow delete: if isAdmin();
     }
 
