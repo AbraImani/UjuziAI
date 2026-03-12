@@ -116,6 +116,27 @@ service cloud.firestore {
     }
 
     // ============================================
+    // BUILDATHONS
+    // ============================================
+    match /buildathons/{buildathonId} {
+      allow read: if isAuthenticated();
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ============================================
+    // BUILDATHON PROJECTS
+    // ============================================
+    match /buildathonProjects/{projectId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAuthenticated() && 
+        (resource.data.submittedBy == request.auth.uid || isAdmin());
+    }
+
+    // ============================================
     // PROJECT INVITATIONS
     // ============================================
     match /projectInvitations/{invitationId} {
