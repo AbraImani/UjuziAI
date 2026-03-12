@@ -11,7 +11,12 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db, googleProvider } from '../lib/firebase';
+import { AVATARS } from '../config/avatars';
 import toast from 'react-hot-toast';
+
+function getRandomAvatarId() {
+  return AVATARS[Math.floor(Math.random() * AVATARS.length)].id;
+}
 
 const AuthContext = createContext(null);
 
@@ -90,6 +95,16 @@ export function AuthProvider({ children }) {
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
         const data = docSnap.data();
+        // Auto-assign avatar for existing email users who don't have one
+        if (!data.photoURL && !data.avatarId) {
+          const avatarId = getRandomAvatarId();
+          try {
+            await setDoc(docRef, { avatarId, updatedAt: serverTimestamp() }, { merge: true });
+            data.avatarId = avatarId;
+          } catch (e) {
+            console.error('Could not auto-assign avatar:', e);
+          }
+        }
         // Auto-promote admin emails if not already admin
         if (isAdminEmail(data.email) && data.role !== 'admin') {
           try {
@@ -108,6 +123,7 @@ export function AuthProvider({ children }) {
           email: firebaseUser.email,
           displayName: firebaseUser.displayName || 'Utilisateur',
           photoURL: firebaseUser.photoURL || null,
+          avatarId: firebaseUser.photoURL ? null : getRandomAvatarId(),
           role: isAdminEmail(firebaseUser.email) ? 'admin' : 'student',
           authProvider: firebaseUser.providerData?.[0]?.providerId === 'google.com' ? 'google' : 'email',
           createdAt: serverTimestamp(),
@@ -165,6 +181,7 @@ export function AuthProvider({ children }) {
         email,
         displayName,
         photoURL: null,
+        avatarId: getRandomAvatarId(),
         role: isAdminEmail(email) ? 'admin' : 'student',
         authProvider: 'email',
         createdAt: serverTimestamp(),
