@@ -52,7 +52,31 @@ export function useModuleProgress(moduleId) {
     const settingsRef = doc(db, 'moduleSettings', moduleId);
     const unsubSettings = onSnapshot(settingsRef, (snap) => {
       if (snap.exists()) {
-        setModuleOpen(snap.data().isOpen !== false);
+        const data = snap.data();
+        // Check manual isOpen toggle
+        if (data.isOpen === false) {
+          setModuleOpen(false);
+          return;
+        }
+        // Check date-based automation
+        const now = new Date();
+        if (data.openDate) {
+          const openDate = new Date(data.openDate);
+          if (now < openDate) {
+            setModuleOpen(false);
+            return;
+          }
+        }
+        if (data.closeDate) {
+          const closeDate = new Date(data.closeDate);
+          // Close at end of closeDate day
+          closeDate.setHours(23, 59, 59, 999);
+          if (now > closeDate) {
+            setModuleOpen(false);
+            return;
+          }
+        }
+        setModuleOpen(true);
       } else {
         setModuleOpen(true); // default open if no settings doc
       }
