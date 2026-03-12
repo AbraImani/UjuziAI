@@ -29,6 +29,7 @@ import {
   Pencil,
   Image,
   ExternalLink,
+  Zap,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -61,6 +62,10 @@ export default function AdminPanel() {
   const [submissionDetails, setSubmissionDetails] = useState({});
   const [editingScore, setEditingScore] = useState(null);
   const [newScoreValue, setNewScoreValue] = useState('');
+  const [bonusUserId, setBonusUserId] = useState('');
+  const [bonusPoints, setBonusPoints] = useState('');
+  const [bonusReason, setBonusReason] = useState('');
+  const [sendingBonus, setSendingBonus] = useState(false);
 
   const {
     validateSubmission,
@@ -72,6 +77,7 @@ export default function AdminPanel() {
     getExamSettings,
     modifyUserScore,
     getUserSubmissions,
+    addBonusPoints,
   } = useAdmin();
 
   useEffect(() => {
@@ -244,10 +250,31 @@ export default function AdminPanel() {
       `UZA-${u.id.slice(0, 8)}`.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const handleAddBonus = async () => {
+    if (!bonusUserId || !bonusPoints) {
+      toast.error('Veuillez sélectionner un utilisateur et un nombre de points');
+      return;
+    }
+    setSendingBonus(true);
+    try {
+      await addBonusPoints(bonusUserId, Number(bonusPoints), bonusReason);
+      toast.success(`${bonusPoints} point(s) bonus ajouté(s)`);
+      setBonusUserId('');
+      setBonusPoints('');
+      setBonusReason('');
+      fetchData();
+    } catch (err) {
+      toast.error('Échec de l\'ajout de bonus : ' + err.message);
+    } finally {
+      setSendingBonus(false);
+    }
+  };
+
   const tabs = [
     { id: 'submissions', label: 'Soumissions', icon: FileText },
     { id: 'users', label: 'Utilisateurs', icon: Users },
     { id: 'modules', label: 'Modules', icon: BookOpen },
+    { id: 'bonus', label: 'Bonus', icon: Zap },
     { id: 'settings', label: 'Paramètres', icon: Settings },
   ];
 
@@ -281,7 +308,7 @@ export default function AdminPanel() {
       </div>
 
       {/* Search */}
-      {(activeTab === 'submissions' || activeTab === 'users') && (
+      {(activeTab === 'submissions' || activeTab === 'users' || activeTab === 'bonus') && (
         <div className="relative mb-6">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
           <input
@@ -707,6 +734,113 @@ export default function AdminPanel() {
           )}
 
           {/* Settings Tab — Editable exam parameters */}
+          {activeTab === 'bonus' && (
+            <div className="space-y-6">
+              {/* Bonus Points Form */}
+              <div className="glass-card p-8">
+                <h3 className="text-lg font-semibold text-heading mb-6 flex items-center gap-2">
+                  <Zap className="w-5 h-5 text-amber-400" />
+                  Attribuer des points bonus
+                </h3>
+                <div className="grid sm:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="block text-sm font-medium text-body mb-2">Utilisateur</label>
+                    <select
+                      value={bonusUserId}
+                      onChange={(e) => setBonusUserId(e.target.value)}
+                      className="input-field w-full"
+                    >
+                      <option value="">— Sélectionner —</option>
+                      {users
+                        .filter((u) => {
+                          if (!searchTerm) return true;
+                          const q = searchTerm.toLowerCase();
+                          return (
+                            u.displayName?.toLowerCase().includes(q) ||
+                            u.email?.toLowerCase().includes(q) ||
+                            u.uniqueId?.toLowerCase().includes(q)
+                          );
+                        })
+                        .map((u) => (
+                          <option key={u.id} value={u.id}>
+                            {u.displayName || u.email} {u.uniqueId ? `(${u.uniqueId})` : ''}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-body mb-2">Points</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="100"
+                      value={bonusPoints}
+                      onChange={(e) => setBonusPoints(e.target.value)}
+                      placeholder="Ex: 10"
+                      className="input-field w-full"
+                    />
+                  </div>
+                </div>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-body mb-2">Raison (optionnel)</label>
+                  <input
+                    type="text"
+                    value={bonusReason}
+                    onChange={(e) => setBonusReason(e.target.value)}
+                    placeholder="Ex: Gagnant buildathon, contribution communautaire..."
+                    className="input-field w-full"
+                  />
+                </div>
+                <button
+                  onClick={handleAddBonus}
+                  disabled={sendingBonus || !bonusUserId || !bonusPoints}
+                  className="btn-primary flex items-center gap-2"
+                >
+                  {sendingBonus ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Zap className="w-4 h-4" />
+                  )}
+                  Attribuer les bonus
+                </button>
+              </div>
+
+              {/* Users with bonus points */}
+              <div className="glass-card p-8">
+                <h3 className="text-lg font-semibold text-heading mb-4">Utilisateurs avec bonus</h3>
+                <div className="space-y-3">
+                  {users
+                    .filter((u) => (u.bonusPoints || 0) > 0)
+                    .sort((a, b) => (b.bonusPoints || 0) - (a.bonusPoints || 0))
+                    .map((u) => (
+                      <div key={u.id} className="flex items-center justify-between p-3 bg-black/5 dark:bg-white/5 rounded-xl">
+                        <div className="flex items-center gap-3">
+                          {u.photoURL ? (
+                            <img src={u.photoURL} alt="" className="w-8 h-8 rounded-full" />
+                          ) : (
+                            <div className="w-8 h-8 rounded-full bg-primary-500/20 flex items-center justify-center text-primary-400 text-sm font-bold">
+                              {(u.displayName || u.email || '?')[0].toUpperCase()}
+                            </div>
+                          )}
+                          <div>
+                            <p className="text-sm font-medium text-heading">{u.displayName || u.email}</p>
+                            <p className="text-xs text-muted">{u.uniqueId || u.id.slice(0, 8)}</p>
+                          </div>
+                        </div>
+                        <span className="flex items-center gap-1 text-amber-400 font-bold text-sm">
+                          <Zap className="w-4 h-4" />
+                          +{u.bonusPoints}
+                        </span>
+                      </div>
+                    ))}
+                  {users.filter((u) => (u.bonusPoints || 0) > 0).length === 0 && (
+                    <p className="text-center text-muted py-4">Aucun utilisateur n'a de points bonus</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {activeTab === 'settings' && (
             <div className="space-y-6">
               {/* Exam Settings — editable */}

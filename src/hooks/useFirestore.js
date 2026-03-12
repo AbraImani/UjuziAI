@@ -605,6 +605,23 @@ export function useAdmin() {
     return data;
   }
 
+  // ---- Admin: add bonus points to a user ----
+  async function addBonusPoints(userId, points, reason = '') {
+    if (!isAdmin) throw new Error('Unauthorized');
+    const userRef = doc(db, 'users', userId);
+    await updateDoc(userRef, {
+      bonusPoints: increment(points),
+    });
+    // Log the bonus in a subcollection for audit trail
+    const logRef = doc(collection(db, 'users', userId, 'bonusLogs'));
+    await setDoc(logRef, {
+      points,
+      reason,
+      grantedBy: user.uid,
+      grantedAt: serverTimestamp(),
+    });
+  }
+
   return {
     getAllSubmissions,
     validateSubmission,
@@ -616,5 +633,6 @@ export function useAdmin() {
     getExamSettings,
     modifyUserScore,
     getUserSubmissions,
+    addBonusPoints,
   };
 }
