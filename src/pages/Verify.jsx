@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { MODULES } from '../config/modules';
 import {
@@ -31,16 +31,23 @@ export default function Verify() {
       }
 
       try {
-        // Look up the badge in the public badges collection
-        const badgesRef = collection(db, 'badges');
-        const q = query(badgesRef, where('badgeId', '==', badgeId));
-        const snap = await getDocs(q);
+        // Try direct document lookup first (badge doc ID = badgeId)
+        const directRef = doc(db, 'badges', badgeId);
+        const directSnap = await getDoc(directRef);
 
-        if (!snap.empty) {
-          const data = snap.docs[0].data();
-          setBadge(data);
+        if (directSnap.exists()) {
+          setBadge(directSnap.data());
         } else {
-          setNotFound(true);
+          // Fallback: query by badgeId field
+          const badgesRef = collection(db, 'badges');
+          const q = query(badgesRef, where('badgeId', '==', badgeId));
+          const snap = await getDocs(q);
+
+          if (!snap.empty) {
+            setBadge(snap.docs[0].data());
+          } else {
+            setNotFound(true);
+          }
         }
       } catch (error) {
         console.error('Error verifying badge:', error);

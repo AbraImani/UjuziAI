@@ -44,7 +44,7 @@ export default function Certificate() {
   }
 
   const isPassed = progress?.examScore >= 7;
-  const badgeId = progress?.badgeId || `UZA-${moduleId.slice(0, 6).toUpperCase()}-${user?.uid?.slice(0, 8)?.toUpperCase() || 'XXXX'}`;
+  const badgeId = progress?.badgeId || null;
   // Use the stored exam completion date — never changes
   const certDate = progress?.completedAt?.toDate
     ? progress.completedAt.toDate()
@@ -106,11 +106,12 @@ export default function Certificate() {
   };
 
   const handleCopyBadgeId = () => {
+    if (!badgeId) return;
     navigator.clipboard.writeText(badgeId);
     toast.success('Badge ID copié !');
   };
 
-  const verificationUrl = `${window.location.origin}/verify/${badgeId}`;
+  const verificationUrl = badgeId ? `${window.location.origin}/verify/${badgeId}` : window.location.origin;
   const shareText = `Je viens d'obtenir ma certification "${module.title}" sur UjuziAI ! Vérifié par GDG on Campus UCB. Badge ID : ${badgeId}`;
 
   const shareLinkedIn = () => {
@@ -181,7 +182,7 @@ export default function Certificate() {
             <div className="hidden sm:block w-px h-10" style={{ backgroundColor: '#dadce0' }} />
             <div className="max-w-[200px] sm:max-w-none">
               <p className="text-xs" style={{ color: '#5f6368' }}>Badge ID</p>
-              <p className="text-xs sm:text-sm font-mono break-all" style={{ color: '#4285f4' }}>{badgeId}</p>
+              <p className="text-xs sm:text-sm font-mono break-all" style={{ color: '#4285f4' }}>{badgeId || 'En attente'}</p>
             </div>
             <div className="hidden sm:block w-px h-10" style={{ backgroundColor: '#dadce0' }} />
             <div>
@@ -229,15 +230,17 @@ export default function Certificate() {
         </p>
         <div className="flex items-center justify-center gap-2 mb-4">
           <code className="bg-surface px-4 py-2 rounded-lg text-primary-600 dark:text-primary-300 font-mono text-xs sm:text-sm break-all">
-            {badgeId}
+            {badgeId || 'Badge non encore généré'}
           </code>
-          <button
-            onClick={handleCopyBadgeId}
-            className="p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors text-body"
-            title="Copier le Badge ID"
-          >
-            <Copy className="w-4 h-4" />
-          </button>
+          {badgeId && (
+            <button
+              onClick={handleCopyBadgeId}
+              className="p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors text-body"
+              title="Copier le Badge ID"
+            >
+              <Copy className="w-4 h-4" />
+            </button>
+          )}
         </div>
         <p className="text-xs text-muted">
           Certifié par <strong className="text-heading">GDG on Campus UCB</strong> — Google Developer Group

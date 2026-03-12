@@ -500,9 +500,9 @@ export function useAdmin() {
     const progressSnap = await getDoc(progressRef);
     if (!progressSnap.exists()) throw new Error('Progress not found');
 
-    const passed = newScore >= EXAM_CONFIG.PASSING_SCORE;
+    const earnsCertificate = newScore >= 7;
     const existingBadge = progressSnap.data().badgeId;
-    const badgeId = (passed && !existingBadge) ? `badge-${moduleId}-${userId.slice(0, 6)}-${Date.now().toString(36)}` : null;
+    const badgeId = (earnsCertificate && !existingBadge) ? `badge-${moduleId}-${userId.slice(0, 6)}-${Date.now().toString(36)}` : null;
 
     const update = {
       examScore: newScore,
@@ -510,14 +510,42 @@ export function useAdmin() {
       reviewedAt: serverTimestamp(),
       reviewedBy: user.uid,
     };
-    if (badgeId) update.badgeId = badgeId;
-    // If score is lowered below passing and they had a badge, remove it
-    if (!passed && existingBadge) update.badgeId = null;
+    if (badgeId) {
+      update.badgeId = badgeId;
+
+      // Save badge to public badges collection for verification
+      try {
+        const userRef = doc(db, 'users', userId);
+        const userSnap = await getDoc(userRef);
+        const userData = userSnap.exists() ? userSnap.data() : {};
+        const badgeModule = MODULES.find((m) => m.id === moduleId);
+        const badgeDocRef = doc(db, 'badges', badgeId);
+        await setDoc(badgeDocRef, {
+          badgeId,
+          userId,
+          userName: userData.displayName || 'Apprenant',
+          userEmail: userData.email || '',
+          userPhotoURL: userData.photoURL || null,
+          moduleId,
+          moduleTitle: badgeModule?.title || moduleId,
+          score: newScore,
+          completedAt: serverTimestamp(),
+          completedAtStr: new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' }),
+          issuedBy: 'GDG on Campus UCB',
+          platform: 'UjuziAI',
+          createdAt: serverTimestamp(),
+        });
+      } catch (badgeErr) {
+        console.error('Failed to save public badge:', badgeErr);
+      }
+    }
+    // If score is lowered below earning certificate and they had a badge, remove it
+    if (!earnsCertificate && existingBadge) update.badgeId = null;
 
     await updateDoc(progressRef, update);
 
     // Recalculate totalScore for the user
-    const userRef = doc(db, 'users', userId);
+    const userRefCalc = doc(db, 'users', userId);
     const allProgressSnap = await getDocs(collection(db, 'users', userId, 'progress'));
     let newTotalScore = 0;
     allProgressSnap.forEach((p) => {
@@ -527,7 +555,7 @@ export function useAdmin() {
         newTotalScore += (p.data().examScore || 0);
       }
     });
-    await updateDoc(userRef, { totalScore: newTotalScore });
+    await updateDoc(userRefCalc, { totalScore: newTotalScore });
   }
 
   // ---- Admin: get submission details ----
