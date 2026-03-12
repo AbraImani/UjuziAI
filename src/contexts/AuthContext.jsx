@@ -63,7 +63,6 @@ export function AuthProvider({ children }) {
         } catch (e) {
           console.warn('Redirect result Firestore handling:', e.code);
         }
-        toast.success('Connexion réussie !');
       }
     }).catch((err) => {
       if (err.code && err.code !== 'auth/popup-closed-by-user') {
@@ -184,7 +183,6 @@ export function AuthProvider({ children }) {
         // Auth succeeded, profile write failed — still let user in
         setUserProfile({ id: result.user.uid, ...userDoc });
       }
-      toast.success('Compte créé avec succès !');
       return result.user;
     } catch (error) {
       console.error('Signup error:', error.code, error.message);
@@ -197,7 +195,6 @@ export function AuthProvider({ children }) {
   async function login(email, password) {
     try {
       const result = await signInWithEmailAndPassword(auth, email, password);
-      toast.success('Bon retour !');
       return result.user;
     } catch (error) {
       console.error('Login error:', error.code, error.message);
@@ -238,10 +235,8 @@ export function AuthProvider({ children }) {
           console.error('Firestore write error:', firestoreError);
           setUserProfile({ id: firebaseUser.uid, ...userDoc });
         }
-        toast.success('Compte créé avec Google !');
       } else {
         setUserProfile({ id: existingDoc.id, ...existingDoc.data() });
-        toast.success('Bon retour !');
       }
 
       return firebaseUser;
