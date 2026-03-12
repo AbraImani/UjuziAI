@@ -2,12 +2,10 @@ import { useState, useEffect, useMemo } from 'react';
 import {
   collection,
   doc,
-  getDoc,
   getDocs,
   setDoc,
   updateDoc,
   query,
-  where,
   orderBy,
   serverTimestamp,
   arrayUnion,
@@ -17,7 +15,6 @@ import {
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { useAdmin } from '../hooks/useFirestore';
 import toast from 'react-hot-toast';
 import {
   Trophy,
@@ -26,71 +23,74 @@ import {
   Loader2,
   Search,
   Crown,
-  ExternalLink,
   Calendar,
-  Tag,
   Link2,
   FileText,
   X,
   Send,
   Sparkles,
-  TrendingUp,
-  Filter,
   Clock,
   Users,
   Zap,
   Award,
-  Play,
   CheckCircle,
   Timer,
   ChevronDown,
   ChevronUp,
   Globe,
+  Video,
+  Rocket,
+  UserPlus,
 } from 'lucide-react';
 
+const EVENT_TYPES = [
+  { value: 'buildathon', label: 'Buildathon', icon: '🏗️' },
+  { value: 'hackathon', label: 'Hackathon', icon: '💻' },
+];
+
 const PROJECT_CATEGORIES = [
-  { value: 'ai-ml', label: 'IA / Machine Learning', color: 'bg-purple-500/10 text-purple-400 border-purple-500/30' },
-  { value: 'web', label: 'Web Development', color: 'bg-blue-500/10 text-blue-400 border-blue-500/30' },
-  { value: 'mobile', label: 'Mobile Development', color: 'bg-green-500/10 text-green-400 border-green-500/30' },
-  { value: 'cloud', label: 'Cloud / DevOps', color: 'bg-amber-500/10 text-amber-400 border-amber-500/30' },
-  { value: 'data', label: 'Data Science', color: 'bg-red-500/10 text-red-400 border-red-500/30' },
+  { value: 'ai-ml', label: 'IA / ML', color: 'bg-purple-500/10 text-purple-400 border-purple-500/30' },
+  { value: 'web', label: 'Web', color: 'bg-blue-500/10 text-blue-400 border-blue-500/30' },
+  { value: 'mobile', label: 'Mobile', color: 'bg-green-500/10 text-green-400 border-green-500/30' },
+  { value: 'cloud', label: 'Cloud', color: 'bg-amber-500/10 text-amber-400 border-amber-500/30' },
+  { value: 'data', label: 'Data', color: 'bg-red-500/10 text-red-400 border-red-500/30' },
   { value: 'other', label: 'Autre', color: 'bg-gray-500/10 text-gray-400 border-gray-500/30' },
 ];
 
-function getBuildathonStatus(b) {
+function getEventStatus(b) {
   const now = new Date();
   if (b.status === 'completed') return 'completed';
   if (b.startDate && new Date(b.startDate) > now) return 'upcoming';
-  if (b.endDate && new Date(b.endDate) < now) return 'voting';
+  if (b.endDate && new Date(b.endDate) < now) return 'ended';
   return 'active';
 }
 
-const STATUS_LABELS = {
-  upcoming: { label: 'À venir', color: 'bg-blue-500/10 text-blue-400 border-blue-500/30' },
-  active: { label: 'En cours', color: 'bg-green-500/10 text-green-400 border-green-500/30' },
-  voting: { label: 'Vote en cours', color: 'bg-amber-500/10 text-amber-400 border-amber-500/30' },
-  completed: { label: 'Terminé', color: 'bg-gray-500/10 text-gray-400 border-gray-500/30' },
+const STATUS_CONFIG = {
+  upcoming: { label: 'À venir', color: 'bg-blue-500/10 text-blue-400 border-blue-500/30', dot: 'bg-blue-400' },
+  active: { label: 'En cours', color: 'bg-green-500/10 text-green-400 border-green-500/30', dot: 'bg-green-400' },
+  ended: { label: 'Vote ouvert', color: 'bg-amber-500/10 text-amber-400 border-amber-500/30', dot: 'bg-amber-400' },
+  completed: { label: 'Terminé', color: 'bg-gray-500/10 text-gray-400 border-gray-500/30', dot: 'bg-gray-400' },
 };
 
 export default function Buildathon() {
   const { user, userProfile, isAdmin } = useAuth();
-  const { addBonusPoints } = useAdmin();
-  const [buildathons, setBuildathons] = useState([]);
+  const [events, setEvents] = useState([]);
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showCreateBuildathon, setShowCreateBuildathon] = useState(false);
-  const [showSubmitProject, setShowSubmitProject] = useState(null); // buildathonId or null
   const [searchQuery, setSearchQuery] = useState('');
-  const [expandedBuildathon, setExpandedBuildathon] = useState(null);
+  const [expandedEvent, setExpandedEvent] = useState(null);
   const [filterStatus, setFilterStatus] = useState('all');
 
-  // Buildathon creation form
-  const [newBuildathon, setNewBuildathon] = useState({
+  // Admin: create event
+  const [showCreateEvent, setShowCreateEvent] = useState(false);
+  const [newEvent, setNewEvent] = useState({
+    type: 'buildathon',
     title: '',
     description: '',
     startDate: '',
     endDate: '',
     workDuration: '',
+    maxTeamSize: 4,
     prizes: [
       { place: 1, points: 50 },
       { place: 2, points: 30 },
@@ -98,7 +98,8 @@ export default function Buildathon() {
     ],
   });
 
-  // Project submission form
+  // User: submit project
+  const [showSubmitProject, setShowSubmitProject] = useState(null);
   const [newProject, setNewProject] = useState({
     title: '',
     description: '',
@@ -106,244 +107,223 @@ export default function Buildathon() {
     teamName: '',
     repoUrl: '',
     demoUrl: '',
+    inviteEmail: '',
   });
 
   useEffect(() => {
-    // Real-time listener for buildathons
-    const unsubBuildathons = onSnapshot(
+    const unsubEvents = onSnapshot(
       query(collection(db, 'buildathons'), orderBy('createdAt', 'desc')),
       (snap) => {
         const data = [];
         snap.forEach((d) => data.push({ id: d.id, ...d.data() }));
-        setBuildathons(data);
+        setEvents(data);
+        setLoading(false);
       },
-      (err) => console.error('Buildathons error:', err),
+      (err) => { console.error('Events error:', err); setLoading(false); },
     );
 
-    // Real-time listener for projects
     const unsubProjects = onSnapshot(
-      query(collection(db, 'buildathonProjects'), orderBy('voteCount', 'desc')),
+      collection(db, 'buildathonProjects'),
       (snap) => {
         const data = [];
         snap.forEach((d) => data.push({ id: d.id, ...d.data() }));
         setProjects(data);
-        setLoading(false);
       },
-      (err) => {
-        console.error('Projects error:', err);
-        setLoading(false);
-      },
+      (err) => console.error('Projects error:', err),
     );
 
-    return () => {
-      unsubBuildathons();
-      unsubProjects();
-    };
+    return () => { unsubEvents(); unsubProjects(); };
   }, []);
 
-  // ---- Admin: Create Buildathon ----
-  async function handleCreateBuildathon(e) {
+  // ---- Admin: Create Event ----
+  async function handleCreateEvent(e) {
     e.preventDefault();
-    if (!newBuildathon.title || !newBuildathon.startDate || !newBuildathon.endDate) {
-      toast.error('Veuillez remplir le titre et les dates');
+    if (!newEvent.title || !newEvent.startDate || !newEvent.endDate) {
+      toast.error('Titre, date de début et date de fin sont obligatoires');
       return;
     }
     try {
-      const id = `buildathon-${Date.now().toString(36)}`;
+      const id = `event-${Date.now().toString(36)}`;
       await setDoc(doc(db, 'buildathons', id), {
-        ...newBuildathon,
-        prizes: newBuildathon.prizes.filter((p) => p.points > 0),
+        type: newEvent.type,
+        title: newEvent.title,
+        description: newEvent.description,
+        startDate: newEvent.startDate,
+        endDate: newEvent.endDate,
+        workDuration: newEvent.workDuration,
+        maxTeamSize: Number(newEvent.maxTeamSize) || 4,
+        prizes: newEvent.prizes.filter((p) => p.points > 0),
+        participants: [],
         status: 'active',
         createdBy: user.uid,
         createdAt: serverTimestamp(),
         finalized: false,
       });
-      toast.success('Buildathon créé !');
-      setShowCreateBuildathon(false);
-      setNewBuildathon({
-        title: '',
-        description: '',
-        startDate: '',
-        endDate: '',
-        workDuration: '',
-        prizes: [
-          { place: 1, points: 50 },
-          { place: 2, points: 30 },
-          { place: 3, points: 10 },
-        ],
-      });
+      toast.success(`${newEvent.type === 'hackathon' ? 'Hackathon' : 'Buildathon'} créé !`);
+      setShowCreateEvent(false);
+      setNewEvent({ type: 'buildathon', title: '', description: '', startDate: '', endDate: '', workDuration: '', maxTeamSize: 4, prizes: [{ place: 1, points: 50 }, { place: 2, points: 30 }, { place: 3, points: 10 }] });
     } catch (err) {
       toast.error('Erreur: ' + err.message);
     }
   }
 
-  // ---- User: Submit Project ----
-  async function handleSubmitProject(buildathonId) {
+  // ---- User: Register ----
+  async function handleRegister(eventId) {
+    try {
+      await updateDoc(doc(db, 'buildathons', eventId), { participants: arrayUnion(user.uid) });
+      toast.success('Inscrit avec succès !');
+    } catch (err) {
+      toast.error('Erreur: ' + err.message);
+    }
+  }
+
+  // ---- User: Submit Project (GitHub + demo video mandatory) ----
+  async function handleSubmitProject(eventId) {
     if (!newProject.title || !newProject.teamName) {
-      toast.error('Veuillez remplir le titre et le nom d\'équipe');
+      toast.error('Le titre et le nom d\'équipe sont obligatoires');
+      return;
+    }
+    if (!newProject.repoUrl) {
+      toast.error('Le lien GitHub est obligatoire');
+      return;
+    }
+    if (!newProject.demoUrl) {
+      toast.error('Le lien vidéo démo est obligatoire');
       return;
     }
     try {
       const id = `project-${Date.now().toString(36)}-${user.uid.slice(0, 6)}`;
       await setDoc(doc(db, 'buildathonProjects', id), {
-        buildathonId,
+        buildathonId: eventId,
         title: newProject.title,
         description: newProject.description,
         category: newProject.category,
         teamName: newProject.teamName,
         repoUrl: newProject.repoUrl,
         demoUrl: newProject.demoUrl,
-        members: [
-          {
-            uid: user.uid,
-            name: userProfile?.displayName || user.email,
-            email: user.email,
-          },
-        ],
+        members: [{ uid: user.uid, name: userProfile?.displayName || user.email, email: user.email }],
         votes: [],
         voteCount: 0,
         submittedBy: user.uid,
         submittedAt: serverTimestamp(),
       });
-      toast.success('Projet soumis avec succès !');
+      toast.success('Projet soumis !');
       setShowSubmitProject(null);
-      setNewProject({
-        title: '',
-        description: '',
-        category: 'ai-ml',
-        teamName: '',
-        repoUrl: '',
-        demoUrl: '',
-      });
+      setNewProject({ title: '', description: '', category: 'ai-ml', teamName: '', repoUrl: '', demoUrl: '', inviteEmail: '' });
     } catch (err) {
       toast.error('Erreur: ' + err.message);
     }
   }
 
-  // ---- User: Vote ----
-  async function handleVote(projectId, currentVotes) {
+  // ---- User: Vote (1 vote per user per event, 1 vote = 10 pts) ----
+  async function handleVote(projectId, buildathonId, currentVotes) {
     if (!user) return;
     const hasVoted = currentVotes?.includes(user.uid);
+
+    if (!hasVoted) {
+      const eventProjects = projects.filter((p) => p.buildathonId === buildathonId);
+      const alreadyVoted = eventProjects.some((p) => p.id !== projectId && p.votes?.includes(user.uid));
+      if (alreadyVoted) {
+        toast.error('Vous ne pouvez voter que pour un seul projet par événement');
+        return;
+      }
+    }
+
     try {
       const projRef = doc(db, 'buildathonProjects', projectId);
       if (hasVoted) {
-        await updateDoc(projRef, {
-          votes: arrayRemove(user.uid),
-          voteCount: increment(-1),
-        });
+        await updateDoc(projRef, { votes: arrayRemove(user.uid), voteCount: increment(-1) });
         toast.success('Vote retiré');
       } else {
-        await updateDoc(projRef, {
-          votes: arrayUnion(user.uid),
-          voteCount: increment(1),
-        });
-        toast.success('Vote enregistré !');
+        await updateDoc(projRef, { votes: arrayUnion(user.uid), voteCount: increment(1) });
+        toast.success('Vote enregistré ! (+10 pts pour ce projet)');
       }
     } catch (err) {
-      toast.error('Erreur de vote: ' + err.message);
+      toast.error('Erreur: ' + err.message);
     }
   }
 
-  // ---- Admin: Finalize Buildathon (award bonus points to top N) ----
-  async function handleFinalize(buildathonId) {
-    const buildathon = buildathons.find((b) => b.id === buildathonId);
-    if (!buildathon) return;
-
-    const buildathonProjects = projects
-      .filter((p) => p.buildathonId === buildathonId)
-      .sort((a, b) => (b.voteCount || 0) - (a.voteCount || 0));
-
-    if (buildathonProjects.length === 0) {
-      toast.error('Aucun projet soumis pour ce buildathon');
-      return;
-    }
-
-    const prizes = (buildathon.prizes || []).sort((a, b) => a.place - b.place);
-
+  // ---- Admin: Finalize Event ----
+  async function handleFinalize(eventId) {
+    const event = events.find((e) => e.id === eventId);
+    if (!event) return;
+    const eventProjects = projects.filter((p) => p.buildathonId === eventId).sort((a, b) => (b.voteCount || 0) - (a.voteCount || 0));
+    if (eventProjects.length === 0) { toast.error('Aucun projet soumis'); return; }
+    const prizes = (event.prizes || []).sort((a, b) => a.place - b.place);
     try {
-      // Award bonus points to top N teams
-      for (let i = 0; i < Math.min(prizes.length, buildathonProjects.length); i++) {
-        const project = buildathonProjects[i];
+      for (let i = 0; i < Math.min(prizes.length, eventProjects.length); i++) {
+        const project = eventProjects[i];
         const prize = prizes[i];
-        // Award to all team members
         for (const member of project.members || []) {
           if (member.uid) {
-            await addBonusPoints(
-              member.uid,
-              prize.points,
-              `Buildathon "${buildathon.title}" - Place ${prize.place}`,
-            );
+            const userRef = doc(db, 'users', member.uid);
+            await updateDoc(userRef, { bonusPoints: increment(prize.points) });
+            const logRef = doc(collection(db, 'users', member.uid, 'bonusLogs'));
+            await setDoc(logRef, { points: prize.points, reason: `${event.type === 'hackathon' ? 'Hackathon' : 'Buildathon'} "${event.title}" - Place ${prize.place}`, grantedBy: user.uid, grantedAt: serverTimestamp() });
           }
         }
       }
-
-      // Mark buildathon as completed
-      await updateDoc(doc(db, 'buildathons', buildathonId), {
-        status: 'completed',
-        finalized: true,
-        finalizedAt: serverTimestamp(),
-        finalizedBy: user.uid,
-      });
-
-      toast.success('Buildathon finalisé ! Points bonus attribués aux gagnants.');
+      await updateDoc(doc(db, 'buildathons', eventId), { status: 'completed', finalized: true, finalizedAt: serverTimestamp(), finalizedBy: user.uid });
+      toast.success('Événement finalisé ! Points bonus attribués.');
     } catch (err) {
-      toast.error('Erreur de finalisation: ' + err.message);
+      toast.error('Erreur: ' + err.message);
     }
   }
 
-  // Filtered buildathons
-  const filteredBuildathons = useMemo(() => {
-    return buildathons.filter((b) => {
-      const status = getBuildathonStatus(b);
+  // ---- Invite friend ----
+  async function handleInviteFriend(projectId) {
+    if (!newProject.inviteEmail) { toast.error('Entrez l\'email de votre ami'); return; }
+    try {
+      const usersSnap = await getDocs(collection(db, 'users'));
+      let friendUid = null, friendName = null;
+      usersSnap.forEach((d) => {
+        if (d.data().email === newProject.inviteEmail) { friendUid = d.id; friendName = d.data().displayName || d.data().email; }
+      });
+      if (!friendUid) { toast.error('Utilisateur non trouvé'); return; }
+      await updateDoc(doc(db, 'buildathonProjects', projectId), {
+        members: arrayUnion({ uid: friendUid, name: friendName, email: newProject.inviteEmail }),
+      });
+      toast.success(`${friendName} ajouté !`);
+      setNewProject((p) => ({ ...p, inviteEmail: '' }));
+    } catch (err) {
+      toast.error('Erreur: ' + err.message);
+    }
+  }
+
+  const filteredEvents = useMemo(() => {
+    return events.filter((e) => {
+      const status = getEventStatus(e);
       if (filterStatus !== 'all' && status !== filterStatus) return false;
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
-        return (
-          b.title?.toLowerCase().includes(q) ||
-          b.description?.toLowerCase().includes(q)
-        );
+        return e.title?.toLowerCase().includes(q) || e.description?.toLowerCase().includes(q);
       }
       return true;
     });
-  }, [buildathons, filterStatus, searchQuery]);
+  }, [events, filterStatus, searchQuery]);
 
-  // Countdown timer component
   function CountdownTimer({ endDate }) {
     const [timeLeft, setTimeLeft] = useState('');
-
     useEffect(() => {
       function update() {
         const now = new Date();
         const end = new Date(endDate);
         const diff = end - now;
-        if (diff <= 0) {
-          setTimeLeft('Terminé');
-          return;
-        }
-        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-        const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
-        const minutes = Math.floor((diff / (1000 * 60)) % 60);
-        setTimeLeft(`${days}j ${hours}h ${minutes}m`);
+        if (diff <= 0) { setTimeLeft('Terminé'); return; }
+        const d = Math.floor(diff / 86400000);
+        const h = Math.floor((diff / 3600000) % 24);
+        const m = Math.floor((diff / 60000) % 60);
+        setTimeLeft(`${d}j ${h}h ${m}m`);
       }
       update();
       const interval = setInterval(update, 60000);
       return () => clearInterval(interval);
     }, [endDate]);
-
-    return (
-      <span className="flex items-center gap-1 text-sm">
-        <Timer className="w-3.5 h-3.5" />
-        {timeLeft}
-      </span>
-    );
+    return <span className="flex items-center gap-1 text-sm font-medium"><Timer className="w-3.5 h-3.5" />{timeLeft}</span>;
   }
 
   if (loading) {
-    return (
-      <div className="flex justify-center py-20">
-        <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
-      </div>
-    );
+    return <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-primary-500" /></div>;
   }
 
   return (
@@ -351,20 +331,16 @@ export default function Buildathon() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
         <div className="flex items-center gap-3">
-          <Trophy className="w-8 h-8 text-amber-400" />
+          <Rocket className="w-8 h-8 text-primary-400" />
           <div>
-            <h1 className="section-title">Buildathon</h1>
-            <p className="section-subtitle">Compétitions de projets — soumettez, votez, gagnez !</p>
+            <h1 className="section-title">Événements</h1>
+            <p className="section-subtitle">Buildathons & Hackathons — participez, votez, gagnez !</p>
           </div>
         </div>
-
         {isAdmin && (
-          <button
-            onClick={() => setShowCreateBuildathon(true)}
-            className="btn-primary flex items-center gap-2"
-          >
+          <button onClick={() => setShowCreateEvent(true)} className="btn-primary flex items-center gap-2">
             <Plus className="w-4 h-4" />
-            Créer un Buildathon
+            Créer un événement
           </button>
         )}
       </div>
@@ -373,573 +349,301 @@ export default function Buildathon() {
       <div className="flex flex-col sm:flex-row gap-3 mb-6">
         <div className="relative flex-1">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Rechercher un buildathon..."
-            className="input-field pl-11 w-full"
-          />
+          <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Rechercher un événement..." className="input-field pl-11 w-full" />
         </div>
-        <div className="flex gap-2 overflow-x-auto">
-          {[
-            { value: 'all', label: 'Tous' },
-            { value: 'active', label: 'En cours' },
-            { value: 'upcoming', label: 'À venir' },
-            { value: 'voting', label: 'Vote' },
-            { value: 'completed', label: 'Terminé' },
-          ].map(({ value, label }) => (
-            <button
-              key={value}
-              onClick={() => setFilterStatus(value)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
-                filterStatus === value
-                  ? 'bg-primary-600/20 text-primary-300 border border-primary-500/30'
-                  : 'text-body hover:text-heading hover:bg-black/5 dark:hover:bg-white/5'
-              }`}
-            >
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {[{ value: 'all', label: 'Tous' }, { value: 'active', label: 'En cours' }, { value: 'upcoming', label: 'À venir' }, { value: 'ended', label: 'Vote' }, { value: 'completed', label: 'Passés' }].map(({ value, label }) => (
+            <button key={value} onClick={() => setFilterStatus(value)} className={`px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${filterStatus === value ? 'bg-primary-600/20 text-primary-300 border border-primary-500/30' : 'text-body hover:text-heading hover:bg-black/5 dark:hover:bg-white/5'}`}>
               {label}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Admin: Create Buildathon Modal */}
-      {showCreateBuildathon && isAdmin && (
+      {/* Admin: Create Event Form */}
+      {showCreateEvent && isAdmin && (
         <div className="glass-card p-8 mb-6 border-2 border-primary-500/30">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-bold text-heading flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-primary-400" />
-              Nouveau Buildathon
+              Nouvel événement
             </h2>
-            <button onClick={() => setShowCreateBuildathon(false)} className="text-muted hover:text-heading">
-              <X className="w-5 h-5" />
-            </button>
+            <button onClick={() => setShowCreateEvent(false)} className="text-muted hover:text-heading"><X className="w-5 h-5" /></button>
           </div>
 
-          <form onSubmit={handleCreateBuildathon} className="space-y-4">
+          <form onSubmit={handleCreateEvent} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-body mb-2">Type d'événement *</label>
+              <div className="flex gap-3">
+                {EVENT_TYPES.map((t) => (
+                  <button key={t.value} type="button" onClick={() => setNewEvent((p) => ({ ...p, type: t.value }))} className={`flex items-center gap-2 px-4 py-3 rounded-xl border-2 transition-all ${newEvent.type === t.value ? 'border-primary-500 bg-primary-500/10 text-heading' : 'border-themed text-body hover:border-primary-500/50'}`}>
+                    <span className="text-xl">{t.icon}</span>
+                    <span className="font-medium">{t.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-body mb-1">Titre *</label>
-              <input
-                type="text"
-                value={newBuildathon.title}
-                onChange={(e) => setNewBuildathon((p) => ({ ...p, title: e.target.value }))}
-                className="input-field w-full"
-                placeholder="Ex: Buildathon IA Décembre 2024"
-                required
-              />
+              <input type="text" value={newEvent.title} onChange={(e) => setNewEvent((p) => ({ ...p, title: e.target.value }))} className="input-field w-full" placeholder="Ex: Buildathon IA Mars 2026" required />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-body mb-1">Description</label>
-              <textarea
-                value={newBuildathon.description}
-                onChange={(e) => setNewBuildathon((p) => ({ ...p, description: e.target.value }))}
-                className="input-field w-full h-24 resize-none"
-                placeholder="Décrivez le thème, les règles et les objectifs..."
-              />
+              <textarea value={newEvent.description} onChange={(e) => setNewEvent((p) => ({ ...p, description: e.target.value }))} className="input-field w-full h-24 resize-none" placeholder="Thème, règles, objectifs..." />
             </div>
 
-            <div className="grid sm:grid-cols-3 gap-4">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
                 <label className="block text-sm font-medium text-body mb-1">Date de début *</label>
-                <input
-                  type="date"
-                  value={newBuildathon.startDate}
-                  onChange={(e) => setNewBuildathon((p) => ({ ...p, startDate: e.target.value }))}
-                  className="input-field w-full"
-                  required
-                />
+                <input type="date" value={newEvent.startDate} onChange={(e) => setNewEvent((p) => ({ ...p, startDate: e.target.value }))} className="input-field w-full" required />
               </div>
               <div>
                 <label className="block text-sm font-medium text-body mb-1">Date de fin *</label>
-                <input
-                  type="date"
-                  value={newBuildathon.endDate}
-                  onChange={(e) => setNewBuildathon((p) => ({ ...p, endDate: e.target.value }))}
-                  className="input-field w-full"
-                  required
-                />
+                <input type="date" value={newEvent.endDate} onChange={(e) => setNewEvent((p) => ({ ...p, endDate: e.target.value }))} className="input-field w-full" required />
               </div>
               <div>
                 <label className="block text-sm font-medium text-body mb-1">Durée de travail</label>
-                <input
-                  type="text"
-                  value={newBuildathon.workDuration}
-                  onChange={(e) => setNewBuildathon((p) => ({ ...p, workDuration: e.target.value }))}
-                  className="input-field w-full"
-                  placeholder="Ex: 48h, 1 semaine"
-                />
+                <input type="text" value={newEvent.workDuration} onChange={(e) => setNewEvent((p) => ({ ...p, workDuration: e.target.value }))} className="input-field w-full" placeholder="Ex: 48h" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-body mb-1">Taille max équipe</label>
+                <input type="number" min="1" max="10" value={newEvent.maxTeamSize} onChange={(e) => setNewEvent((p) => ({ ...p, maxTeamSize: e.target.value }))} className="input-field w-full" />
               </div>
             </div>
 
-            {/* Prizes */}
             <div>
               <label className="block text-sm font-medium text-body mb-2">Prix (points bonus)</label>
               <div className="space-y-2">
-                {newBuildathon.prizes.map((prize, i) => (
+                {newEvent.prizes.map((prize, i) => (
                   <div key={i} className="flex items-center gap-3">
-                    <span className="text-sm text-body w-20">Place {prize.place} :</span>
-                    <input
-                      type="number"
-                      min="0"
-                      value={prize.points}
-                      onChange={(e) => {
-                        const updated = [...newBuildathon.prizes];
-                        updated[i] = { ...updated[i], points: Number(e.target.value) };
-                        setNewBuildathon((p) => ({ ...p, prizes: updated }));
-                      }}
-                      className="input-field w-24"
-                    />
+                    <span className="text-lg">{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${prize.place}`}</span>
+                    <span className="text-sm text-body w-16">Place {prize.place}</span>
+                    <input type="number" min="0" value={prize.points} onChange={(e) => { const u = [...newEvent.prizes]; u[i] = { ...u[i], points: Number(e.target.value) }; setNewEvent((p) => ({ ...p, prizes: u })); }} className="input-field w-24" />
                     <span className="text-xs text-muted">pts</span>
                   </div>
                 ))}
-                <button
-                  type="button"
-                  onClick={() =>
-                    setNewBuildathon((p) => ({
-                      ...p,
-                      prizes: [...p.prizes, { place: p.prizes.length + 1, points: 5 }],
-                    }))
-                  }
-                  className="text-sm text-primary-400 hover:text-primary-300"
-                >
-                  + Ajouter un prix
-                </button>
+                <button type="button" onClick={() => setNewEvent((p) => ({ ...p, prizes: [...p.prizes, { place: p.prizes.length + 1, points: 5 }] }))} className="text-sm text-primary-400 hover:text-primary-300">+ Ajouter un prix</button>
               </div>
             </div>
 
             <div className="flex gap-3 pt-2">
-              <button type="submit" className="btn-primary flex items-center gap-2">
-                <Trophy className="w-4 h-4" />
-                Créer le Buildathon
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowCreateBuildathon(false)}
-                className="btn-secondary"
-              >
-                Annuler
-              </button>
+              <button type="submit" className="btn-primary flex items-center gap-2"><Rocket className="w-4 h-4" />Créer l'événement</button>
+              <button type="button" onClick={() => setShowCreateEvent(false)} className="btn-secondary">Annuler</button>
             </div>
           </form>
         </div>
       )}
 
-      {/* Buildathons list */}
-      {filteredBuildathons.length === 0 ? (
-        <div className="glass-card p-12 text-center">
-          <Trophy className="w-16 h-16 text-muted mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-body mb-2">
-            {searchQuery || filterStatus !== 'all'
-              ? 'Aucun buildathon trouvé'
-              : 'Aucun buildathon pour le moment'}
+      {/* Events List */}
+      {filteredEvents.length === 0 ? (
+        <div className="glass-card p-16 text-center">
+          <Rocket className="w-20 h-20 text-muted mx-auto mb-4 opacity-30" />
+          <h3 className="text-xl font-bold text-heading mb-2">
+            {searchQuery || filterStatus !== 'all' ? 'Aucun événement trouvé' : 'Aucun événement prévu pour le moment'}
           </h3>
-          <p className="text-muted">
+          <p className="text-body max-w-md mx-auto">
             {isAdmin
-              ? 'Créez le premier buildathon pour lancer la compétition !'
-              : 'Les buildathons seront bientôt disponibles.'}
+              ? 'Créez le premier Buildathon ou Hackathon pour lancer la compétition !'
+              : 'Il n\'y a pas encore de Buildathon ou Hackathon prévu. Revenez bientôt pour découvrir les prochains événements !'}
           </p>
         </div>
       ) : (
         <div className="space-y-6">
-          {filteredBuildathons.map((buildathon) => {
-            const status = getBuildathonStatus(buildathon);
-            const statusInfo = STATUS_LABELS[status];
-            const buildathonProjects = projects
-              .filter((p) => p.buildathonId === buildathon.id)
-              .sort((a, b) => (b.voteCount || 0) - (a.voteCount || 0));
-            const isExpanded = expandedBuildathon === buildathon.id;
-            const userHasSubmitted = buildathonProjects.some(
-              (p) => p.submittedBy === user?.uid,
-            );
-            const canSubmit = status === 'active' && !userHasSubmitted;
-            const canVote = status === 'active' || status === 'voting';
+          {filteredEvents.map((event) => {
+            const status = getEventStatus(event);
+            const statusInfo = STATUS_CONFIG[status];
+            const eventProjects = projects.filter((p) => p.buildathonId === event.id).sort((a, b) => (b.voteCount || 0) - (a.voteCount || 0));
+            const isExpanded = expandedEvent === event.id;
+            const isRegistered = event.participants?.includes(user?.uid);
+            const userHasSubmitted = eventProjects.some((p) => p.submittedBy === user?.uid);
+            const canSubmit = status === 'active' && isRegistered;
+            const canVote = status === 'active' || status === 'ended';
+            const canRegister = (status === 'upcoming' || status === 'active') && !isRegistered;
+            const typeLabel = event.type === 'hackathon' ? 'Hackathon' : 'Buildathon';
+            const typeIcon = event.type === 'hackathon' ? '💻' : '🏗️';
+            const userVotedProject = eventProjects.find((p) => p.votes?.includes(user?.uid));
 
             return (
-              <div key={buildathon.id} className="glass-card overflow-hidden">
-                {/* Buildathon Header */}
-                <div
-                  className="p-6 cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
-                  onClick={() =>
-                    setExpandedBuildathon(isExpanded ? null : buildathon.id)
-                  }
-                >
+              <div key={event.id} className="glass-card overflow-hidden">
+                {/* Event Header */}
+                <div className="p-6 cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors" onClick={() => setExpandedEvent(isExpanded ? null : event.id)}>
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2 flex-wrap">
-                        <h2 className="text-xl font-bold text-heading">
-                          {buildathon.title}
-                        </h2>
-                        <span
-                          className={`badge border ${statusInfo.color}`}
-                        >
+                        <span className="text-2xl">{typeIcon}</span>
+                        <h2 className="text-xl font-bold text-heading">{event.title}</h2>
+                        <span className={`badge border ${statusInfo.color}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${statusInfo.dot} mr-1 inline-block`} />
                           {statusInfo.label}
                         </span>
+                        <span className="badge bg-surface text-body border border-themed text-xs">{typeLabel}</span>
                       </div>
-
-                      {buildathon.description && (
-                        <p className="text-body text-sm mb-3 line-clamp-2">
-                          {buildathon.description}
-                        </p>
-                      )}
-
+                      {event.description && <p className="text-body text-sm mb-3 line-clamp-2">{event.description}</p>}
                       <div className="flex flex-wrap items-center gap-4 text-xs text-muted">
-                        <span className="flex items-center gap-1">
-                          <Calendar className="w-3.5 h-3.5" />
-                          {buildathon.startDate} → {buildathon.endDate}
-                        </span>
-                        {buildathon.workDuration && (
-                          <span className="flex items-center gap-1">
-                            <Clock className="w-3.5 h-3.5" />
-                            {buildathon.workDuration}
-                          </span>
-                        )}
-                        <span className="flex items-center gap-1">
-                          <FileText className="w-3.5 h-3.5" />
-                          {buildathonProjects.length} projet{buildathonProjects.length !== 1 ? 's' : ''}
-                        </span>
-                        {status !== 'completed' && buildathon.endDate && (
-                          <span className="text-amber-400">
-                            <CountdownTimer endDate={buildathon.endDate} />
-                          </span>
-                        )}
+                        <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{new Date(event.startDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} → {new Date(event.endDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                        {event.workDuration && <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{event.workDuration}</span>}
+                        <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5" />{event.participants?.length || 0} inscrit{(event.participants?.length || 0) !== 1 ? 's' : ''}</span>
+                        <span className="flex items-center gap-1"><FileText className="w-3.5 h-3.5" />{eventProjects.length} projet{eventProjects.length !== 1 ? 's' : ''}</span>
+                        {(status === 'active' || status === 'upcoming') && event.endDate && <span className="text-amber-400"><CountdownTimer endDate={event.endDate} /></span>}
                       </div>
                     </div>
-
                     <div className="flex items-center gap-3">
-                      {/* Prizes preview */}
-                      {buildathon.prizes?.length > 0 && (
+                      {event.prizes?.length > 0 && (
                         <div className="hidden sm:flex items-center gap-1.5">
-                          {buildathon.prizes.slice(0, 3).map((p, i) => (
-                            <span
-                              key={i}
-                              className="flex items-center gap-0.5 badge bg-amber-500/10 text-amber-400 border-amber-500/30"
-                            >
-                              <Zap className="w-3 h-3" />
-                              {p.points}
-                            </span>
+                          {event.prizes.slice(0, 3).map((p, i) => (
+                            <span key={i} className="flex items-center gap-0.5 badge bg-amber-500/10 text-amber-400 border-amber-500/30 text-xs"><Zap className="w-3 h-3" />{p.points}</span>
                           ))}
                         </div>
                       )}
-                      {isExpanded ? (
-                        <ChevronUp className="w-5 h-5 text-muted" />
-                      ) : (
-                        <ChevronDown className="w-5 h-5 text-muted" />
-                      )}
+                      {isExpanded ? <ChevronUp className="w-5 h-5 text-muted" /> : <ChevronDown className="w-5 h-5 text-muted" />}
                     </div>
                   </div>
                 </div>
 
-                {/* Expanded Content */}
+                {/* Expanded */}
                 {isExpanded && (
                   <div className="border-t border-themed">
-                    {/* Actions bar */}
+                    {/* Actions */}
                     <div className="px-6 py-3 bg-black/5 dark:bg-white/5 flex items-center justify-between flex-wrap gap-2">
-                      <div className="flex items-center gap-3">
-                        {canSubmit && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setShowSubmitProject(buildathon.id);
-                            }}
-                            className="btn-primary text-sm flex items-center gap-1"
-                          >
-                            <Send className="w-3.5 h-3.5" />
-                            Soumettre un projet
-                          </button>
+                      <div className="flex items-center gap-3 flex-wrap">
+                        {canRegister && (
+                          <button onClick={(e) => { e.stopPropagation(); handleRegister(event.id); }} className="btn-primary text-sm flex items-center gap-1"><UserPlus className="w-3.5 h-3.5" />S'inscrire</button>
                         )}
-                        {userHasSubmitted && (
-                          <span className="text-xs text-accent-400 flex items-center gap-1">
-                            <CheckCircle className="w-3.5 h-3.5" />
-                            Projet soumis
-                          </span>
+                        {isRegistered && <span className="text-xs text-green-400 flex items-center gap-1"><CheckCircle className="w-3.5 h-3.5" />Inscrit</span>}
+                        {canSubmit && !userHasSubmitted && (
+                          <button onClick={(e) => { e.stopPropagation(); setShowSubmitProject(event.id); }} className="btn-accent text-sm flex items-center gap-1"><Send className="w-3.5 h-3.5" />Soumettre un projet</button>
                         )}
+                        {userHasSubmitted && <span className="text-xs text-accent-400 flex items-center gap-1"><CheckCircle className="w-3.5 h-3.5" />Projet soumis</span>}
                       </div>
-
-                      {isAdmin && !buildathon.finalized && (status === 'voting' || status === 'active') && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (confirm('Finaliser ce buildathon et attribuer les points bonus aux gagnants ?')) {
-                              handleFinalize(buildathon.id);
-                            }
-                          }}
-                          className="flex items-center gap-1 text-sm px-3 py-1.5 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/30 hover:bg-amber-500/20 transition-colors"
-                        >
-                          <Award className="w-3.5 h-3.5" />
-                          Finaliser & Attribuer les prix
+                      {isAdmin && !event.finalized && (status === 'ended' || status === 'active') && (
+                        <button onClick={(e) => { e.stopPropagation(); if (confirm('Finaliser et attribuer les points ?')) handleFinalize(event.id); }} className="flex items-center gap-1 text-sm px-3 py-1.5 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/30 hover:bg-amber-500/20 transition-colors">
+                          <Award className="w-3.5 h-3.5" />Finaliser & Attribuer prix
                         </button>
                       )}
-                      {buildathon.finalized && (
-                        <span className="text-xs text-green-400 flex items-center gap-1">
-                          <CheckCircle className="w-3.5 h-3.5" />
-                          Finalisé — Points attribués
-                        </span>
-                      )}
+                      {event.finalized && <span className="text-xs text-green-400 flex items-center gap-1"><CheckCircle className="w-3.5 h-3.5" />Finalisé</span>}
                     </div>
 
-                    {/* Project Submission Form */}
-                    {showSubmitProject === buildathon.id && (
+                    {/* Submit Project Form */}
+                    {showSubmitProject === event.id && (
                       <div className="p-6 border-t border-themed bg-primary-500/5">
-                        <h3 className="text-lg font-semibold text-heading mb-4 flex items-center gap-2">
-                          <Send className="w-5 h-5 text-primary-400" />
-                          Soumettre votre projet
-                        </h3>
+                        <h3 className="text-lg font-semibold text-heading mb-4 flex items-center gap-2"><Send className="w-5 h-5 text-primary-400" />Soumettre votre projet</h3>
                         <div className="space-y-3">
                           <div className="grid sm:grid-cols-2 gap-3">
                             <div>
-                              <label className="block text-sm font-medium text-body mb-1">
-                                Titre du projet *
-                              </label>
-                              <input
-                                type="text"
-                                value={newProject.title}
-                                onChange={(e) =>
-                                  setNewProject((p) => ({ ...p, title: e.target.value }))
-                                }
-                                className="input-field w-full"
-                                placeholder="Nom de votre projet"
-                              />
+                              <label className="block text-sm font-medium text-body mb-1">Titre *</label>
+                              <input type="text" value={newProject.title} onChange={(e) => setNewProject((p) => ({ ...p, title: e.target.value }))} className="input-field w-full" placeholder="Nom du projet" />
                             </div>
                             <div>
-                              <label className="block text-sm font-medium text-body mb-1">
-                                Nom d'équipe *
-                              </label>
-                              <input
-                                type="text"
-                                value={newProject.teamName}
-                                onChange={(e) =>
-                                  setNewProject((p) => ({ ...p, teamName: e.target.value }))
-                                }
-                                className="input-field w-full"
-                                placeholder="Nom de votre équipe"
-                              />
+                              <label className="block text-sm font-medium text-body mb-1">Nom d'équipe *</label>
+                              <input type="text" value={newProject.teamName} onChange={(e) => setNewProject((p) => ({ ...p, teamName: e.target.value }))} className="input-field w-full" placeholder="Votre équipe" />
                             </div>
                           </div>
-
                           <div>
-                            <label className="block text-sm font-medium text-body mb-1">
-                              Description
-                            </label>
-                            <textarea
-                              value={newProject.description}
-                              onChange={(e) =>
-                                setNewProject((p) => ({ ...p, description: e.target.value }))
-                              }
-                              className="input-field w-full h-20 resize-none"
-                              placeholder="Décrivez votre projet, les technologies utilisées..."
-                            />
+                            <label className="block text-sm font-medium text-body mb-1">Description</label>
+                            <textarea value={newProject.description} onChange={(e) => setNewProject((p) => ({ ...p, description: e.target.value }))} className="input-field w-full h-20 resize-none" placeholder="Technologies, problème résolu..." />
                           </div>
-
                           <div className="grid sm:grid-cols-3 gap-3">
                             <div>
-                              <label className="block text-sm font-medium text-body mb-1">
-                                Catégorie
-                              </label>
-                              <select
-                                value={newProject.category}
-                                onChange={(e) =>
-                                  setNewProject((p) => ({ ...p, category: e.target.value }))
-                                }
-                                className="input-field w-full"
-                              >
-                                {PROJECT_CATEGORIES.map((c) => (
-                                  <option key={c.value} value={c.value}>
-                                    {c.label}
-                                  </option>
-                                ))}
+                              <label className="block text-sm font-medium text-body mb-1">Catégorie</label>
+                              <select value={newProject.category} onChange={(e) => setNewProject((p) => ({ ...p, category: e.target.value }))} className="input-field w-full">
+                                {PROJECT_CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
                               </select>
                             </div>
                             <div>
-                              <label className="block text-sm font-medium text-body mb-1">
-                                Repo URL
-                              </label>
-                              <input
-                                type="url"
-                                value={newProject.repoUrl}
-                                onChange={(e) =>
-                                  setNewProject((p) => ({ ...p, repoUrl: e.target.value }))
-                                }
-                                className="input-field w-full"
-                                placeholder="https://github.com/..."
-                              />
+                              <label className="block text-sm font-medium text-body mb-1"><Link2 className="w-3 h-3 inline mr-1" />Lien GitHub *</label>
+                              <input type="url" value={newProject.repoUrl} onChange={(e) => setNewProject((p) => ({ ...p, repoUrl: e.target.value }))} className="input-field w-full" placeholder="https://github.com/..." required />
                             </div>
                             <div>
-                              <label className="block text-sm font-medium text-body mb-1">
-                                Demo URL
-                              </label>
-                              <input
-                                type="url"
-                                value={newProject.demoUrl}
-                                onChange={(e) =>
-                                  setNewProject((p) => ({ ...p, demoUrl: e.target.value }))
-                                }
-                                className="input-field w-full"
-                                placeholder="https://..."
-                              />
+                              <label className="block text-sm font-medium text-body mb-1"><Video className="w-3 h-3 inline mr-1" />Vidéo démo *</label>
+                              <input type="url" value={newProject.demoUrl} onChange={(e) => setNewProject((p) => ({ ...p, demoUrl: e.target.value }))} className="input-field w-full" placeholder="https://youtube.com/..." required />
                             </div>
                           </div>
-
                           <div className="flex gap-3 pt-2">
-                            <button
-                              onClick={() => handleSubmitProject(buildathon.id)}
-                              className="btn-primary flex items-center gap-2"
-                            >
-                              <Send className="w-4 h-4" />
-                              Soumettre
-                            </button>
-                            <button
-                              onClick={() => setShowSubmitProject(null)}
-                              className="btn-secondary"
-                            >
-                              Annuler
-                            </button>
+                            <button onClick={() => handleSubmitProject(event.id)} className="btn-primary flex items-center gap-2"><Send className="w-4 h-4" />Soumettre</button>
+                            <button onClick={() => setShowSubmitProject(null)} className="btn-secondary">Annuler</button>
                           </div>
                         </div>
                       </div>
                     )}
 
-                    {/* Projects List */}
+                    {/* Projects */}
                     <div className="p-6">
-                      {buildathonProjects.length === 0 ? (
+                      {eventProjects.length === 0 ? (
                         <div className="text-center py-8">
-                          <FileText className="w-12 h-12 text-muted mx-auto mb-3" />
+                          <FileText className="w-12 h-12 text-muted mx-auto mb-3 opacity-30" />
                           <p className="text-body">Aucun projet soumis pour le moment</p>
+                          {canSubmit && <p className="text-sm text-muted mt-1">Soyez le premier à soumettre !</p>}
                         </div>
                       ) : (
                         <div className="space-y-3">
-                          <h3 className="text-sm font-semibold text-heading uppercase tracking-wider mb-3">
-                            Projets ({buildathonProjects.length})
+                          <h3 className="text-sm font-semibold text-heading uppercase tracking-wider mb-3 flex items-center gap-2">
+                            <Trophy className="w-4 h-4 text-amber-400" />
+                            Classement des projets ({eventProjects.length})
                           </h3>
-                          {buildathonProjects.map((project, index) => {
+                          {eventProjects.map((project, index) => {
                             const hasVoted = project.votes?.includes(user?.uid);
                             const isOwn = project.submittedBy === user?.uid;
-                            const categoryInfo = PROJECT_CATEGORIES.find(
-                              (c) => c.value === project.category,
-                            );
-                            const isWinner =
-                              buildathon.finalized &&
-                              index < (buildathon.prizes?.length || 3);
+                            const categoryInfo = PROJECT_CATEGORIES.find((c) => c.value === project.category);
+                            const isWinner = event.finalized && index < (event.prizes?.length || 3);
+                            const canUserVote = canVote && !isOwn && (!userVotedProject || hasVoted);
+                            const votePoints = (project.voteCount || 0) * 10;
 
                             return (
-                              <div
-                                key={project.id}
-                                className={`p-4 rounded-xl border transition-all ${
-                                  isWinner
-                                    ? 'border-amber-500/30 bg-amber-500/5'
-                                    : 'border-themed bg-black/5 dark:bg-white/5'
-                                }`}
-                              >
+                              <div key={project.id} className={`p-4 rounded-xl border transition-all ${isWinner ? index === 0 ? 'border-amber-400/50 bg-gradient-to-r from-amber-500/10 to-transparent shadow-lg shadow-amber-500/5' : index === 1 ? 'border-gray-400/40 bg-gradient-to-r from-gray-400/10 to-transparent' : 'border-orange-500/40 bg-gradient-to-r from-orange-500/10 to-transparent' : 'border-themed bg-black/5 dark:bg-white/5'}`}>
                                 <div className="flex items-start justify-between gap-3">
                                   <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2 flex-wrap mb-1">
-                                      {isWinner && (
-                                        <span className="text-amber-400">
-                                          {index === 0 ? (
-                                            <Crown className="w-5 h-5" />
-                                          ) : (
-                                            <Award className="w-4 h-4" />
-                                          )}
-                                        </span>
-                                      )}
-                                      <span className="font-semibold text-heading">
-                                        {project.title}
-                                      </span>
-                                      {categoryInfo && (
-                                        <span
-                                          className={`badge text-xs border ${categoryInfo.color}`}
-                                        >
-                                          {categoryInfo.label}
-                                        </span>
-                                      )}
+                                      <span className={`text-sm font-bold ${index === 0 ? 'text-amber-400' : index === 1 ? 'text-gray-400' : index === 2 ? 'text-orange-400' : 'text-muted'}`}>#{index + 1}</span>
+                                      {isWinner && index === 0 && <Crown className="w-4 h-4 text-amber-400" />}
+                                      {isWinner && index > 0 && <Award className="w-4 h-4 text-amber-500" />}
+                                      <span className="font-semibold text-heading">{project.title}</span>
+                                      {categoryInfo && <span className={`badge text-xs border ${categoryInfo.color}`}>{categoryInfo.label}</span>}
+                                      {isOwn && <span className="badge-primary text-[10px]">Votre projet</span>}
                                     </div>
-
-                                    {project.description && (
-                                      <p className="text-sm text-body mb-2 line-clamp-2">
-                                        {project.description}
-                                      </p>
-                                    )}
-
+                                    {project.description && <p className="text-sm text-body mb-2 line-clamp-2">{project.description}</p>}
                                     <div className="flex flex-wrap items-center gap-3 text-xs text-muted">
-                                      <span className="flex items-center gap-1">
-                                        <Users className="w-3 h-3" />
-                                        {project.teamName}
-                                      </span>
-                                      {/* Member initials */}
+                                      <span className="flex items-center gap-1"><Users className="w-3 h-3" />{project.teamName}</span>
                                       <div className="flex -space-x-1">
                                         {project.members?.map((m, mi) => (
-                                          <span
-                                            key={mi}
-                                            className="w-5 h-5 rounded-full bg-primary-500/20 text-primary-400 flex items-center justify-center text-[10px] font-bold border border-surface"
-                                            title={m.name || m.email}
-                                          >
-                                            {(m.name || m.email || '?')[0].toUpperCase()}
-                                          </span>
+                                          <span key={mi} className="w-5 h-5 rounded-full bg-primary-500/20 text-primary-400 flex items-center justify-center text-[10px] font-bold border border-surface" title={m.name}>{(m.name || '?')[0].toUpperCase()}</span>
                                         ))}
                                       </div>
-                                      {project.repoUrl && (
-                                        <a
-                                          href={project.repoUrl}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="flex items-center gap-1 text-primary-400 hover:underline"
-                                          onClick={(e) => e.stopPropagation()}
-                                        >
-                                          <Link2 className="w-3 h-3" />
-                                          Repo
-                                        </a>
-                                      )}
-                                      {project.demoUrl && (
-                                        <a
-                                          href={project.demoUrl}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="flex items-center gap-1 text-primary-400 hover:underline"
-                                          onClick={(e) => e.stopPropagation()}
-                                        >
-                                          <Globe className="w-3 h-3" />
-                                          Demo
-                                        </a>
-                                      )}
-                                      {isWinner && buildathon.prizes?.[index] && (
-                                        <span className="flex items-center gap-1 text-amber-400 font-medium">
-                                          <Zap className="w-3 h-3" />
-                                          +{buildathon.prizes[index].points} pts
-                                        </span>
-                                      )}
+                                      <a href={project.repoUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-primary-400 hover:underline" onClick={(e) => e.stopPropagation()}>
+                                        <Link2 className="w-3 h-3" />GitHub
+                                      </a>
+                                      <a href={project.demoUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-primary-400 hover:underline" onClick={(e) => e.stopPropagation()}>
+                                        <Video className="w-3 h-3" />Démo
+                                      </a>
+                                      <span className="flex items-center gap-1 text-amber-400 font-medium"><Zap className="w-3 h-3" />{votePoints} pts</span>
+                                      {isWinner && event.prizes?.[index] && <span className="flex items-center gap-1 text-green-400 font-medium"><Trophy className="w-3 h-3" />+{event.prizes[index].points} bonus</span>}
                                     </div>
+                                    {/* Invite friend */}
+                                    {isOwn && status === 'active' && (
+                                      <div className="mt-2 flex items-center gap-2">
+                                        <input type="email" value={newProject.inviteEmail} onChange={(e) => setNewProject((p) => ({ ...p, inviteEmail: e.target.value }))} className="input-field text-xs py-1 px-2 w-48" placeholder="Email d'un ami" onClick={(e) => e.stopPropagation()} />
+                                        <button onClick={(e) => { e.stopPropagation(); handleInviteFriend(project.id); }} className="text-xs text-primary-400 hover:text-primary-300 flex items-center gap-1"><UserPlus className="w-3 h-3" />Inviter</button>
+                                      </div>
+                                    )}
                                   </div>
-
-                                  {/* Vote button */}
-                                  <div className="flex flex-col items-center gap-1">
+                                  {/* Vote */}
+                                  <div className="flex flex-col items-center gap-1 min-w-[48px]">
                                     <button
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        if (isOwn) {
-                                          toast.error('Vous ne pouvez pas voter pour votre propre projet');
-                                          return;
-                                        }
-                                        if (!canVote) {
-                                          toast.error('Le vote n\'est plus disponible');
-                                          return;
-                                        }
-                                        handleVote(project.id, project.votes);
+                                        if (isOwn) { toast.error('Impossible de voter pour votre projet'); return; }
+                                        if (!canVote) { toast.error('Vote fermé'); return; }
+                                        if (!canUserVote && !hasVoted) { toast.error('Vous avez déjà voté pour un autre projet'); return; }
+                                        handleVote(project.id, event.id, project.votes);
                                       }}
-                                      disabled={isOwn || !canVote}
-                                      className={`p-2 rounded-lg transition-all ${
-                                        hasVoted
-                                          ? 'bg-primary-500/20 text-primary-400'
-                                          : isOwn || !canVote
-                                            ? 'bg-black/5 dark:bg-white/5 text-muted cursor-not-allowed'
-                                            : 'bg-black/5 dark:bg-white/5 text-body hover:bg-primary-500/10 hover:text-primary-400'
-                                      }`}
+                                      disabled={isOwn || !canVote || (!canUserVote && !hasVoted)}
+                                      className={`p-2.5 rounded-xl transition-all ${hasVoted ? 'bg-primary-500/20 text-primary-400 ring-2 ring-primary-500/30' : isOwn || !canUserVote ? 'bg-black/5 dark:bg-white/5 text-muted cursor-not-allowed' : 'bg-black/5 dark:bg-white/5 text-body hover:bg-primary-500/10 hover:text-primary-400'}`}
                                     >
-                                      <ThumbsUp className={`w-4 h-4 ${hasVoted ? 'fill-current' : ''}`} />
+                                      <ThumbsUp className={`w-5 h-5 ${hasVoted ? 'fill-current' : ''}`} />
                                     </button>
-                                    <span className={`text-sm font-bold ${hasVoted ? 'text-primary-400' : 'text-body'}`}>
-                                      {project.voteCount || 0}
-                                    </span>
+                                    <span className={`text-sm font-bold ${hasVoted ? 'text-primary-400' : 'text-body'}`}>{project.voteCount || 0}</span>
+                                    <span className="text-[9px] text-muted">vote{(project.voteCount || 0) !== 1 ? 's' : ''}</span>
                                   </div>
                                 </div>
                               </div>
@@ -948,44 +652,23 @@ export default function Buildathon() {
                         </div>
                       )}
 
-                      {/* Prizes section */}
-                      {buildathon.prizes?.length > 0 && (
+                      {/* Prizes */}
+                      {event.prizes?.length > 0 && (
                         <div className="mt-6 pt-4 border-t border-themed">
-                          <h4 className="text-sm font-semibold text-heading mb-3 flex items-center gap-2">
-                            <Award className="w-4 h-4 text-amber-400" />
-                            Prix
-                          </h4>
+                          <h4 className="text-sm font-semibold text-heading mb-3 flex items-center gap-2"><Award className="w-4 h-4 text-amber-400" />Prix</h4>
                           <div className="flex flex-wrap gap-3">
-                            {buildathon.prizes.map((prize, i) => {
-                              const winner =
-                                buildathon.finalized && buildathonProjects[i];
+                            {event.prizes.map((prize, i) => {
+                              const winner = event.finalized && eventProjects[i];
                               return (
-                                <div
-                                  key={i}
-                                  className={`p-3 rounded-xl border text-center min-w-[120px] ${
-                                    i === 0
-                                      ? 'border-amber-500/30 bg-amber-500/5'
-                                      : i === 1
-                                        ? 'border-gray-400/30 bg-gray-500/5'
-                                        : 'border-orange-500/30 bg-orange-500/5'
-                                  }`}
-                                >
-                                  <div className="text-2xl mb-1">
-                                    {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${prize.place}`}
-                                  </div>
-                                  <div className="flex items-center justify-center gap-1 text-amber-400 font-bold text-sm">
-                                    <Zap className="w-3.5 h-3.5" />
-                                    {prize.points} pts
-                                  </div>
-                                  {winner && (
-                                    <p className="text-xs text-heading mt-1 font-medium">
-                                      {winner.teamName}
-                                    </p>
-                                  )}
+                                <div key={i} className={`p-3 rounded-xl border text-center min-w-[120px] ${i === 0 ? 'border-amber-500/30 bg-amber-500/5' : i === 1 ? 'border-gray-400/30 bg-gray-400/5' : 'border-orange-500/30 bg-orange-500/5'}`}>
+                                  <div className="text-2xl mb-1">{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${prize.place}`}</div>
+                                  <div className="flex items-center justify-center gap-1 text-amber-400 font-bold text-sm"><Zap className="w-3.5 h-3.5" />{prize.points} pts</div>
+                                  {winner && <p className="text-xs text-heading mt-1 font-medium">{winner.teamName}</p>}
                                 </div>
                               );
                             })}
                           </div>
+                          <p className="text-xs text-muted mt-3">💡 Chaque vote = 10 points au classement. 1 seul vote par personne par événement.</p>
                         </div>
                       )}
                     </div>
