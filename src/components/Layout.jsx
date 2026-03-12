@@ -7,6 +7,7 @@ import {
   BookOpen,
   Trophy,
   User,
+  Users,
   Shield,
   LogOut,
   Menu,
@@ -26,6 +27,7 @@ export default function Layout({ children }) {
   const navItems = [
     { path: '/leaderboard', icon: Trophy, label: 'Classement' },
     { path: '/dashboard', icon: LayoutDashboard, label: 'Modules' },
+    { path: '/projects', icon: Users, label: 'Projets' },
     { path: '/profile', icon: User, label: 'Profil' },
   ];
 

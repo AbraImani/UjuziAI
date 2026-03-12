@@ -103,5 +103,26 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow write: if isAdmin();
     }
+
+    // ============================================
+    // TEAM PROJECTS (Collaborative projects)
+    // ============================================
+    match /teamProjects/{projectId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAuthenticated() && 
+        (resource.data.ownerId == request.auth.uid || isAdmin());
+    }
+
+    // ============================================
+    // PROJECT INVITATIONS
+    // ============================================
+    match /projectInvitations/{invitationId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAdmin();
+    }
   }
 }

@@ -17,6 +17,7 @@ import AdminPanel from './pages/AdminPanel';
 import Certificate from './pages/Certificate';
 import Verify from './pages/Verify';
 import AllModules from './pages/AllModules';
+import TeamProjects from './pages/TeamProjects';
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth();
@@ -70,6 +71,7 @@ function AppRoutes() {
       <Route path="/module/:moduleId" element={<PrivateRoute><Layout><ModuleDetail /></Layout></PrivateRoute>} />
       <Route path="/exam/:moduleId" element={<PrivateRoute><Exam /></PrivateRoute>} />
       <Route path="/leaderboard" element={<PrivateRoute><Layout><Leaderboard /></Layout></PrivateRoute>} />
+      <Route path="/projects" element={<PrivateRoute><Layout><TeamProjects /></Layout></PrivateRoute>} />
       <Route path="/profile" element={<PrivateRoute><Layout><Profile /></Layout></PrivateRoute>} />
       <Route path="/certificate/:moduleId" element={<PrivateRoute><Layout><Certificate /></Layout></PrivateRoute>} />
       <Route path="/verify/:badgeId" element={<Verify />} />
