@@ -390,7 +390,7 @@ export function useExam() {
 }
 
 // ============================================
-// Leaderboard Hook
+// Leaderboard Hook (real-time via onSnapshot)
 // ============================================
 export function useLeaderboard() {
   const [leaderboard, setLeaderboard] = useState([]);
@@ -402,36 +402,30 @@ export function useLeaderboard() {
   const ADMIN_EMAILS_HIDDEN = ['abrahamfaith325@gmail.com', 'gdgoncampusucb@gmail.com'];
 
   useEffect(() => {
-    async function fetchLeaderboard() {
-      try {
-        const usersRef = collection(db, 'users');
-        // Fetch more to account for filtered admins
-        const q = query(usersRef, orderBy('totalScore', 'desc'), limit(50));
-        const snap = await getDocs(q);
-        const allData = [];
-        snap.forEach((doc) => {
-          const d = { id: doc.id, ...doc.data() };
-          // Filter out hidden admin emails from public leaderboard
-          if (!ADMIN_EMAILS_HIDDEN.includes(d.email?.toLowerCase())) {
-            allData.push(d);
-          }
-        });
-        setLeaderboard(allData);
+    const usersRef = collection(db, 'users');
+    const q = query(usersRef, orderBy('totalScore', 'desc'), limit(50));
 
-        // Find user rank
-        if (user) {
-          const userDoc = allData.find((d) => d.id === user.uid);
-          if (userDoc) {
-            setUserRank(allData.indexOf(userDoc) + 1);
-          }
+    const unsub = onSnapshot(q, (snap) => {
+      const allData = [];
+      snap.forEach((doc) => {
+        const d = { id: doc.id, ...doc.data() };
+        if (!ADMIN_EMAILS_HIDDEN.includes(d.email?.toLowerCase())) {
+          allData.push(d);
         }
-      } catch (error) {
-        console.error('Error fetching leaderboard:', error);
-      } finally {
-        setLoading(false);
+      });
+      setLeaderboard(allData);
+
+      if (user) {
+        const idx = allData.findIndex((d) => d.id === user.uid);
+        setUserRank(idx >= 0 ? idx + 1 : null);
       }
-    }
-    fetchLeaderboard();
+      setLoading(false);
+    }, (error) => {
+      console.error('Error listening to leaderboard:', error);
+      setLoading(false);
+    });
+
+    return () => unsub();
   }, [user]);
 
   return { leaderboard, userRank, loading };

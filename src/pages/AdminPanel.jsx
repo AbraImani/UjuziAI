@@ -81,29 +81,33 @@ export default function AdminPanel() {
   async function fetchData() {
     setLoading(true);
     try {
-      // Fetch all users with their progress
+      // Fetch all users (single query)
       const usersSnap = await getDocs(query(collection(db, 'users'), orderBy('createdAt', 'desc')));
-      const usersData = [];
-
-      for (const userDoc of usersSnap.docs) {
-        const userData = { id: userDoc.id, ...userDoc.data() };
-
-        // Fetch progress for each user
-        const progressSnap = await getDocs(collection(db, 'users', userDoc.id, 'progress'));
-        userData.progress = {};
-        progressSnap.forEach((p) => {
-          userData.progress[p.id] = p.data();
-        });
-
-        // Fetch submissions for each user
-        const subsSnap = await getDocs(collection(db, 'users', userDoc.id, 'submissions'));
-        userData.submissions = [];
-        subsSnap.forEach((s) => {
-          userData.submissions.push({ id: s.id, ...s.data() });
-        });
-
-        usersData.push(userData);
-      }
+      
+      // Parallel-fetch progress + submissions for ALL users at once
+      const usersData = await Promise.all(
+        usersSnap.docs.map(async (userDoc) => {
+          const userData = { id: userDoc.id, ...userDoc.data() };
+          
+          // Parallel: progress + submissions for this user
+          const [progressSnap, subsSnap] = await Promise.all([
+            getDocs(collection(db, 'users', userDoc.id, 'progress')),
+            getDocs(collection(db, 'users', userDoc.id, 'submissions')),
+          ]);
+          
+          userData.progress = {};
+          progressSnap.forEach((p) => {
+            userData.progress[p.id] = p.data();
+          });
+          
+          userData.submissions = [];
+          subsSnap.forEach((s) => {
+            userData.submissions.push({ id: s.id, ...s.data() });
+          });
+          
+          return userData;
+        })
+      );
 
       setUsers(usersData);
 
