@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import {
   collection,
   doc,
@@ -12,6 +12,7 @@ import {
   limit,
   serverTimestamp,
   increment,
+  onSnapshot,
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../lib/firebase';
@@ -19,35 +20,51 @@ import { useAuth } from '../contexts/AuthContext';
 import { EXAM_CONFIG, MODULES } from '../config/modules';
 
 // ============================================
-// Module Progress Hook
+// Module Progress Hook (real-time via onSnapshot)
 // ============================================
 export function useModuleProgress(moduleId) {
   const { user } = useAuth();
   const [progress, setProgress] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [moduleOpen, setModuleOpen] = useState(true);
 
-  const fetchProgress = useCallback(async () => {
-    if (!user || !moduleId) return;
-    try {
-      const docRef = doc(db, 'users', user.uid, 'progress', moduleId);
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        setProgress({ id: docSnap.id, ...docSnap.data() });
+  useEffect(() => {
+    if (!user || !moduleId) {
+      setLoading(false);
+      return;
+    }
+
+    // Listen to user's progress in real-time (admin score changes reflect instantly)
+    const progressRef = doc(db, 'users', user.uid, 'progress', moduleId);
+    const unsubProgress = onSnapshot(progressRef, (snap) => {
+      if (snap.exists()) {
+        setProgress({ id: snap.id, ...snap.data() });
       } else {
         setProgress(null);
       }
-    } catch (error) {
-      console.error('Error fetching module progress:', error);
-    } finally {
       setLoading(false);
-    }
+    }, (error) => {
+      console.error('Error listening to module progress:', error);
+      setLoading(false);
+    });
+
+    // Listen to module open/close settings in real-time
+    const settingsRef = doc(db, 'moduleSettings', moduleId);
+    const unsubSettings = onSnapshot(settingsRef, (snap) => {
+      if (snap.exists()) {
+        setModuleOpen(snap.data().isOpen !== false);
+      } else {
+        setModuleOpen(true); // default open if no settings doc
+      }
+    }, () => { /* ignore errors for settings */ });
+
+    return () => {
+      unsubProgress();
+      unsubSettings();
+    };
   }, [user, moduleId]);
 
-  useEffect(() => {
-    fetchProgress();
-  }, [fetchProgress]);
-
-  return { progress, loading, refetch: fetchProgress };
+  return { progress, loading, moduleOpen };
 }
 
 // ============================================

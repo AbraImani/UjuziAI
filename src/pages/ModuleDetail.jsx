@@ -24,7 +24,7 @@ export default function ModuleDetail() {
   const { moduleId } = useParams();
   const navigate = useNavigate();
   const module = MODULES.find((m) => m.id === moduleId);
-  const { progress, loading, refetch } = useModuleProgress(moduleId);
+  const { progress, loading, moduleOpen } = useModuleProgress(moduleId);
   const [showSubmitForm, setShowSubmitForm] = useState(false);
 
   if (!module) {
@@ -47,6 +47,20 @@ export default function ModuleDetail() {
   const hasBadge = progress?.badgeId;
 
   function getStatusSection() {
+    if (!moduleOpen && !isPassed) {
+      return (
+        <div className="glass-card p-6 border-amber-500/30">
+          <div className="flex items-center gap-3 mb-3">
+            <Lock className="w-6 h-6 text-amber-400" />
+            <h3 className="text-lg font-semibold text-amber-400">Module fermé</h3>
+          </div>
+          <p className="text-body">
+            Ce module est actuellement fermé par l'administration. Les soumissions et examens ne sont pas disponibles pour le moment.
+          </p>
+        </div>
+      );
+    }
+
     if (isExamLocked) {
       return (
         <div className="glass-card p-6 border-red-500/30">
@@ -125,9 +139,9 @@ export default function ModuleDetail() {
           <p className="text-body mb-4">
             Votre preuve a été soumise. L'examen est en cours de préparation.
           </p>
-          <button onClick={() => refetch()} className="btn-secondary flex items-center gap-2">
+          <button onClick={() => {}} className="btn-secondary flex items-center gap-2">
             <Clock className="w-4 h-4" />
-            Rafraîchir le statut
+            Actualisation automatique
           </button>
         </div>
       );
@@ -197,7 +211,7 @@ export default function ModuleDetail() {
       {getStatusSection()}
 
       {/* Submission Section */}
-      {!isSubmitted && (
+      {!isSubmitted && moduleOpen && (
         <div className="glass-card p-8 mt-6">
           <div className="flex items-center gap-3 mb-6">
             <Upload className="w-6 h-6 text-primary-400" />
@@ -232,7 +246,6 @@ export default function ModuleDetail() {
               moduleId={moduleId}
               onSuccess={() => {
                 setShowSubmitForm(false);
-                refetch();
               }}
             />
           )}
