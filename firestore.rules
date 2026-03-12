@@ -34,7 +34,9 @@ service cloud.firestore {
       allow create: if isOwner(userId);
       
       // Users can update their own profile; admins can update any
-      allow update: if isOwner(userId) || isAdmin();
+      // Any authenticated user can update bonusPoints (for auto point distribution)
+      allow update: if isOwner(userId) || isAdmin() || 
+        (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['bonusPoints']));
       
       // Only admins can delete users
       allow delete: if isAdmin();
@@ -58,7 +60,7 @@ service cloud.firestore {
       // BONUS LOGS SUBCOLLECTION
       match /bonusLogs/{logId} {
         allow read: if isOwner(userId) || isAdmin();
-        allow create: if isAdmin();
+        allow create: if isAuthenticated();
         allow update, delete: if isAdmin();
       }
     }

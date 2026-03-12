@@ -7,11 +7,13 @@ import {
   updateDoc,
   query,
   orderBy,
+  where,
   serverTimestamp,
   arrayUnion,
   arrayRemove,
   increment,
   onSnapshot,
+  deleteDoc,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
@@ -41,6 +43,9 @@ import {
   Video,
   Rocket,
   UserPlus,
+  Mail,
+  UserCheck,
+  XCircle,
 } from 'lucide-react';
 
 const EVENT_TYPES = [
@@ -109,6 +114,7 @@ export default function Buildathon() {
     demoUrl: '',
     inviteEmail: '',
   });
+  const [invitations, setInvitations] = useState([]);
 
   useEffect(() => {
     const unsubEvents = onSnapshot(
@@ -132,8 +138,22 @@ export default function Buildathon() {
       (err) => console.error('Projects error:', err),
     );
 
-    return () => { unsubEvents(); unsubProjects(); };
-  }, []);
+    // Listen for invitations addressed to current user
+    let unsubInvitations = () => {};
+    if (user?.uid) {
+      unsubInvitations = onSnapshot(
+        query(collection(db, 'projectInvitations'), where('invitedUid', '==', user.uid), where('status', '==', 'pending')),
+        (snap) => {
+          const data = [];
+          snap.forEach((d) => data.push({ id: d.id, ...d.data() }));
+          setInvitations(data);
+        },
+        (err) => console.error('Invitations error:', err),
+      );
+    }
+
+    return () => { unsubEvents(); unsubProjects(); unsubInvitations(); };
+  }, [user?.uid]);
 
   // ---- Admin: Create Event ----
   async function handleCreateEvent(e) {
@@ -243,35 +263,44 @@ export default function Buildathon() {
     }
   }
 
-  // ---- Admin: Finalize Event ----
-  async function handleFinalize(eventId) {
+  // ---- Admin: Finalize Event (points divided among team members) ----
+  async function handleFinalize(eventId, autoMode = false) {
     const event = events.find((e) => e.id === eventId);
-    if (!event) return;
+    if (!event || event.finalized) return;
     const eventProjects = projects.filter((p) => p.buildathonId === eventId).sort((a, b) => (b.voteCount || 0) - (a.voteCount || 0));
-    if (eventProjects.length === 0) { toast.error('Aucun projet soumis'); return; }
+    if (eventProjects.length === 0) { if (!autoMode) toast.error('Aucun projet soumis'); return; }
     const prizes = (event.prizes || []).sort((a, b) => a.place - b.place);
     try {
       for (let i = 0; i < Math.min(prizes.length, eventProjects.length); i++) {
         const project = eventProjects[i];
         const prize = prizes[i];
+        const memberCount = project.members?.length || 1;
+        const pointsPerMember = Math.round(prize.points / memberCount);
+        if (pointsPerMember <= 0) continue;
         for (const member of project.members || []) {
           if (member.uid) {
             const userRef = doc(db, 'users', member.uid);
-            await updateDoc(userRef, { bonusPoints: increment(prize.points) });
+            await updateDoc(userRef, { bonusPoints: increment(pointsPerMember) });
             const logRef = doc(collection(db, 'users', member.uid, 'bonusLogs'));
-            await setDoc(logRef, { points: prize.points, reason: `${event.type === 'hackathon' ? 'Hackathon' : 'Buildathon'} "${event.title}" - Place ${prize.place}`, grantedBy: user.uid, grantedAt: serverTimestamp() });
+            await setDoc(logRef, {
+              points: pointsPerMember,
+              reason: `${event.type === 'hackathon' ? 'Hackathon' : 'Buildathon'} "${event.title}" - Place ${prize.place} (${prize.points} pts ÷ ${memberCount} membre${memberCount > 1 ? 's' : ''})`,
+              grantedBy: autoMode ? 'system' : user.uid,
+              grantedAt: serverTimestamp(),
+            });
           }
         }
       }
-      await updateDoc(doc(db, 'buildathons', eventId), { status: 'completed', finalized: true, finalizedAt: serverTimestamp(), finalizedBy: user.uid });
-      toast.success('Événement finalisé ! Points bonus attribués.');
+      await updateDoc(doc(db, 'buildathons', eventId), { status: 'completed', finalized: true, finalizedAt: serverTimestamp(), finalizedBy: autoMode ? 'system' : user.uid });
+      if (!autoMode) toast.success('Événement finalisé ! Points bonus répartis entre les membres.');
     } catch (err) {
-      toast.error('Erreur: ' + err.message);
+      if (!autoMode) toast.error('Erreur: ' + err.message);
+      console.error('Finalize error:', err);
     }
   }
 
-  // ---- Invite friend ----
-  async function handleInviteFriend(projectId) {
+  // ---- Invite friend (creates a pending invitation) ----
+  async function handleInviteFriend(projectId, buildathonId) {
     if (!newProject.inviteEmail) { toast.error('Entrez l\'email de votre ami'); return; }
     try {
       const usersSnap = await getDocs(collection(db, 'users'));
@@ -280,15 +309,105 @@ export default function Buildathon() {
         if (d.data().email === newProject.inviteEmail) { friendUid = d.id; friendName = d.data().displayName || d.data().email; }
       });
       if (!friendUid) { toast.error('Utilisateur non trouvé'); return; }
-      await updateDoc(doc(db, 'buildathonProjects', projectId), {
-        members: arrayUnion({ uid: friendUid, name: friendName, email: newProject.inviteEmail }),
+      if (friendUid === user.uid) { toast.error('Vous ne pouvez pas vous inviter vous-même'); return; }
+
+      // Check if already a member
+      const project = projects.find((p) => p.id === projectId);
+      if (project?.members?.some((m) => m.uid === friendUid)) {
+        toast.error('Cet utilisateur est déjà membre de l\'équipe');
+        return;
+      }
+
+      // Check if invitation already pending
+      const existingInvSnap = await getDocs(
+        query(collection(db, 'projectInvitations'), where('projectId', '==', projectId), where('invitedUid', '==', friendUid), where('status', '==', 'pending'))
+      );
+      if (!existingInvSnap.empty) {
+        toast.error('Une invitation est déjà en attente pour cet utilisateur');
+        return;
+      }
+
+      const invId = `inv-${Date.now().toString(36)}-${friendUid.slice(0, 6)}`;
+      await setDoc(doc(db, 'projectInvitations', invId), {
+        projectId,
+        buildathonId,
+        projectTitle: project?.title || '',
+        teamName: project?.teamName || '',
+        invitedUid: friendUid,
+        invitedEmail: newProject.inviteEmail,
+        invitedName: friendName,
+        invitedBy: user.uid,
+        invitedByName: userProfile?.displayName || user.email,
+        status: 'pending',
+        createdAt: serverTimestamp(),
       });
-      toast.success(`${friendName} ajouté !`);
+      toast.success(`Invitation envoyée à ${friendName} !`);
       setNewProject((p) => ({ ...p, inviteEmail: '' }));
     } catch (err) {
       toast.error('Erreur: ' + err.message);
     }
   }
+
+  // ---- Accept invitation ----
+  async function handleAcceptInvitation(invitation) {
+    try {
+      // Add user to project members
+      await updateDoc(doc(db, 'buildathonProjects', invitation.projectId), {
+        members: arrayUnion({ uid: user.uid, name: userProfile?.displayName || user.email, email: user.email }),
+      });
+      // Also register user for the event if not already
+      if (invitation.buildathonId) {
+        await updateDoc(doc(db, 'buildathons', invitation.buildathonId), {
+          participants: arrayUnion(user.uid),
+        });
+      }
+      // Delete the invitation
+      await deleteDoc(doc(db, 'projectInvitations', invitation.id));
+      toast.success(`Vous avez rejoint l'équipe "${invitation.teamName}" !`);
+    } catch (err) {
+      toast.error('Erreur: ' + err.message);
+    }
+  }
+
+  // ---- Decline invitation ----
+  async function handleDeclineInvitation(invitation) {
+    try {
+      await deleteDoc(doc(db, 'projectInvitations', invitation.id));
+      toast.success('Invitation refusée');
+    } catch (err) {
+      toast.error('Erreur: ' + err.message);
+    }
+  }
+
+  // ---- Get pending invitations for a project (sent by owner) ----
+  const [projectPendingInvites, setProjectPendingInvites] = useState([]);
+  useEffect(() => {
+    if (!user?.uid) return;
+    const unsubSent = onSnapshot(
+      query(collection(db, 'projectInvitations'), where('invitedBy', '==', user.uid), where('status', '==', 'pending')),
+      (snap) => {
+        const data = [];
+        snap.forEach((d) => data.push({ id: d.id, ...d.data() }));
+        setProjectPendingInvites(data);
+      },
+    );
+    return () => unsubSent();
+  }, [user?.uid]);
+
+  // ---- Auto-finalize: when an event has ended, automatically finalize & distribute points ----
+  useEffect(() => {
+    if (!events.length || !projects.length || loading) return;
+    events.forEach((event) => {
+      const status = getEventStatus(event);
+      if (status === 'ended' && !event.finalized) {
+        const eventProjects = projects.filter((p) => p.buildathonId === event.id);
+        if (eventProjects.length > 0) {
+          handleFinalize(event.id, true);
+        }
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [events, projects, loading]);
 
   const filteredEvents = useMemo(() => {
     return events.filter((e) => {
@@ -359,6 +478,36 @@ export default function Buildathon() {
           ))}
         </div>
       </div>
+
+      {/* Pending Invitations Banner */}
+      {invitations.length > 0 && (
+        <div className="mb-6 space-y-3">
+          <h3 className="text-sm font-semibold text-heading uppercase tracking-wider flex items-center gap-2">
+            <Mail className="w-4 h-4 text-primary-400" />
+            Invitations en attente ({invitations.length})
+          </h3>
+          {invitations.map((inv) => (
+            <div key={inv.id} className="glass-card p-4 border-2 border-primary-500/30 bg-primary-500/5">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div className="flex-1 min-w-0">
+                  <p className="text-heading font-medium">
+                    <span className="text-primary-400">{inv.invitedByName}</span> vous invite à rejoindre l'équipe <span className="font-bold">"{inv.teamName}"</span>
+                  </p>
+                  <p className="text-sm text-muted mt-0.5">Projet : {inv.projectTitle}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => handleAcceptInvitation(inv)} className="btn-primary text-sm flex items-center gap-1.5 px-4 py-2">
+                    <UserCheck className="w-4 h-4" />Rejoindre
+                  </button>
+                  <button onClick={() => handleDeclineInvitation(inv)} className="btn-secondary text-sm flex items-center gap-1.5 px-3 py-2">
+                    <XCircle className="w-4 h-4" />Refuser
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Admin: Create Event Form */}
       {showCreateEvent && isAdmin && (
@@ -605,10 +754,17 @@ export default function Buildathon() {
                                     {project.description && <p className="text-sm text-body mb-2 line-clamp-2">{project.description}</p>}
                                     <div className="flex flex-wrap items-center gap-3 text-xs text-muted">
                                       <span className="flex items-center gap-1"><Users className="w-3 h-3" />{project.teamName}</span>
-                                      <div className="flex -space-x-1">
-                                        {project.members?.map((m, mi) => (
-                                          <span key={mi} className="w-5 h-5 rounded-full bg-primary-500/20 text-primary-400 flex items-center justify-center text-[10px] font-bold border border-surface" title={m.name}>{(m.name || '?')[0].toUpperCase()}</span>
+                                      <div className="flex items-center gap-1">
+                                        <div className="flex -space-x-1">
+                                          {project.members?.map((m, mi) => (
+                                            <span key={mi} className="w-5 h-5 rounded-full bg-green-500/20 text-green-400 flex items-center justify-center text-[10px] font-bold border border-surface" title={`${m.name} (confirmé)`}>{(m.name || '?')[0].toUpperCase()}</span>
+                                          ))}
+                                        </div>
+                                        {/* Show pending invitations for this project */}
+                                        {projectPendingInvites.filter((inv) => inv.projectId === project.id).map((inv, pi) => (
+                                          <span key={`pending-${pi}`} className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center text-[10px] font-bold border border-dashed border-amber-500/50" title={`${inv.invitedName} (en attente)`}>{(inv.invitedName || '?')[0].toUpperCase()}</span>
                                         ))}
+                                        <span className="text-[10px] ml-1">({project.members?.length || 0} membre{(project.members?.length || 0) > 1 ? 's' : ''})</span>
                                       </div>
                                       <a href={project.repoUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-primary-400 hover:underline" onClick={(e) => e.stopPropagation()}>
                                         <Link2 className="w-3 h-3" />GitHub
@@ -617,13 +773,39 @@ export default function Buildathon() {
                                         <Video className="w-3 h-3" />Démo
                                       </a>
                                       <span className="flex items-center gap-1 text-amber-400 font-medium"><Zap className="w-3 h-3" />{votePoints} pts</span>
-                                      {isWinner && event.prizes?.[index] && <span className="flex items-center gap-1 text-green-400 font-medium"><Trophy className="w-3 h-3" />+{event.prizes[index].points} bonus</span>}
+                                      {isWinner && event.prizes?.[index] && (
+                                        <span className="flex items-center gap-1 text-green-400 font-medium">
+                                          <Trophy className="w-3 h-3" />+{Math.round(event.prizes[index].points / (project.members?.length || 1))}/{project.members?.length || 1} mbr
+                                        </span>
+                                      )}
                                     </div>
                                     {/* Invite friend */}
                                     {isOwn && status === 'active' && (
-                                      <div className="mt-2 flex items-center gap-2">
-                                        <input type="email" value={newProject.inviteEmail} onChange={(e) => setNewProject((p) => ({ ...p, inviteEmail: e.target.value }))} className="input-field text-xs py-1 px-2 w-48" placeholder="Email d'un ami" onClick={(e) => e.stopPropagation()} />
-                                        <button onClick={(e) => { e.stopPropagation(); handleInviteFriend(project.id); }} className="text-xs text-primary-400 hover:text-primary-300 flex items-center gap-1"><UserPlus className="w-3 h-3" />Inviter</button>
+                                      <div className="mt-3 p-3 rounded-lg bg-black/5 dark:bg-white/5 border border-themed">
+                                        <div className="flex items-center gap-2 mb-2">
+                                          <input type="email" value={newProject.inviteEmail} onChange={(e) => setNewProject((p) => ({ ...p, inviteEmail: e.target.value }))} className="input-field text-xs py-1.5 px-3 flex-1" placeholder="Email d'un membre à inviter..." onClick={(e) => e.stopPropagation()} />
+                                          <button onClick={(e) => { e.stopPropagation(); handleInviteFriend(project.id, event.id); }} className="text-xs px-3 py-1.5 rounded-lg bg-primary-500/10 text-primary-400 hover:bg-primary-500/20 border border-primary-500/30 flex items-center gap-1 transition-colors"><UserPlus className="w-3 h-3" />Inviter</button>
+                                        </div>
+                                        {/* Show pending invites */}
+                                        {projectPendingInvites.filter((inv) => inv.projectId === project.id).length > 0 && (
+                                          <div className="space-y-1">
+                                            {projectPendingInvites.filter((inv) => inv.projectId === project.id).map((inv) => (
+                                              <div key={inv.id} className="flex items-center justify-between text-xs py-1 px-2 rounded bg-amber-500/5 border border-amber-500/20">
+                                                <span className="flex items-center gap-1.5 text-amber-400">
+                                                  <Clock className="w-3 h-3" />
+                                                  {inv.invitedName} ({inv.invitedEmail}) — en attente
+                                                </span>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        )}
+                                        <p className="text-[10px] text-muted mt-1">💡 L'utilisateur doit accepter l'invitation pour rejoindre l'équipe</p>
+                                      </div>
+                                    )}
+                                    {/* Show team info for non-owner members */}
+                                    {!isOwn && project.members?.some((m) => m.uid === user?.uid) && (
+                                      <div className="mt-2">
+                                        <span className="text-xs text-green-400 flex items-center gap-1"><UserCheck className="w-3 h-3" />Vous êtes membre de cette équipe</span>
                                       </div>
                                     )}
                                   </div>
@@ -659,16 +841,23 @@ export default function Buildathon() {
                           <div className="flex flex-wrap gap-3">
                             {event.prizes.map((prize, i) => {
                               const winner = event.finalized && eventProjects[i];
+                              const memberCount = winner?.members?.length || 1;
+                              const ptsPerMember = Math.round(prize.points / memberCount);
                               return (
                                 <div key={i} className={`p-3 rounded-xl border text-center min-w-[120px] ${i === 0 ? 'border-amber-500/30 bg-amber-500/5' : i === 1 ? 'border-gray-400/30 bg-gray-400/5' : 'border-orange-500/30 bg-orange-500/5'}`}>
                                   <div className="text-2xl mb-1">{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${prize.place}`}</div>
                                   <div className="flex items-center justify-center gap-1 text-amber-400 font-bold text-sm"><Zap className="w-3.5 h-3.5" />{prize.points} pts</div>
-                                  {winner && <p className="text-xs text-heading mt-1 font-medium">{winner.teamName}</p>}
+                                  {winner && (
+                                    <>
+                                      <p className="text-xs text-heading mt-1 font-medium">{winner.teamName}</p>
+                                      {memberCount > 1 && <p className="text-[10px] text-muted mt-0.5">({ptsPerMember} pts/membre)</p>}
+                                    </>
+                                  )}
                                 </div>
                               );
                             })}
                           </div>
-                          <p className="text-xs text-muted mt-3">💡 Chaque vote = 10 points au classement. 1 seul vote par personne par événement.</p>
+                          <p className="text-xs text-muted mt-3">💡 Chaque vote = 10 pts. 1 vote/personne/événement. Les prix sont répartis entre les membres de l'équipe.</p>
                         </div>
                       )}
                     </div>
