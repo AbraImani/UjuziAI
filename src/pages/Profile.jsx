@@ -8,6 +8,7 @@ import ProgressRing from '../components/ProgressRing';
 import {
   User, Mail, Calendar, BookOpen, Trophy, Target, Award, Shield,
   ExternalLink, Check, Download, Copy, Zap, Linkedin, Twitter,
+  Hash,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -21,6 +22,14 @@ export default function Profile() {
   const certifiedModules = MODULES.filter((m) => progressMap[m.id]?.examScore >= 7);
   const totalScore = Object.values(progressMap).reduce((sum, p) => sum + (p.examScore || 0), 0);
   const overallProgress = MODULES.length > 0 ? (completedModules.length / MODULES.length) * 100 : 0;
+
+  // Generate a short, user-friendly ID from the Firebase UID
+  const shortUserId = user?.uid ? `UZA-${user.uid.slice(0, 8).toUpperCase()}` : 'N/A';
+
+  const handleCopyUserId = () => {
+    navigator.clipboard.writeText(shortUserId);
+    toast.success('ID utilisateur copié !');
+  };
 
   const avatarUrl = getAvatarUrl(userProfile?.avatarId);
   const displayPhoto = user?.photoURL || avatarUrl;
@@ -61,6 +70,20 @@ export default function Profile() {
             <div className="flex flex-col md:flex-row items-center gap-3 mt-2 text-body text-sm">
               <span className="flex items-center gap-1"><Mail className="w-4 h-4" />{user?.email}</span>
               <span className="flex items-center gap-1"><Calendar className="w-4 h-4" />Inscrit {userProfile?.createdAt?.toDate?.()?.toLocaleDateString() || 'Recemment'}</span>
+            </div>
+            {/* User ID */}
+            <div className="flex items-center gap-2 mt-2">
+              <span className="flex items-center gap-1 text-xs text-muted">
+                <Hash className="w-3 h-3" />ID :
+              </span>
+              <code className="text-xs font-mono text-primary-600 dark:text-primary-300 bg-surface px-2 py-0.5 rounded">{shortUserId}</code>
+              <button
+                onClick={handleCopyUserId}
+                className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 transition-colors text-muted"
+                title="Copier l'ID"
+              >
+                <Copy className="w-3 h-3" />
+              </button>
             </div>
             <div className="flex flex-wrap items-center gap-2 mt-3">
               <span className="badge-primary"><Shield className="w-3 h-3 mr-1" />{userProfile?.role === 'admin' ? 'Admin' : 'Apprenant'}</span>
