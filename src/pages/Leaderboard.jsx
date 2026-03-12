@@ -34,31 +34,34 @@ export default function Leaderboard() {
   const { user } = useAuth();
   const { progressMap } = useAllProgress();
   const [searchQuery, setSearchQuery] = useState('');
-  const [certCounts, setCertCounts] = useState({});
+  const [userStats, setUserStats] = useState({});
 
-  // Count certificates (scores >= 7) dynamically from each user's progress subcollection
+  // Count modules completed (score >= 6) and certificates (score >= 7) dynamically
   useEffect(() => {
-    async function fetchCertificateCounts() {
+    async function fetchUserStats() {
       if (leaderboard.length === 0) return;
-      const counts = {};
+      const stats = {};
       await Promise.all(
         leaderboard.slice(0, 20).map(async (entry) => {
           try {
             const progressRef = collection(db, 'users', entry.id, 'progress');
             const snap = await getDocs(progressRef);
             let certCount = 0;
+            let moduleCount = 0;
             snap.forEach((d) => {
-              if ((d.data().examScore || 0) >= 7) certCount++;
+              const score = d.data().examScore || 0;
+              if (score >= 6) moduleCount++;
+              if (score >= 7) certCount++;
             });
-            counts[entry.id] = certCount;
+            stats[entry.id] = { certCount, moduleCount };
           } catch {
-            counts[entry.id] = 0;
+            stats[entry.id] = { certCount: 0, moduleCount: 0 };
           }
         })
       );
-      setCertCounts(counts);
+      setUserStats(stats);
     }
-    fetchCertificateCounts();
+    fetchUserStats();
   }, [leaderboard]);
 
   const myCompletedCount = Object.values(progressMap).filter((p) => p.examScore >= 6).length;
@@ -175,14 +178,22 @@ export default function Leaderboard() {
             <div className="flex items-center gap-3 mt-0.5">
               <p className="text-xs text-muted flex items-center gap-1">
                 <Award className="w-3 h-3" />
-                {certCounts[entry.id] ?? '...'} certificat{(certCounts[entry.id] || 0) !== 1 ? 's' : ''}
+                {userStats[entry.id]?.certCount ?? '...'} cert.
               </p>
+              <p className="text-xs text-muted">
+                {userStats[entry.id]?.moduleCount ?? '...'}/{MODULES.length} modules
+              </p>
+              {(entry.bonusPoints || 0) > 0 && (
+                <p className="text-xs text-amber-400 flex items-center gap-0.5">
+                  <Zap className="w-3 h-3" />+{entry.bonusPoints}
+                </p>
+              )}
             </div>
           </div>
 
           <div className="text-right flex-shrink-0">
             <p className="text-xl font-bold text-heading">
-              {entry.totalScore || 0}
+              {(entry.totalScore || 0) + (entry.bonusPoints || 0)}
             </p>
             <p className="text-[10px] text-muted uppercase tracking-wide">points</p>
           </div>
@@ -363,7 +374,7 @@ export default function Leaderboard() {
                           {entry.communityRole}
                         </span>
                       )}
-                      <p className="text-xs text-muted mb-2">{entry.totalScore || 0} pts</p>
+                      <p className="text-xs text-muted mb-2">{(entry.totalScore || 0) + (entry.bonusPoints || 0)} pts</p>
 
                       <div
                         className={`w-20 sm:w-28 ${getPodiumHeight(originalIndex)} rounded-t-xl border-t border-x bg-gradient-to-t ${getPodiumColor(originalIndex)} flex flex-col items-center justify-start pt-3`}
@@ -374,9 +385,12 @@ export default function Leaderboard() {
                         <div className="flex items-center gap-0.5 mt-1">
                           <Award className="w-3 h-3 text-amber-400" />
                           <span className="text-xs text-body">
-                            {certCounts[entry.id] ?? '...'}
+                            {userStats[entry.id]?.certCount ?? '...'}
                           </span>
                         </div>
+                        <span className="text-[10px] text-muted">
+                          {userStats[entry.id]?.moduleCount ?? '...'} mod.
+                        </span>
                       </div>
                     </div>
                   );

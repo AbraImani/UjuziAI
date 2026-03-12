@@ -413,6 +413,8 @@ export function useLeaderboard() {
           allData.push(d);
         }
       });
+      // Sort by totalScore + bonusPoints combined
+      allData.sort((a, b) => ((b.totalScore || 0) + (b.bonusPoints || 0)) - ((a.totalScore || 0) + (a.bonusPoints || 0)));
       setLeaderboard(allData);
 
       if (user) {
