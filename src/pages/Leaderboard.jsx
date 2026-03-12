@@ -330,73 +330,140 @@ export default function Leaderboard() {
         </div>
       ) : (
         <>
-          {/* Podium - Top 3 */}
+          {/* Podium - Top 3 — Professional Design */}
           {podium.length >= 3 && (
-            <div className="mb-10">
-              <div className="flex items-end justify-center gap-3 sm:gap-6">
+            <div className="mb-12">
+              {/* Podium Header */}
+              <div className="text-center mb-8">
+                <div className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-amber-500/10 border border-amber-500/20 rounded-2xl">
+                  <Crown className="w-5 h-5 text-amber-400" />
+                  <span className="text-sm font-semibold text-amber-400 uppercase tracking-wider">Top 3 Compétiteurs</span>
+                  <Crown className="w-5 h-5 text-amber-400" />
+                </div>
+              </div>
+
+              <div className="flex items-end justify-center gap-4 sm:gap-8">
                 {getPodiumOrder().map((entry, displayIndex) => {
                   const originalIndex = getPodiumOriginalIndex(displayIndex);
                   const isCurrentUser = entry.id === user?.uid;
+                  const totalPts = (entry.totalScore || 0) + (entry.bonusPoints || 0);
+
+                  const podiumStyles = [
+                    { // 1st place
+                      ring: 'ring-4 ring-amber-400/60 shadow-xl shadow-amber-500/20',
+                      avatarSize: 'w-20 h-20 sm:w-24 sm:h-24',
+                      bg: 'bg-gradient-to-b from-amber-400/25 via-amber-500/10 to-transparent border-amber-400/50',
+                      textColor: 'text-amber-400',
+                      medal: '🥇',
+                      height: 'h-44 sm:h-48',
+                      glow: 'shadow-2xl shadow-amber-500/15',
+                      nameSize: 'text-base sm:text-lg',
+                      pointsSize: 'text-2xl sm:text-3xl',
+                    },
+                    { // 2nd place
+                      ring: 'ring-3 ring-gray-300/50 shadow-lg shadow-gray-400/10',
+                      avatarSize: 'w-16 h-16 sm:w-20 sm:h-20',
+                      bg: 'bg-gradient-to-b from-gray-300/20 via-gray-400/10 to-transparent border-gray-400/40',
+                      textColor: 'text-gray-300',
+                      medal: '🥈',
+                      height: 'h-36 sm:h-40',
+                      glow: 'shadow-lg shadow-gray-400/10',
+                      nameSize: 'text-sm sm:text-base',
+                      pointsSize: 'text-xl sm:text-2xl',
+                    },
+                    { // 3rd place
+                      ring: 'ring-3 ring-orange-400/40 shadow-lg shadow-orange-500/10',
+                      avatarSize: 'w-16 h-16 sm:w-20 sm:h-20',
+                      bg: 'bg-gradient-to-b from-orange-400/15 via-orange-500/8 to-transparent border-orange-500/40',
+                      textColor: 'text-orange-400',
+                      medal: '🥉',
+                      height: 'h-32 sm:h-36',
+                      glow: 'shadow-lg shadow-orange-400/10',
+                      nameSize: 'text-sm sm:text-base',
+                      pointsSize: 'text-xl sm:text-2xl',
+                    },
+                  ];
+                  const s = podiumStyles[originalIndex];
+
                   return (
                     <div
                       key={entry.id}
-                      className={`flex flex-col items-center transition-all duration-500 ${
-                        originalIndex === 0 ? 'scale-100' : 'scale-95'
+                      className={`flex flex-col items-center transition-all duration-700 ${
+                        originalIndex === 0 ? 'scale-100 -mt-4' : 'scale-95'
                       }`}
                     >
-                      <div className="relative mb-3">
-                        {originalIndex === 0 && (
-                          <Crown className="w-6 h-6 text-amber-400 absolute -top-4 left-1/2 -translate-x-1/2 animate-bounce-subtle" />
-                        )}
-                        <div
-                          className={`w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center text-lg font-bold border-2 overflow-hidden ${
-                            originalIndex === 0
-                              ? 'bg-amber-500/20 text-amber-400 border-amber-500/50'
-                              : originalIndex === 1
-                              ? 'bg-gray-400/20 text-gray-300 border-gray-400/50'
-                              : 'bg-amber-700/20 text-amber-600 border-amber-700/50'
-                          } ${isCurrentUser ? 'ring-2 ring-primary-500/50' : ''}`}
-                        >
+                      {/* Crown for 1st */}
+                      {originalIndex === 0 && (
+                        <div className="relative mb-2">
+                          <Crown className="w-8 h-8 sm:w-10 sm:h-10 text-amber-400 drop-shadow-lg animate-bounce-subtle" />
+                          <div className="absolute inset-0 w-8 h-8 sm:w-10 sm:h-10 bg-amber-400/20 rounded-full blur-xl" />
+                        </div>
+                      )}
+
+                      {/* Avatar with glow effect */}
+                      <div className={`relative mb-3 ${s.glow}`}>
+                        <div className={`${s.avatarSize} rounded-full ${s.ring} overflow-hidden flex items-center justify-center text-lg font-bold border-2 ${
+                          originalIndex === 0 ? 'border-amber-400/60' : originalIndex === 1 ? 'border-gray-300/50' : 'border-orange-400/50'
+                        } ${isCurrentUser ? 'ring-primary-500/50' : ''}`}>
                           {(entry.photoURL || getAvatarUrl(entry.avatarId)) ? (
                             <img src={entry.photoURL || getAvatarUrl(entry.avatarId)} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                           ) : (
-                            entry.displayName?.[0]?.toUpperCase() || 'U'
+                            <div className={`w-full h-full flex items-center justify-center ${
+                              originalIndex === 0 ? 'bg-amber-500/20 text-amber-400 text-2xl' :
+                              originalIndex === 1 ? 'bg-gray-400/20 text-gray-300 text-xl' :
+                              'bg-orange-500/20 text-orange-400 text-xl'
+                            } font-bold`}>
+                              {entry.displayName?.[0]?.toUpperCase() || 'U'}
+                            </div>
                           )}
                         </div>
+                        {/* Medal badge */}
+                        <span className="absolute -bottom-1 -right-1 text-xl sm:text-2xl drop-shadow-md">{s.medal}</span>
                       </div>
-                      <p className={`text-sm font-medium mb-1 truncate max-w-[80px] sm:max-w-[100px] ${
+
+                      {/* Name */}
+                      <p className={`${s.nameSize} font-bold mb-0.5 truncate max-w-[90px] sm:max-w-[130px] ${
                         isCurrentUser ? 'text-primary-300' : 'text-heading'
                       }`}>
                         {entry.displayName || 'Anonymous'}
                       </p>
+
+                      {/* Role badge */}
                       {entry.communityRole && (
-                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-medium border mb-1 ${ROLE_BADGE_COLORS[entry.communityRole] || 'bg-gray-500/10 text-gray-400'}`}>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-medium border mb-1 ${ROLE_BADGE_COLORS[entry.communityRole] || 'bg-gray-500/10 text-gray-400'}`}>
                           {entry.communityRole}
                         </span>
                       )}
-                      <p className="text-xs text-muted mb-2">{(entry.totalScore || 0) + (entry.bonusPoints || 0)} pts</p>
 
-                      <div
-                        className={`w-20 sm:w-28 ${getPodiumHeight(originalIndex)} rounded-t-xl border-t border-x bg-gradient-to-t ${getPodiumColor(originalIndex)} flex flex-col items-center justify-start pt-3`}
-                      >
-                        <span className="text-2xl font-black text-heading/80">
+                      {/* Points */}
+                      <p className={`${s.pointsSize} font-black ${s.textColor} mb-1`}>{totalPts}</p>
+                      <p className="text-[10px] text-muted uppercase tracking-wider font-medium mb-2">points</p>
+
+                      {/* Podium pillar */}
+                      <div className={`w-24 sm:w-36 ${s.height} rounded-t-2xl border-t-2 border-x-2 ${s.bg} flex flex-col items-center justify-start pt-4 relative overflow-hidden`}>
+                        {/* Shimmer effect */}
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -skew-x-12 animate-shimmer opacity-50" />
+
+                        <span className={`text-4xl sm:text-5xl font-black ${s.textColor} opacity-30 mb-2`}>
                           {originalIndex + 1}
                         </span>
-                        <div className="flex items-center gap-0.5 mt-1">
-                          <Award className="w-3 h-3 text-amber-400" />
-                          <span className="text-xs text-body">
+                        <div className="flex items-center gap-1">
+                          <Award className={`w-4 h-4 ${s.textColor}`} />
+                          <span className="text-sm font-semibold text-heading">
                             {userStats[entry.id]?.certCount ?? '...'}
                           </span>
                         </div>
-                        <span className="text-[10px] text-muted">
-                          {userStats[entry.id]?.moduleCount ?? '...'} mod.
+                        <span className="text-xs text-muted mt-0.5">
+                          {userStats[entry.id]?.moduleCount ?? '...'}/{MODULES.length} modules
                         </span>
                       </div>
                     </div>
                   );
                 })}
               </div>
-              <div className="w-full max-w-sm mx-auto h-1.5 bg-gradient-to-r from-transparent via-primary-500/30 to-transparent rounded-full" />
+              {/* Decorative base */}
+              <div className="w-full max-w-md mx-auto h-2 bg-gradient-to-r from-transparent via-amber-500/20 to-transparent rounded-full mt-0.5" />
+              <div className="w-full max-w-sm mx-auto h-1 bg-gradient-to-r from-transparent via-primary-500/20 to-transparent rounded-full mt-1" />
             </div>
           )}
 
