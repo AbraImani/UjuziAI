@@ -236,7 +236,8 @@ export default function AdminPanel() {
   const filteredUsers = users.filter(
     (u) =>
       u.displayName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.email?.toLowerCase().includes(searchTerm.toLowerCase())
+      u.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      `UZA-${u.id.slice(0, 8)}`.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const tabs = [
@@ -283,7 +284,7 @@ export default function AdminPanel() {
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Rechercher des utilisateurs..."
+            placeholder="Rechercher par nom, email ou ID (UZA-...)..."
             className="input-field pl-11"
           />
         </div>
@@ -320,6 +321,7 @@ export default function AdminPanel() {
                           <div>
                             <p className="font-medium text-heading">{u.displayName}</p>
                             <p className="text-xs text-muted">{u.email}</p>
+                            <p className="text-[10px] text-muted font-mono">ID: UZA-{u.id.slice(0, 8).toUpperCase()}</p>
                           </div>
                         </div>
                         <button
@@ -541,6 +543,7 @@ export default function AdminPanel() {
                               <div>
                                 <p className="font-medium text-heading">{u.displayName}</p>
                                 <p className="text-xs text-muted">{u.email}</p>
+                                <p className="text-[10px] text-muted font-mono">UZA-{u.id.slice(0, 8).toUpperCase()}</p>
                               </div>
                             </div>
                           </td>
