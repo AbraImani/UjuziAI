@@ -66,6 +66,7 @@ export default function AdminPanel() {
   const [bonusPoints, setBonusPoints] = useState('');
   const [bonusReason, setBonusReason] = useState('');
   const [sendingBonus, setSendingBonus] = useState(false);
+  const [loadingSubmissions, setLoadingSubmissions] = useState(false);
 
   const {
     validateSubmission,
@@ -84,52 +85,29 @@ export default function AdminPanel() {
     fetchData();
   }, []);
 
+  // Fast initial load: only users + settings (NO subcollections)
   async function fetchData() {
     setLoading(true);
     try {
-      // Fetch all users (single query)
-      const usersSnap = await getDocs(query(collection(db, 'users'), orderBy('createdAt', 'desc')));
-      
-      // Parallel-fetch progress + submissions for ALL users at once
-      const usersData = await Promise.all(
-        usersSnap.docs.map(async (userDoc) => {
-          const userData = { id: userDoc.id, ...userDoc.data() };
-          
-          // Parallel: progress + submissions for this user
-          const [progressSnap, subsSnap] = await Promise.all([
-            getDocs(collection(db, 'users', userDoc.id, 'progress')),
-            getDocs(collection(db, 'users', userDoc.id, 'submissions')),
-          ]);
-          
-          userData.progress = {};
-          progressSnap.forEach((p) => {
-            userData.progress[p.id] = p.data();
-          });
-          
-          userData.submissions = [];
-          subsSnap.forEach((s) => {
-            userData.submissions.push({ id: s.id, ...s.data() });
-          });
-          
-          return userData;
-        })
-      );
+      const [usersSnap, settingsSnap, savedExam] = await Promise.all([
+        getDocs(query(collection(db, 'users'), orderBy('createdAt', 'desc'))),
+        getDocs(collection(db, 'moduleSettings')),
+        getExamSettings(),
+      ]);
 
+      const usersData = usersSnap.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+        progress: null,     // lazy-loaded
+        submissions: null,  // lazy-loaded
+      }));
       setUsers(usersData);
 
-      // Fetch module settings
-      const settingsSnap = await getDocs(collection(db, 'moduleSettings'));
       const settings = {};
-      settingsSnap.forEach((s) => {
-        settings[s.id] = s.data();
-      });
+      settingsSnap.forEach((s) => { settings[s.id] = s.data(); });
       setModuleSettings(settings);
 
-      // Fetch exam settings from Firestore (overrides defaults)
-      const saved = await getExamSettings();
-      if (saved) {
-        setExamSettings((prev) => ({ ...prev, ...saved }));
-      }
+      if (savedExam) setExamSettings((prev) => ({ ...prev, ...savedExam }));
     } catch (error) {
       console.error('Error fetching admin data:', error);
       toast.error('Échec du chargement des données admin');
@@ -137,6 +115,34 @@ export default function AdminPanel() {
       setLoading(false);
     }
   }
+
+  // Lazy-load progress + submissions for a single user
+  async function loadUserDetails(userId) {
+    try {
+      const [progressSnap, subsSnap] = await Promise.all([
+        getDocs(collection(db, 'users', userId, 'progress')),
+        getDocs(collection(db, 'users', userId, 'submissions')),
+      ]);
+      const progress = {};
+      progressSnap.forEach((p) => { progress[p.id] = p.data(); });
+      const submissions = [];
+      subsSnap.forEach((s) => { submissions.push({ id: s.id, ...s.data() }); });
+      setUsers((prev) => prev.map((u) => u.id === userId ? { ...u, progress, submissions } : u));
+      return { progress, submissions };
+    } catch (err) {
+      console.error('Error loading user details:', err);
+      return { progress: {}, submissions: [] };
+    }
+  }
+
+  // Load all user details when submissions tab is first opened
+  useEffect(() => {
+    if (activeTab === 'submissions' && users.length > 0 && users[0].progress === null && !loadingSubmissions) {
+      setLoadingSubmissions(true);
+      Promise.all(users.map((u) => loadUserDetails(u.id)))
+        .finally(() => setLoadingSubmissions(false));
+    }
+  }, [activeTab, users.length]);
 
   const handleValidate = async (userId, moduleId, approved) => {
     try {
@@ -223,6 +229,11 @@ export default function AdminPanel() {
       setExpandedSubmission(null);
       return;
     }
+    // Lazy-load user details if not yet loaded
+    const user = users.find((u) => u.id === userId);
+    if (user && user.progress === null) {
+      await loadUserDetails(userId);
+    }
     setExpandedSubmission(userId);
   };
 
@@ -270,11 +281,13 @@ export default function AdminPanel() {
     }
   };
 
+  const bonusUsersCount = users.filter((u) => (u.bonusPoints || 0) > 0).length;
+
   const tabs = [
     { id: 'submissions', label: 'Soumissions', icon: FileText },
-    { id: 'users', label: 'Utilisateurs', icon: Users },
+    { id: 'users', label: 'Utilisateurs', icon: Users, count: users.length },
     { id: 'modules', label: 'Modules', icon: BookOpen },
-    { id: 'bonus', label: 'Bonus', icon: Zap },
+    { id: 'bonus', label: 'Points Bonus', icon: Zap, count: bonusUsersCount, highlight: true },
     { id: 'settings', label: 'Paramètres', icon: Settings },
   ];
 
@@ -291,18 +304,27 @@ export default function AdminPanel() {
 
       {/* Tabs */}
       <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-        {tabs.map(({ id, label, icon: Icon }) => (
+        {tabs.map(({ id, label, icon: Icon, count, highlight }) => (
           <button
             key={id}
             onClick={() => setActiveTab(id)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all border ${
               activeTab === id
-                ? 'bg-primary-600/20 text-primary-300 border border-primary-500/30'
-                : 'text-body hover:text-heading hover:bg-black/5 dark:bg-white/5'
+                ? highlight
+                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-lg shadow-amber-500/10'
+                  : 'bg-primary-600/20 text-primary-300 border-primary-500/30'
+                : highlight
+                  ? 'text-amber-400 border-amber-500/20 hover:bg-amber-500/10'
+                  : 'text-body border-transparent hover:text-heading hover:bg-black/5 dark:hover:bg-white/5 hover:border-themed'
             }`}
           >
             <Icon className="w-4 h-4" />
             {label}
+            {count > 0 && (
+              <span className={`text-xs px-1.5 py-0.5 rounded-full font-bold ${
+                highlight ? 'bg-amber-500/20 text-amber-400' : 'bg-primary-500/20 text-primary-400'
+              }`}>{count}</span>
+            )}
           </button>
         ))}
       </div>
@@ -330,7 +352,12 @@ export default function AdminPanel() {
           {/* Submissions Tab — with details viewer and score editing */}
           {activeTab === 'submissions' && (
             <div className="space-y-4">
-              {filteredUsers.length === 0 ? (
+              {loadingSubmissions ? (
+                <div className="flex flex-col items-center justify-center py-16 gap-3">
+                  <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
+                  <p className="text-sm text-muted">Chargement des soumissions...</p>
+                </div>
+              ) : filteredUsers.length === 0 ? (
                 <div className="glass-card p-12 text-center">
                   <FileText className="w-16 h-16 text-muted mx-auto mb-4" />
                   <p className="text-body">Aucune soumission trouvée</p>
