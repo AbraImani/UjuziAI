@@ -26,6 +26,7 @@ export function useModuleProgress(moduleId) {
   const [progress, setProgress] = useState(null);
   const [loading, setLoading] = useState(true);
   const [moduleOpen, setModuleOpen] = useState(true);
+  const [moduleDates, setModuleDates] = useState({ openDate: null, closeDate: null });
 
   useEffect(() => {
     if (!user || !moduleId) {
@@ -52,6 +53,7 @@ export function useModuleProgress(moduleId) {
     const unsubSettings = onSnapshot(settingsRef, (snap) => {
       if (snap.exists()) {
         const data = snap.data();
+        setModuleDates({ openDate: data.openDate || null, closeDate: data.closeDate || null });
         // Check manual isOpen toggle
         if (data.isOpen === false) {
           setModuleOpen(false);
@@ -87,7 +89,7 @@ export function useModuleProgress(moduleId) {
     };
   }, [user, moduleId]);
 
-  return { progress, loading, moduleOpen };
+  return { progress, loading, moduleOpen, moduleDates };
 }
 
 // ============================================

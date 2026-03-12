@@ -18,13 +18,14 @@ import {
   FileText,
   AlertTriangle,
   Play,
+  Calendar,
 } from 'lucide-react';
 
 export default function ModuleDetail() {
   const { moduleId } = useParams();
   const navigate = useNavigate();
   const module = MODULES.find((m) => m.id === moduleId);
-  const { progress, loading, moduleOpen } = useModuleProgress(moduleId);
+  const { progress, loading, moduleOpen, moduleDates } = useModuleProgress(moduleId);
   const [showSubmitForm, setShowSubmitForm] = useState(false);
 
   if (!module) {
@@ -193,6 +194,45 @@ export default function ModuleDetail() {
             <span key={topic} className="badge-primary">{topic}</span>
           ))}
         </div>
+
+        {/* Module open/close dates */}
+        {(moduleDates.openDate || moduleDates.closeDate) && (
+          <div className="flex flex-wrap items-center gap-4 mb-6 p-3 rounded-xl bg-black/5 dark:bg-white/5 border border-themed">
+            <Calendar className="w-4 h-4 text-primary-400 flex-shrink-0" />
+            {moduleDates.openDate && (
+              <span className="text-sm text-body">
+                <span className="text-muted">Ouverture :</span>{' '}
+                <span className="font-medium text-heading">
+                  {new Date(moduleDates.openDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                </span>
+              </span>
+            )}
+            {moduleDates.closeDate && (
+              <span className="text-sm text-body">
+                <span className="text-muted">Fermeture :</span>{' '}
+                <span className="font-medium text-heading">
+                  {new Date(moduleDates.closeDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                </span>
+              </span>
+            )}
+            {moduleDates.closeDate && (() => {
+              const now = new Date();
+              const close = new Date(moduleDates.closeDate);
+              close.setHours(23, 59, 59, 999);
+              const diff = close - now;
+              if (diff > 0 && diff < 7 * 86400000) {
+                const days = Math.ceil(diff / 86400000);
+                return (
+                  <span className="text-xs text-amber-400 font-medium flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3" />
+                    {days === 1 ? 'Ferme demain !' : `Ferme dans ${days} jours`}
+                  </span>
+                );
+              }
+              return null;
+            })()}
+          </div>
+        )}
 
         {/* Codelab Link */}
         <a
