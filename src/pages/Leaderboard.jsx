@@ -30,7 +30,7 @@ const ROLE_BADGE_COLORS = {
 };
 
 export default function Leaderboard() {
-  const { leaderboard, userRank, loading } = useLeaderboard();
+  const { leaderboard, userRank, totalUsers, loading } = useLeaderboard();
   const { user } = useAuth();
   const { progressMap } = useAllProgress();
   const [searchQuery, setSearchQuery] = useState('');
@@ -429,7 +429,7 @@ export default function Leaderboard() {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <div className="text-center p-3 bg-black/5 dark:bg-white/5 rounded-xl">
                 <Users className="w-5 h-5 mx-auto text-primary-400 mb-2" />
-                <p className="text-lg font-bold text-heading">{leaderboard.length}</p>
+                <p className="text-lg font-bold text-heading">{totalUsers}</p>
                 <p className="text-xs text-muted">Compétiteurs</p>
               </div>
               <div className="text-center p-3 bg-black/5 dark:bg-white/5 rounded-xl">

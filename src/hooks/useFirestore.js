@@ -9,7 +9,6 @@ import {
   query,
   where,
   orderBy,
-  limit,
   serverTimestamp,
   increment,
   onSnapshot,
@@ -476,6 +475,7 @@ export function useExam() {
 export function useLeaderboard() {
   const [leaderboard, setLeaderboard] = useState([]);
   const [userRank, setUserRank] = useState(null);
+  const [totalUsers, setTotalUsers] = useState(0);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
 
@@ -484,7 +484,8 @@ export function useLeaderboard() {
 
   useEffect(() => {
     const usersRef = collection(db, 'users');
-    const q = query(usersRef, orderBy('totalScore', 'desc'), limit(50));
+    // No limit — get ALL users for accurate count and ranking
+    const q = query(usersRef, orderBy('totalScore', 'desc'));
 
     const unsub = onSnapshot(q, (snap) => {
       const allData = [];
@@ -496,6 +497,7 @@ export function useLeaderboard() {
       });
       // Sort by totalScore + bonusPoints combined
       allData.sort((a, b) => ((b.totalScore || 0) + (b.bonusPoints || 0)) - ((a.totalScore || 0) + (a.bonusPoints || 0)));
+      setTotalUsers(allData.length);
       setLeaderboard(allData);
 
       if (user) {
@@ -511,7 +513,7 @@ export function useLeaderboard() {
     return () => unsub();
   }, [user]);
 
-  return { leaderboard, userRank, loading };
+  return { leaderboard, userRank, totalUsers, loading };
 }
 
 // ============================================
