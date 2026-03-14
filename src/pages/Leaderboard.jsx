@@ -41,8 +41,14 @@ export default function Leaderboard() {
     async function fetchUserStats() {
       if (leaderboard.length === 0) return;
       const stats = {};
+      const targetEntries = [...leaderboard.slice(0, 20)];
+      const meOutsideTop20 = user?.uid && !targetEntries.some((entry) => entry.id === user.uid);
+      if (meOutsideTop20) {
+        const meEntry = leaderboard.find((entry) => entry.id === user.uid);
+        if (meEntry) targetEntries.push(meEntry);
+      }
       await Promise.all(
-        leaderboard.slice(0, 20).map(async (entry) => {
+        targetEntries.map(async (entry) => {
           try {
             const progressRef = collection(db, 'users', entry.id, 'progress');
             const snap = await getDocs(progressRef);
@@ -62,7 +68,7 @@ export default function Leaderboard() {
       setUserStats(stats);
     }
     fetchUserStats();
-  }, [leaderboard]);
+  }, [leaderboard, user?.uid]);
 
   const myCompletedCount = Object.values(progressMap).filter((p) => p.examScore >= 6).length;
   const myCertCount = Object.values(progressMap).filter((p) => p.examScore >= 7).length;

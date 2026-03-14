@@ -21,6 +21,8 @@ import toast from 'react-hot-toast';
 import {
   Trophy,
   Plus,
+  Pencil,
+  Trash2,
   ThumbsUp,
   Loader2,
   Search,
@@ -89,6 +91,22 @@ export default function Buildathon() {
   // Admin: create event
   const [showCreateEvent, setShowCreateEvent] = useState(false);
   const [newEvent, setNewEvent] = useState({
+    type: 'buildathon',
+    title: '',
+    description: '',
+    startDate: '',
+    endDate: '',
+    workDuration: '',
+    maxTeamSize: 4,
+    prizes: [
+      { place: 1, points: 50 },
+      { place: 2, points: 30 },
+      { place: 3, points: 10 },
+    ],
+  });
+  const [showEditEvent, setShowEditEvent] = useState(false);
+  const [editingEventId, setEditingEventId] = useState(null);
+  const [editEvent, setEditEvent] = useState({
     type: 'buildathon',
     title: '',
     description: '',
@@ -182,6 +200,72 @@ export default function Buildathon() {
       toast.success(`${newEvent.type === 'hackathon' ? 'Hackathon' : 'Buildathon'} créé !`);
       setShowCreateEvent(false);
       setNewEvent({ type: 'buildathon', title: '', description: '', startDate: '', endDate: '', workDuration: '', maxTeamSize: 4, prizes: [{ place: 1, points: 50 }, { place: 2, points: 30 }, { place: 3, points: 10 }] });
+    } catch (err) {
+      toast.error('Erreur: ' + err.message);
+    }
+  }
+
+  // ---- Admin: Edit Event ----
+  function handleOpenEditEvent(event) {
+    setEditingEventId(event.id);
+    setEditEvent({
+      type: event.type || 'buildathon',
+      title: event.title || '',
+      description: event.description || '',
+      startDate: event.startDate || '',
+      endDate: event.endDate || '',
+      workDuration: event.workDuration || '',
+      maxTeamSize: Number(event.maxTeamSize) || 4,
+      prizes: (event.prizes && event.prizes.length > 0)
+        ? [...event.prizes].sort((a, b) => a.place - b.place)
+        : [{ place: 1, points: 50 }, { place: 2, points: 30 }, { place: 3, points: 10 }],
+    });
+    setShowEditEvent(true);
+  }
+
+  async function handleUpdateEvent(e) {
+    e.preventDefault();
+    if (!editingEventId) return;
+    if (!editEvent.title || !editEvent.startDate || !editEvent.endDate) {
+      toast.error('Titre, date de début et date de fin sont obligatoires');
+      return;
+    }
+    try {
+      await updateDoc(doc(db, 'buildathons', editingEventId), {
+        type: editEvent.type,
+        title: editEvent.title,
+        description: editEvent.description,
+        startDate: editEvent.startDate,
+        endDate: editEvent.endDate,
+        workDuration: editEvent.workDuration,
+        maxTeamSize: Number(editEvent.maxTeamSize) || 4,
+        prizes: editEvent.prizes.filter((p) => p.points > 0),
+        updatedAt: serverTimestamp(),
+        updatedBy: user.uid,
+      });
+      toast.success('Événement mis à jour avec succès');
+      setShowEditEvent(false);
+      setEditingEventId(null);
+    } catch (err) {
+      toast.error('Erreur: ' + err.message);
+    }
+  }
+
+  async function handleDeleteEvent(eventId) {
+    if (!confirm('Supprimer cet événement ? Cette action supprimera aussi les projets et invitations liés.')) return;
+    try {
+      const projectSnap = await getDocs(query(collection(db, 'buildathonProjects'), where('buildathonId', '==', eventId)));
+      for (const projectDoc of projectSnap.docs) {
+        await deleteDoc(doc(db, 'buildathonProjects', projectDoc.id));
+      }
+
+      const inviteSnap = await getDocs(query(collection(db, 'projectInvitations'), where('buildathonId', '==', eventId)));
+      for (const inviteDoc of inviteSnap.docs) {
+        await deleteDoc(doc(db, 'projectInvitations', inviteDoc.id));
+      }
+
+      await deleteDoc(doc(db, 'buildathons', eventId));
+      toast.success('Événement supprimé');
     } catch (err) {
       toast.error('Erreur: ' + err.message);
     }
@@ -585,6 +669,102 @@ export default function Buildathon() {
         </div>
       )}
 
+      {/* Admin: Edit Event Form */}
+      {showEditEvent && isAdmin && (
+        <div className="glass-card p-8 mb-6 border-2 border-amber-500/30">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-bold text-heading flex items-center gap-2">
+              <Pencil className="w-5 h-5 text-amber-400" />
+              Modifier l'événement
+            </h2>
+            <button
+              onClick={() => { setShowEditEvent(false); setEditingEventId(null); }}
+              className="text-muted hover:text-heading"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <form onSubmit={handleUpdateEvent} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-body mb-2">Type d'événement *</label>
+              <div className="flex gap-3">
+                {EVENT_TYPES.map((t) => (
+                  <button
+                    key={t.value}
+                    type="button"
+                    onClick={() => setEditEvent((p) => ({ ...p, type: t.value }))}
+                    className={`flex items-center gap-2 px-4 py-3 rounded-xl border-2 transition-all ${editEvent.type === t.value ? 'border-amber-500 bg-amber-500/10 text-heading' : 'border-themed text-body hover:border-amber-500/50'}`}
+                  >
+                    <span className="text-xl">{t.icon}</span>
+                    <span className="font-medium">{t.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-body mb-1">Titre *</label>
+              <input type="text" value={editEvent.title} onChange={(e) => setEditEvent((p) => ({ ...p, title: e.target.value }))} className="input-field w-full" required />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-body mb-1">Description</label>
+              <textarea value={editEvent.description} onChange={(e) => setEditEvent((p) => ({ ...p, description: e.target.value }))} className="input-field w-full h-24 resize-none" />
+            </div>
+
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-body mb-1">Date de début *</label>
+                <input type="date" value={editEvent.startDate} onChange={(e) => setEditEvent((p) => ({ ...p, startDate: e.target.value }))} className="input-field w-full" required />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-body mb-1">Date de fin *</label>
+                <input type="date" value={editEvent.endDate} onChange={(e) => setEditEvent((p) => ({ ...p, endDate: e.target.value }))} className="input-field w-full" required />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-body mb-1">Durée de travail</label>
+                <input type="text" value={editEvent.workDuration} onChange={(e) => setEditEvent((p) => ({ ...p, workDuration: e.target.value }))} className="input-field w-full" placeholder="Ex: 48h" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-body mb-1">Taille max équipe</label>
+                <input type="number" min="1" max="10" value={editEvent.maxTeamSize} onChange={(e) => setEditEvent((p) => ({ ...p, maxTeamSize: e.target.value }))} className="input-field w-full" />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-body mb-2">Prix (points bonus)</label>
+              <div className="space-y-2">
+                {editEvent.prizes.map((prize, i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <span className="text-lg">{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${prize.place}`}</span>
+                    <span className="text-sm text-body w-16">Place {prize.place}</span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={prize.points}
+                      onChange={(e) => {
+                        const u = [...editEvent.prizes];
+                        u[i] = { ...u[i], points: Number(e.target.value) };
+                        setEditEvent((p) => ({ ...p, prizes: u }));
+                      }}
+                      className="input-field w-24"
+                    />
+                    <span className="text-xs text-muted">pts</span>
+                  </div>
+                ))}
+                <button type="button" onClick={() => setEditEvent((p) => ({ ...p, prizes: [...p.prizes, { place: p.prizes.length + 1, points: 5 }] }))} className="text-sm text-amber-400 hover:text-amber-300">+ Ajouter un prix</button>
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button type="submit" className="btn-primary flex items-center gap-2"><Pencil className="w-4 h-4" />Enregistrer</button>
+              <button type="button" onClick={() => { setShowEditEvent(false); setEditingEventId(null); }} className="btn-secondary">Annuler</button>
+            </div>
+          </form>
+        </div>
+      )}
+
       {/* Events List */}
       {filteredEvents.length === 0 ? (
         <div className="glass-card p-16 text-center">
@@ -665,6 +845,22 @@ export default function Buildathon() {
                           <button onClick={(e) => { e.stopPropagation(); setShowSubmitProject(event.id); }} className="btn-accent text-sm flex items-center gap-1"><Send className="w-3.5 h-3.5" />Soumettre un projet</button>
                         )}
                         {userHasSubmitted && <span className="text-xs text-accent-400 flex items-center gap-1"><CheckCircle className="w-3.5 h-3.5" />Projet soumis</span>}
+                        {isAdmin && (
+                          <>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleOpenEditEvent(event); }}
+                              className="flex items-center gap-1 text-sm px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/30 hover:bg-blue-500/20 transition-colors"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />Modifier
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleDeleteEvent(event.id); }}
+                              className="flex items-center gap-1 text-sm px-3 py-1.5 rounded-lg bg-red-500/10 text-red-400 border border-red-500/30 hover:bg-red-500/20 transition-colors"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />Supprimer
+                            </button>
+                          </>
+                        )}
                       </div>
                       {isAdmin && !event.finalized && (status === 'ended' || status === 'active') && (
                         <button onClick={(e) => { e.stopPropagation(); if (confirm('Finaliser et attribuer les points ?')) handleFinalize(event.id); }} className="flex items-center gap-1 text-sm px-3 py-1.5 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/30 hover:bg-amber-500/20 transition-colors">
