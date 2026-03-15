@@ -64,6 +64,56 @@ const PROJECT_CATEGORIES = [
   { value: 'other', label: 'Autre', color: 'bg-gray-500/10 text-gray-400 border-gray-500/30' },
 ];
 
+const PRIZE_TYPES = [
+  { value: 'points', label: 'Points bonus' },
+  { value: 'swag', label: 'Swag' },
+  { value: 'prize', label: 'Prix' },
+];
+
+function toDateInputValue(value) {
+  if (!value) return '';
+  if (typeof value === 'string' && value.includes('T')) return value.slice(0, 16);
+  if (typeof value === 'string' && value.length === 10) return `${value}T00:00`;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '';
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function formatEventDate(value, withYear = true) {
+  if (!value) return 'Date à définir';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+  return d.toLocaleDateString('fr-FR', {
+    day: 'numeric',
+    month: 'short',
+    ...(withYear ? { year: 'numeric' } : {}),
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function normalizePrize(prize, index) {
+  const rewardType = prize.rewardType || 'points';
+  const pointsValue = prize.points ?? '';
+  return {
+    place: prize.place || index + 1,
+    rewardType,
+    points: typeof pointsValue === 'number' ? String(pointsValue) : String(pointsValue || ''),
+    rewardLabel: prize.rewardLabel || '',
+  };
+}
+
+function normalizePrizePoints(prize) {
+  const parsed = Number(prize.points);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function getPrizeDisplay(prize) {
+  if ((prize.rewardType || 'points') === 'points') return `${normalizePrizePoints(prize)} pts`;
+  return prize.rewardLabel || 'Récompense';
+}
+
 function getEventStatus(b) {
   const now = new Date();
   if (b.status === 'completed') return 'completed';
@@ -99,9 +149,9 @@ export default function Buildathon() {
     workDuration: '',
     maxTeamSize: 4,
     prizes: [
-      { place: 1, points: 50 },
-      { place: 2, points: 30 },
-      { place: 3, points: 10 },
+      { place: 1, rewardType: 'points', points: '50', rewardLabel: '' },
+      { place: 2, rewardType: 'points', points: '30', rewardLabel: '' },
+      { place: 3, rewardType: 'points', points: '10', rewardLabel: '' },
     ],
   });
   const [showEditEvent, setShowEditEvent] = useState(false);
@@ -115,9 +165,9 @@ export default function Buildathon() {
     workDuration: '',
     maxTeamSize: 4,
     prizes: [
-      { place: 1, points: 50 },
-      { place: 2, points: 30 },
-      { place: 3, points: 10 },
+      { place: 1, rewardType: 'points', points: '50', rewardLabel: '' },
+      { place: 2, rewardType: 'points', points: '30', rewardLabel: '' },
+      { place: 3, rewardType: 'points', points: '10', rewardLabel: '' },
     ],
   });
 
@@ -180,6 +230,15 @@ export default function Buildathon() {
       toast.error('Titre, date de début et date de fin sont obligatoires');
       return;
     }
+    const computedDuration = (() => {
+      const start = new Date(newEvent.startDate);
+      const end = new Date(newEvent.endDate);
+      const diffMs = end - start;
+      if (Number.isNaN(diffMs) || diffMs <= 0) return '';
+      const hours = Math.floor(diffMs / 3600000);
+      const minutes = Math.floor((diffMs % 3600000) / 60000);
+      return `${hours}h${minutes > 0 ? ` ${minutes}m` : ''}`;
+    })();
     try {
       const id = `event-${Date.now().toString(36)}`;
       await setDoc(doc(db, 'buildathons', id), {
@@ -188,9 +247,17 @@ export default function Buildathon() {
         description: newEvent.description,
         startDate: newEvent.startDate,
         endDate: newEvent.endDate,
-        workDuration: newEvent.workDuration,
+        workDuration: newEvent.workDuration || computedDuration,
         maxTeamSize: Number(newEvent.maxTeamSize) || 4,
-        prizes: newEvent.prizes.filter((p) => p.points > 0),
+        prizes: newEvent.prizes
+          .map((p, i) => ({ ...p, place: i + 1 }))
+          .filter((p) => (p.rewardType || 'points') === 'points' ? normalizePrizePoints(p) > 0 : Boolean(p.rewardLabel?.trim()))
+          .map((p) => ({
+            place: p.place,
+            rewardType: p.rewardType || 'points',
+            points: (p.rewardType || 'points') === 'points' ? normalizePrizePoints(p) : 0,
+            rewardLabel: (p.rewardType || 'points') === 'points' ? '' : (p.rewardLabel || ''),
+          })),
         participants: [],
         status: 'active',
         createdBy: user.uid,
@@ -199,7 +266,20 @@ export default function Buildathon() {
       });
       toast.success(`${newEvent.type === 'hackathon' ? 'Hackathon' : 'Buildathon'} créé !`);
       setShowCreateEvent(false);
-      setNewEvent({ type: 'buildathon', title: '', description: '', startDate: '', endDate: '', workDuration: '', maxTeamSize: 4, prizes: [{ place: 1, points: 50 }, { place: 2, points: 30 }, { place: 3, points: 10 }] });
+      setNewEvent({
+        type: 'buildathon',
+        title: '',
+        description: '',
+        startDate: '',
+        endDate: '',
+        workDuration: '',
+        maxTeamSize: 4,
+        prizes: [
+          { place: 1, rewardType: 'points', points: '50', rewardLabel: '' },
+          { place: 2, rewardType: 'points', points: '30', rewardLabel: '' },
+          { place: 3, rewardType: 'points', points: '10', rewardLabel: '' },
+        ],
+      });
     } catch (err) {
       toast.error('Erreur: ' + err.message);
     }
@@ -212,13 +292,17 @@ export default function Buildathon() {
       type: event.type || 'buildathon',
       title: event.title || '',
       description: event.description || '',
-      startDate: event.startDate || '',
-      endDate: event.endDate || '',
+      startDate: toDateInputValue(event.startDate),
+      endDate: toDateInputValue(event.endDate),
       workDuration: event.workDuration || '',
       maxTeamSize: Number(event.maxTeamSize) || 4,
       prizes: (event.prizes && event.prizes.length > 0)
-        ? [...event.prizes].sort((a, b) => a.place - b.place)
-        : [{ place: 1, points: 50 }, { place: 2, points: 30 }, { place: 3, points: 10 }],
+        ? [...event.prizes].sort((a, b) => a.place - b.place).map((p, i) => normalizePrize(p, i))
+        : [
+          { place: 1, rewardType: 'points', points: '50', rewardLabel: '' },
+          { place: 2, rewardType: 'points', points: '30', rewardLabel: '' },
+          { place: 3, rewardType: 'points', points: '10', rewardLabel: '' },
+        ],
     });
     setShowEditEvent(true);
   }
@@ -230,6 +314,15 @@ export default function Buildathon() {
       toast.error('Titre, date de début et date de fin sont obligatoires');
       return;
     }
+    const computedDuration = (() => {
+      const start = new Date(editEvent.startDate);
+      const end = new Date(editEvent.endDate);
+      const diffMs = end - start;
+      if (Number.isNaN(diffMs) || diffMs <= 0) return '';
+      const hours = Math.floor(diffMs / 3600000);
+      const minutes = Math.floor((diffMs % 3600000) / 60000);
+      return `${hours}h${minutes > 0 ? ` ${minutes}m` : ''}`;
+    })();
     try {
       await updateDoc(doc(db, 'buildathons', editingEventId), {
         type: editEvent.type,
@@ -237,9 +330,17 @@ export default function Buildathon() {
         description: editEvent.description,
         startDate: editEvent.startDate,
         endDate: editEvent.endDate,
-        workDuration: editEvent.workDuration,
+        workDuration: editEvent.workDuration || computedDuration,
         maxTeamSize: Number(editEvent.maxTeamSize) || 4,
-        prizes: editEvent.prizes.filter((p) => p.points > 0),
+        prizes: editEvent.prizes
+          .map((p, i) => ({ ...p, place: i + 1 }))
+          .filter((p) => (p.rewardType || 'points') === 'points' ? normalizePrizePoints(p) > 0 : Boolean(p.rewardLabel?.trim()))
+          .map((p) => ({
+            place: p.place,
+            rewardType: p.rewardType || 'points',
+            points: (p.rewardType || 'points') === 'points' ? normalizePrizePoints(p) : 0,
+            rewardLabel: (p.rewardType || 'points') === 'points' ? '' : (p.rewardLabel || ''),
+          })),
         updatedAt: serverTimestamp(),
         updatedBy: user.uid,
       });
@@ -353,13 +454,14 @@ export default function Buildathon() {
     if (!event || event.finalized) return;
     const eventProjects = projects.filter((p) => p.buildathonId === eventId).sort((a, b) => (b.voteCount || 0) - (a.voteCount || 0));
     if (eventProjects.length === 0) { if (!autoMode) toast.error('Aucun projet soumis'); return; }
-    const prizes = (event.prizes || []).sort((a, b) => a.place - b.place);
+    const prizes = (event.prizes || []).filter((p) => (p.rewardType || 'points') === 'points').sort((a, b) => a.place - b.place);
     try {
       for (let i = 0; i < Math.min(prizes.length, eventProjects.length); i++) {
         const project = eventProjects[i];
         const prize = prizes[i];
         const memberCount = project.members?.length || 1;
-        const pointsPerMember = Math.round(prize.points / memberCount);
+        const prizePoints = normalizePrizePoints(prize);
+        const pointsPerMember = Math.round(prizePoints / memberCount);
         if (pointsPerMember <= 0) continue;
         for (const member of project.members || []) {
           if (member.uid) {
@@ -368,7 +470,7 @@ export default function Buildathon() {
             const logRef = doc(collection(db, 'users', member.uid, 'bonusLogs'));
             await setDoc(logRef, {
               points: pointsPerMember,
-              reason: `${event.type === 'hackathon' ? 'Hackathon' : 'Buildathon'} "${event.title}" - Place ${prize.place} (${prize.points} pts ÷ ${memberCount} membre${memberCount > 1 ? 's' : ''})`,
+              reason: `${event.type === 'hackathon' ? 'Hackathon' : 'Buildathon'} "${event.title}" - Place ${prize.place} (${prizePoints} pts ÷ ${memberCount} membre${memberCount > 1 ? 's' : ''})`,
               grantedBy: autoMode ? 'system' : user.uid,
               grantedAt: serverTimestamp(),
             });
@@ -385,12 +487,25 @@ export default function Buildathon() {
 
   // ---- Invite friend (creates a pending invitation) ----
   async function handleInviteFriend(projectId, buildathonId) {
-    if (!newProject.inviteEmail) { toast.error('Entrez l\'email de votre ami'); return; }
+    if (!newProject.inviteEmail) { toast.error('Entrez l\'email ou ID de votre ami'); return; }
     try {
       const usersSnap = await getDocs(collection(db, 'users'));
-      let friendUid = null, friendName = null;
+      const typed = newProject.inviteEmail.trim().toLowerCase();
+      const typedCompact = typed.replace(/^uza-/, '');
+      let friendUid = null;
+      let friendName = null;
+      let friendEmail = null;
       usersSnap.forEach((d) => {
-        if (d.data().email === newProject.inviteEmail) { friendUid = d.id; friendName = d.data().displayName || d.data().email; }
+        const data = d.data();
+        const email = (data.email || '').toLowerCase();
+        const uniqueId = (data.uniqueId || '').toLowerCase().replace(/^uza-/, '');
+        const shortId = d.id.slice(0, 8).toLowerCase();
+        const isMatch = email === typed || d.id.toLowerCase() === typed || shortId === typedCompact || uniqueId === typedCompact;
+        if (isMatch) {
+          friendUid = d.id;
+          friendName = data.displayName || data.email;
+          friendEmail = data.email || newProject.inviteEmail;
+        }
       });
       if (!friendUid) { toast.error('Utilisateur non trouvé'); return; }
       if (friendUid === user.uid) { toast.error('Vous ne pouvez pas vous inviter vous-même'); return; }
@@ -418,7 +533,7 @@ export default function Buildathon() {
         projectTitle: project?.title || '',
         teamName: project?.teamName || '',
         invitedUid: friendUid,
-        invitedEmail: newProject.inviteEmail,
+        invitedEmail: friendEmail || newProject.inviteEmail,
         invitedName: friendName,
         invitedBy: user.uid,
         invitedByName: userProfile?.displayName || user.email,
@@ -629,12 +744,12 @@ export default function Buildathon() {
 
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
-                <label className="block text-sm font-medium text-body mb-1">Date de début *</label>
-                <input type="date" value={newEvent.startDate} onChange={(e) => setNewEvent((p) => ({ ...p, startDate: e.target.value }))} className="input-field w-full" required />
+                <label className="block text-sm font-medium text-body mb-1">Date et heure de début *</label>
+                <input type="datetime-local" value={newEvent.startDate} onChange={(e) => setNewEvent((p) => ({ ...p, startDate: e.target.value }))} className="input-field w-full" required />
               </div>
               <div>
-                <label className="block text-sm font-medium text-body mb-1">Date de fin *</label>
-                <input type="date" value={newEvent.endDate} onChange={(e) => setNewEvent((p) => ({ ...p, endDate: e.target.value }))} className="input-field w-full" required />
+                <label className="block text-sm font-medium text-body mb-1">Date et heure de fin *</label>
+                <input type="datetime-local" value={newEvent.endDate} onChange={(e) => setNewEvent((p) => ({ ...p, endDate: e.target.value }))} className="input-field w-full" required />
               </div>
               <div>
                 <label className="block text-sm font-medium text-body mb-1">Durée de travail</label>
@@ -647,17 +762,24 @@ export default function Buildathon() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-body mb-2">Prix (points bonus)</label>
+              <label className="block text-sm font-medium text-body mb-2">Prix (points, swag, prix)</label>
               <div className="space-y-2">
                 {newEvent.prizes.map((prize, i) => (
-                  <div key={i} className="flex items-center gap-3">
+                  <div key={i} className="grid sm:grid-cols-5 gap-2 items-center">
                     <span className="text-lg">{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${prize.place}`}</span>
-                    <span className="text-sm text-body w-16">Place {prize.place}</span>
-                    <input type="number" min="0" value={prize.points} onChange={(e) => { const u = [...newEvent.prizes]; u[i] = { ...u[i], points: Number(e.target.value) }; setNewEvent((p) => ({ ...p, prizes: u })); }} className="input-field w-24" />
-                    <span className="text-xs text-muted">pts</span>
+                    <span className="text-sm text-body">Place {prize.place}</span>
+                    <select value={prize.rewardType || 'points'} onChange={(e) => { const u = [...newEvent.prizes]; u[i] = { ...u[i], rewardType: e.target.value }; setNewEvent((p) => ({ ...p, prizes: u })); }} className="input-field w-full">
+                      {PRIZE_TYPES.map((pt) => <option key={pt.value} value={pt.value}>{pt.label}</option>)}
+                    </select>
+                    {(prize.rewardType || 'points') === 'points' ? (
+                      <input type="number" min="0" value={prize.points} onChange={(e) => { const u = [...newEvent.prizes]; u[i] = { ...u[i], points: e.target.value }; setNewEvent((p) => ({ ...p, prizes: u })); }} className="input-field w-full" placeholder="Ex: 25" />
+                    ) : (
+                      <input type="text" value={prize.rewardLabel || ''} onChange={(e) => { const u = [...newEvent.prizes]; u[i] = { ...u[i], rewardLabel: e.target.value }; setNewEvent((p) => ({ ...p, prizes: u })); }} className="input-field w-full" placeholder="Ex: T-shirt, MacBook, etc." />
+                    )}
+                    <span className="text-xs text-muted">{(prize.rewardType || 'points') === 'points' ? 'pts' : 'libellé'}</span>
                   </div>
                 ))}
-                <button type="button" onClick={() => setNewEvent((p) => ({ ...p, prizes: [...p.prizes, { place: p.prizes.length + 1, points: 5 }] }))} className="text-sm text-primary-400 hover:text-primary-300">+ Ajouter un prix</button>
+                <button type="button" onClick={() => setNewEvent((p) => ({ ...p, prizes: [...p.prizes, { place: p.prizes.length + 1, rewardType: 'points', points: '', rewardLabel: '' }] }))} className="text-sm text-primary-400 hover:text-primary-300">+ Ajouter un prix</button>
               </div>
             </div>
 
@@ -715,12 +837,12 @@ export default function Buildathon() {
 
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
-                <label className="block text-sm font-medium text-body mb-1">Date de début *</label>
-                <input type="date" value={editEvent.startDate} onChange={(e) => setEditEvent((p) => ({ ...p, startDate: e.target.value }))} className="input-field w-full" required />
+                <label className="block text-sm font-medium text-body mb-1">Date et heure de début *</label>
+                <input type="datetime-local" value={editEvent.startDate} onChange={(e) => setEditEvent((p) => ({ ...p, startDate: e.target.value }))} className="input-field w-full" required />
               </div>
               <div>
-                <label className="block text-sm font-medium text-body mb-1">Date de fin *</label>
-                <input type="date" value={editEvent.endDate} onChange={(e) => setEditEvent((p) => ({ ...p, endDate: e.target.value }))} className="input-field w-full" required />
+                <label className="block text-sm font-medium text-body mb-1">Date et heure de fin *</label>
+                <input type="datetime-local" value={editEvent.endDate} onChange={(e) => setEditEvent((p) => ({ ...p, endDate: e.target.value }))} className="input-field w-full" required />
               </div>
               <div>
                 <label className="block text-sm font-medium text-body mb-1">Durée de travail</label>
@@ -733,27 +855,24 @@ export default function Buildathon() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-body mb-2">Prix (points bonus)</label>
+              <label className="block text-sm font-medium text-body mb-2">Prix (points, swag, prix)</label>
               <div className="space-y-2">
                 {editEvent.prizes.map((prize, i) => (
-                  <div key={i} className="flex items-center gap-3">
+                  <div key={i} className="grid sm:grid-cols-5 gap-2 items-center">
                     <span className="text-lg">{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${prize.place}`}</span>
-                    <span className="text-sm text-body w-16">Place {prize.place}</span>
-                    <input
-                      type="number"
-                      min="0"
-                      value={prize.points}
-                      onChange={(e) => {
-                        const u = [...editEvent.prizes];
-                        u[i] = { ...u[i], points: Number(e.target.value) };
-                        setEditEvent((p) => ({ ...p, prizes: u }));
-                      }}
-                      className="input-field w-24"
-                    />
-                    <span className="text-xs text-muted">pts</span>
+                    <span className="text-sm text-body">Place {prize.place}</span>
+                    <select value={prize.rewardType || 'points'} onChange={(e) => { const u = [...editEvent.prizes]; u[i] = { ...u[i], rewardType: e.target.value }; setEditEvent((p) => ({ ...p, prizes: u })); }} className="input-field w-full">
+                      {PRIZE_TYPES.map((pt) => <option key={pt.value} value={pt.value}>{pt.label}</option>)}
+                    </select>
+                    {(prize.rewardType || 'points') === 'points' ? (
+                      <input type="number" min="0" value={prize.points} onChange={(e) => { const u = [...editEvent.prizes]; u[i] = { ...u[i], points: e.target.value }; setEditEvent((p) => ({ ...p, prizes: u })); }} className="input-field w-full" placeholder="Ex: 25" />
+                    ) : (
+                      <input type="text" value={prize.rewardLabel || ''} onChange={(e) => { const u = [...editEvent.prizes]; u[i] = { ...u[i], rewardLabel: e.target.value }; setEditEvent((p) => ({ ...p, prizes: u })); }} className="input-field w-full" placeholder="Ex: T-shirt, MacBook, etc." />
+                    )}
+                    <span className="text-xs text-muted">{(prize.rewardType || 'points') === 'points' ? 'pts' : 'libellé'}</span>
                   </div>
                 ))}
-                <button type="button" onClick={() => setEditEvent((p) => ({ ...p, prizes: [...p.prizes, { place: p.prizes.length + 1, points: 5 }] }))} className="text-sm text-amber-400 hover:text-amber-300">+ Ajouter un prix</button>
+                <button type="button" onClick={() => setEditEvent((p) => ({ ...p, prizes: [...p.prizes, { place: p.prizes.length + 1, rewardType: 'points', points: '', rewardLabel: '' }] }))} className="text-sm text-amber-400 hover:text-amber-300">+ Ajouter un prix</button>
               </div>
             </div>
 
@@ -809,9 +928,9 @@ export default function Buildathon() {
                         </span>
                         <span className="badge bg-surface text-body border border-themed text-xs">{typeLabel}</span>
                       </div>
-                      {event.description && <p className="text-body text-sm mb-3 line-clamp-2">{event.description}</p>}
+                      {event.description && <p className={`text-body text-sm mb-3 ${isExpanded ? 'whitespace-pre-wrap' : 'line-clamp-2'}`}>{event.description}</p>}
                       <div className="flex flex-wrap items-center gap-4 text-xs text-muted">
-                        <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{new Date(event.startDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} → {new Date(event.endDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                        <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{formatEventDate(event.startDate, false)} → {formatEventDate(event.endDate, true)}</span>
                         {event.workDuration && <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{event.workDuration}</span>}
                         <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5" />{event.participants?.length || 0} inscrit{(event.participants?.length || 0) !== 1 ? 's' : ''}</span>
                         <span className="flex items-center gap-1"><FileText className="w-3.5 h-3.5" />{eventProjects.length} projet{eventProjects.length !== 1 ? 's' : ''}</span>
@@ -822,7 +941,7 @@ export default function Buildathon() {
                       {event.prizes?.length > 0 && (
                         <div className="hidden sm:flex items-center gap-1.5">
                           {event.prizes.slice(0, 3).map((p, i) => (
-                            <span key={i} className="flex items-center gap-0.5 badge bg-amber-500/10 text-amber-400 border-amber-500/30 text-xs"><Zap className="w-3 h-3" />{p.points}</span>
+                            <span key={i} className="flex items-center gap-0.5 badge bg-amber-500/10 text-amber-400 border-amber-500/30 text-xs">{(p.rewardType || 'points') === 'points' ? <Zap className="w-3 h-3" /> : <Award className="w-3 h-3" />}{getPrizeDisplay(p)}</span>
                           ))}
                         </div>
                       )}
@@ -843,6 +962,9 @@ export default function Buildathon() {
                         {isRegistered && <span className="text-xs text-green-400 flex items-center gap-1"><CheckCircle className="w-3.5 h-3.5" />Inscrit</span>}
                         {canSubmit && !userHasSubmitted && (
                           <button onClick={(e) => { e.stopPropagation(); setShowSubmitProject(event.id); }} className="btn-accent text-sm flex items-center gap-1"><Send className="w-3.5 h-3.5" />Soumettre un projet</button>
+                        )}
+                        {isRegistered && !userHasSubmitted && status === 'active' && (
+                          <span className="text-xs text-muted">Invitez vos coéquipiers après soumission du projet (email ou ID).</span>
                         )}
                         {userHasSubmitted && <span className="text-xs text-accent-400 flex items-center gap-1"><CheckCircle className="w-3.5 h-3.5" />Projet soumis</span>}
                         {isAdmin && (
@@ -979,7 +1101,7 @@ export default function Buildathon() {
                                     {isOwn && status === 'active' && (
                                       <div className="mt-3 p-3 rounded-lg bg-black/5 dark:bg-white/5 border border-themed">
                                         <div className="flex items-center gap-2 mb-2">
-                                          <input type="email" value={newProject.inviteEmail} onChange={(e) => setNewProject((p) => ({ ...p, inviteEmail: e.target.value }))} className="input-field text-xs py-1.5 px-3 flex-1" placeholder="Email d'un membre à inviter..." onClick={(e) => e.stopPropagation()} />
+                                          <input type="text" value={newProject.inviteEmail} onChange={(e) => setNewProject((p) => ({ ...p, inviteEmail: e.target.value }))} className="input-field text-xs py-1.5 px-3 flex-1" placeholder="Email ou ID (UZA-XXXXXXX)" onClick={(e) => e.stopPropagation()} />
                                           <button onClick={(e) => { e.stopPropagation(); handleInviteFriend(project.id, event.id); }} className="text-xs px-3 py-1.5 rounded-lg bg-primary-500/10 text-primary-400 hover:bg-primary-500/20 border border-primary-500/30 flex items-center gap-1 transition-colors"><UserPlus className="w-3 h-3" />Inviter</button>
                                         </div>
                                         {/* Show pending invites */}
@@ -995,7 +1117,7 @@ export default function Buildathon() {
                                             ))}
                                           </div>
                                         )}
-                                        <p className="text-[10px] text-muted mt-1">💡 L'utilisateur doit accepter l'invitation pour rejoindre l'équipe</p>
+                                        <p className="text-[10px] text-muted mt-1">💡 Invitation possible via email ou ID utilisateur. Le membre doit accepter.</p>
                                       </div>
                                     )}
                                     {/* Show team info for non-owner members */}
@@ -1038,15 +1160,16 @@ export default function Buildathon() {
                             {event.prizes.map((prize, i) => {
                               const winner = event.finalized && eventProjects[i];
                               const memberCount = winner?.members?.length || 1;
-                              const ptsPerMember = Math.round(prize.points / memberCount);
+                              const prizePoints = normalizePrizePoints(prize);
+                              const ptsPerMember = Math.round(prizePoints / memberCount);
                               return (
                                 <div key={i} className={`p-3 rounded-xl border text-center min-w-[120px] ${i === 0 ? 'border-amber-500/30 bg-amber-500/5' : i === 1 ? 'border-gray-400/30 bg-gray-400/5' : 'border-orange-500/30 bg-orange-500/5'}`}>
                                   <div className="text-2xl mb-1">{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${prize.place}`}</div>
-                                  <div className="flex items-center justify-center gap-1 text-amber-400 font-bold text-sm"><Zap className="w-3.5 h-3.5" />{prize.points} pts</div>
+                                  <div className="flex items-center justify-center gap-1 text-amber-400 font-bold text-sm">{(prize.rewardType || 'points') === 'points' ? <Zap className="w-3.5 h-3.5" /> : <Award className="w-3.5 h-3.5" />}{getPrizeDisplay(prize)}</div>
                                   {winner && (
                                     <>
                                       <p className="text-xs text-heading mt-1 font-medium">{winner.teamName}</p>
-                                      {memberCount > 1 && <p className="text-[10px] text-muted mt-0.5">({ptsPerMember} pts/membre)</p>}
+                                      {(prize.rewardType || 'points') === 'points' && memberCount > 1 && <p className="text-[10px] text-muted mt-0.5">({ptsPerMember} pts/membre)</p>}
                                     </>
                                   )}
                                 </div>

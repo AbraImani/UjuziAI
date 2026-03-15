@@ -62,7 +62,7 @@ export default function AdminPanel() {
   const [submissionDetails, setSubmissionDetails] = useState({});
   const [editingScore, setEditingScore] = useState(null);
   const [newScoreValue, setNewScoreValue] = useState('');
-  const [bonusUserId, setBonusUserId] = useState('');
+  const [selectedBonusUserIds, setSelectedBonusUserIds] = useState([]);
   const [bonusPoints, setBonusPoints] = useState('');
   const [bonusReason, setBonusReason] = useState('');
   const [sendingBonus, setSendingBonus] = useState(false);
@@ -261,16 +261,29 @@ export default function AdminPanel() {
       `UZA-${u.id.slice(0, 8)}`.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const filteredBonusUsers = users.filter((u) => {
+    if (!searchTerm) return true;
+    const q = searchTerm.toLowerCase();
+    return (
+      u.displayName?.toLowerCase().includes(q) ||
+      u.email?.toLowerCase().includes(q) ||
+      `UZA-${u.id.slice(0, 8)}`.toLowerCase().includes(q) ||
+      u.uniqueId?.toLowerCase().includes(q)
+    );
+  });
+
   const handleAddBonus = async () => {
-    if (!bonusUserId || !bonusPoints) {
-      toast.error('Veuillez sélectionner un utilisateur et un nombre de points');
+    if (selectedBonusUserIds.length === 0 || !bonusPoints) {
+      toast.error('Veuillez sélectionner au moins un utilisateur et un nombre de points');
       return;
     }
     setSendingBonus(true);
     try {
-      await addBonusPoints(bonusUserId, Number(bonusPoints), bonusReason);
-      toast.success(`${bonusPoints} point(s) bonus ajouté(s)`);
-      setBonusUserId('');
+      await Promise.all(
+        selectedBonusUserIds.map((userId) => addBonusPoints(userId, Number(bonusPoints), bonusReason))
+      );
+      toast.success(`${bonusPoints} point(s) bonus ajouté(s) à ${selectedBonusUserIds.length} utilisateur(s)`);
+      setSelectedBonusUserIds([]);
       setBonusPoints('');
       setBonusReason('');
       fetchData();
@@ -771,29 +784,50 @@ export default function AdminPanel() {
                 </h3>
                 <div className="grid sm:grid-cols-2 gap-4 mb-4">
                   <div>
-                    <label className="block text-sm font-medium text-body mb-2">Utilisateur</label>
-                    <select
-                      value={bonusUserId}
-                      onChange={(e) => setBonusUserId(e.target.value)}
-                      className="input-field w-full"
-                    >
-                      <option value="">— Sélectionner —</option>
-                      {users
-                        .filter((u) => {
-                          if (!searchTerm) return true;
-                          const q = searchTerm.toLowerCase();
-                          return (
-                            u.displayName?.toLowerCase().includes(q) ||
-                            u.email?.toLowerCase().includes(q) ||
-                            u.uniqueId?.toLowerCase().includes(q)
-                          );
-                        })
-                        .map((u) => (
-                          <option key={u.id} value={u.id}>
-                            {u.displayName || u.email} {u.uniqueId ? `(${u.uniqueId})` : ''}
-                          </option>
-                        ))}
-                    </select>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-sm font-medium text-body">Utilisateurs sélectionnés</label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const allFilteredIds = filteredBonusUsers.map((u) => u.id);
+                          const allSelected = allFilteredIds.length > 0 && allFilteredIds.every((id) => selectedBonusUserIds.includes(id));
+                          if (allSelected) {
+                            setSelectedBonusUserIds((prev) => prev.filter((id) => !allFilteredIds.includes(id)));
+                          } else {
+                            setSelectedBonusUserIds((prev) => Array.from(new Set([...prev, ...allFilteredIds])));
+                          }
+                        }}
+                        className="text-xs text-primary-400 hover:text-primary-300"
+                      >
+                        {filteredBonusUsers.length > 0 && filteredBonusUsers.every((u) => selectedBonusUserIds.includes(u.id)) ? 'Tout désélectionner' : 'Tout sélectionner'}
+                      </button>
+                    </div>
+                    <div className="max-h-52 overflow-y-auto border border-themed rounded-xl p-2 space-y-1.5 bg-black/5 dark:bg-white/5">
+                      {filteredBonusUsers.map((u) => {
+                        const checked = selectedBonusUserIds.includes(u.id);
+                        return (
+                          <label key={u.id} className="flex items-center gap-2 p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedBonusUserIds((prev) => [...prev, u.id]);
+                                } else {
+                                  setSelectedBonusUserIds((prev) => prev.filter((id) => id !== u.id));
+                                }
+                              }}
+                            />
+                            <div className="min-w-0">
+                              <p className="text-sm text-heading truncate">{u.displayName || u.email}</p>
+                              <p className="text-[11px] text-muted truncate">{u.email} • UZA-{u.id.slice(0, 8).toUpperCase()}</p>
+                            </div>
+                          </label>
+                        );
+                      })}
+                      {filteredBonusUsers.length === 0 && <p className="text-xs text-muted p-2">Aucun utilisateur trouvé avec ce filtre.</p>}
+                    </div>
+                    <p className="text-xs text-muted mt-2">{selectedBonusUserIds.length} utilisateur(s) sélectionné(s)</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-body mb-2">Points</label>
@@ -820,7 +854,7 @@ export default function AdminPanel() {
                 </div>
                 <button
                   onClick={handleAddBonus}
-                  disabled={sendingBonus || !bonusUserId || !bonusPoints}
+                  disabled={sendingBonus || selectedBonusUserIds.length === 0 || !bonusPoints}
                   className="btn-primary flex items-center gap-2"
                 >
                   {sendingBonus ? (
