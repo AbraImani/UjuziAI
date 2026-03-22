@@ -1,10 +1,8 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import Layout from './components/Layout';
 import ScrollToTop from './components/ScrollToTop';
-import PWAInstallPrompt from './components/PWAInstallPrompt';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
@@ -87,20 +85,7 @@ export default function App() {
       <ThemeProvider>
         <AuthProvider>
           <ScrollToTop />
-          <Toaster
-            position="top-right"
-            toastOptions={{
-              duration: 4000,
-              className: 'glass-card !text-sm',
-              style: {
-                background: 'var(--bg-card)',
-                color: 'var(--text-primary)',
-                border: '1px solid var(--border-color)',
-              },
-            }}
-          />
           <AppRoutes />
-          <PWAInstallPrompt />
         </AuthProvider>
       </ThemeProvider>
     </Router>

@@ -374,6 +374,47 @@ export default function Buildathon() {
     }
   }
 
+  async function handleGrantProjectBonus(eventId, projectId, rankIndex) {
+    const event = events.find((e) => e.id === eventId);
+    const project = projects.find((p) => p.id === projectId);
+    if (!event || !project || project.manualPrizeGrantedAt) return;
+
+    const sortedPrizes = [...(event.prizes || [])].sort((a, b) => a.place - b.place);
+    const prize = sortedPrizes[rankIndex];
+    if (!prize || (prize.rewardType || 'points') !== 'points') return;
+
+    const totalPoints = Number(prize.points || 0);
+    if (totalPoints <= 0) return;
+
+    const memberCount = project.members?.length || 1;
+    const pointsPerMember = Math.round(totalPoints / memberCount);
+    if (pointsPerMember <= 0) return;
+
+    try {
+      for (const member of project.members || []) {
+        if (!member.uid) continue;
+        const userRef = doc(db, 'users', member.uid);
+        await updateDoc(userRef, { bonusPoints: increment(pointsPerMember) });
+        const logRef = doc(collection(db, 'users', member.uid, 'bonusLogs'));
+        await setDoc(logRef, {
+          points: pointsPerMember,
+          reason: `${event.type === 'hackathon' ? 'Hackathon' : 'Buildathon'} "${event.title}" - Attribution manuelle place ${rankIndex + 1} (${totalPoints} pts ÷ ${memberCount} membre${memberCount > 1 ? 's' : ''})`,
+          grantedBy: user.uid,
+          grantedAt: serverTimestamp(),
+        });
+      }
+
+      await updateDoc(doc(db, 'buildathonProjects', projectId), {
+        manualPrizeGrantedAt: serverTimestamp(),
+        manualPrizeGrantedBy: user.uid,
+        manualPrizeGrantedPoints: totalPoints,
+      });
+      toast.success(`Bonus attribué: +${totalPoints} pts`);
+    } catch (err) {
+      toast.error('Erreur: ' + err.message);
+    }
+  }
+
   async function handleDeleteEvent(eventId) {
     if (!confirm('Supprimer cet événement ? Cette action supprimera aussi les projets et invitations liés.')) return;
     try {
@@ -652,6 +693,9 @@ export default function Buildathon() {
   if (loading) {
     return <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-primary-500" /></div>;
   }
+
+  const selectedSubmitEvent = events.find((e) => e.id === showSubmitProject);
+  const selectedAdminEvent = events.find((e) => e.id === showAdminProjectForm);
 
   return (
     <div className="max-w-6xl mx-auto animate-fade-in">
@@ -963,6 +1007,80 @@ export default function Buildathon() {
         </div>
       )}
 
+      {/* Dedicated Submit Section */}
+      {showSubmitProject && selectedSubmitEvent && (
+        <div className="glass-card p-8 mb-6 border-2 border-accent-500/30">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-bold text-heading flex items-center gap-2">
+              <Send className="w-5 h-5 text-accent-400" />
+              Soumettre un projet - {selectedSubmitEvent.title}
+            </h2>
+            <button onClick={() => setShowSubmitProject(null)} className="text-muted hover:text-heading"><X className="w-5 h-5" /></button>
+          </div>
+          <div className="space-y-3">
+            <div className="grid sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-body mb-1">Titre *</label>
+                <input type="text" value={newProject.title} onChange={(e) => setNewProject((p) => ({ ...p, title: e.target.value }))} className="input-field w-full" placeholder="Nom du projet" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-body mb-1">Nom d'équipe *</label>
+                <input type="text" value={newProject.teamName} onChange={(e) => setNewProject((p) => ({ ...p, teamName: e.target.value }))} className="input-field w-full" placeholder="Votre équipe" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-body mb-1">Description</label>
+              <textarea value={newProject.description} onChange={(e) => setNewProject((p) => ({ ...p, description: e.target.value }))} className="input-field w-full h-24 resize-none" placeholder="Technologies, problème résolu..." />
+            </div>
+            <div className="grid sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-body mb-1">Catégorie</label>
+                <select value={newProject.category} onChange={(e) => setNewProject((p) => ({ ...p, category: e.target.value }))} className="input-field w-full">
+                  {PROJECT_CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-body mb-1"><Link2 className="w-3 h-3 inline mr-1" />Lien GitHub *</label>
+                <input type="url" value={newProject.repoUrl} onChange={(e) => setNewProject((p) => ({ ...p, repoUrl: e.target.value }))} className="input-field w-full" placeholder="https://github.com/..." required />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-body mb-1"><Video className="w-3 h-3 inline mr-1" />Vidéo démo *</label>
+                <input type="url" value={newProject.demoUrl} onChange={(e) => setNewProject((p) => ({ ...p, demoUrl: e.target.value }))} className="input-field w-full" placeholder="https://youtube.com/..." required />
+              </div>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button onClick={() => handleSubmitProject(selectedSubmitEvent.id)} className="btn-primary flex items-center gap-2"><Send className="w-4 h-4" />Soumettre</button>
+              <button onClick={() => setShowSubmitProject(null)} className="btn-secondary">Annuler</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Dedicated Admin Add Project Section */}
+      {isAdmin && showAdminProjectForm && selectedAdminEvent && (
+        <div className="glass-card p-8 mb-6 border-2 border-primary-500/30">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-bold text-heading flex items-center gap-2"><Plus className="w-5 h-5 text-primary-400" />Ajouter un projet (admin) - {selectedAdminEvent.title}</h2>
+            <button onClick={() => setShowAdminProjectForm(null)} className="text-muted hover:text-heading"><X className="w-5 h-5" /></button>
+          </div>
+          <div className="grid sm:grid-cols-2 gap-3 mb-3">
+            <input type="text" value={adminProject.userIdentifier} onChange={(e) => setAdminProject((p) => ({ ...p, userIdentifier: e.target.value }))} className="input-field" placeholder="Email ou ID (UZA-0SOM3ZSZ)" />
+            <input type="text" value={adminProject.teamName} onChange={(e) => setAdminProject((p) => ({ ...p, teamName: e.target.value }))} className="input-field" placeholder="Nom d'équipe" />
+            <input type="text" value={adminProject.title} onChange={(e) => setAdminProject((p) => ({ ...p, title: e.target.value }))} className="input-field" placeholder="Titre du projet" />
+            <select value={adminProject.category} onChange={(e) => setAdminProject((p) => ({ ...p, category: e.target.value }))} className="input-field">
+              {PROJECT_CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+            </select>
+            <input type="url" value={adminProject.repoUrl} onChange={(e) => setAdminProject((p) => ({ ...p, repoUrl: e.target.value }))} className="input-field" placeholder="Lien GitHub" />
+            <input type="url" value={adminProject.demoUrl} onChange={(e) => setAdminProject((p) => ({ ...p, demoUrl: e.target.value }))} className="input-field" placeholder="Lien démo" />
+          </div>
+          <textarea value={adminProject.description} onChange={(e) => setAdminProject((p) => ({ ...p, description: e.target.value }))} className="input-field w-full h-24 resize-none mb-3" placeholder="Description du projet" />
+          <div className="flex gap-3 pt-2">
+            <button onClick={() => handleAdminAddProject(selectedAdminEvent.id)} className="btn-primary text-sm">Ajouter ce projet</button>
+            <button onClick={() => setShowAdminProjectForm(null)} className="btn-secondary text-sm">Annuler</button>
+          </div>
+        </div>
+      )}
+
       {/* Events List */}
       {filteredEvents.length === 0 ? (
         <div className="glass-card p-16 text-center">
@@ -1007,7 +1125,7 @@ export default function Buildathon() {
                         </span>
                         <span className="badge bg-surface text-body border border-themed text-xs">{typeLabel}</span>
                       </div>
-                      {event.description && <p className="text-body text-sm mb-3 whitespace-pre-wrap">{event.description}</p>}
+                      {event.description && <p className={`text-body text-sm mb-3 ${isExpanded ? 'whitespace-pre-wrap' : 'line-clamp-3'}`}>{event.description}</p>}
                       <div className="flex flex-wrap items-center gap-4 text-xs text-muted">
                         <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{formatEventDate(event.startDate)} → {formatEventDate(event.endDate)}</span>
                         {event.workDuration && <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{event.workDuration}</span>}
@@ -1043,13 +1161,17 @@ export default function Buildathon() {
                         )}
                         {isRegistered && <span className="text-xs text-green-400 flex items-center gap-1"><CheckCircle className="w-3.5 h-3.5" />Inscrit</span>}
                         {canSubmit && !userHasSubmitted && (
-                          <button onClick={(e) => { e.stopPropagation(); setShowSubmitProject(event.id); }} className="btn-accent text-sm flex items-center gap-1"><Send className="w-3.5 h-3.5" />Soumettre un projet</button>
+                          <button onClick={(e) => { e.stopPropagation(); setShowAdminProjectForm(null); setShowSubmitProject(event.id); }} className="btn-accent text-sm flex items-center gap-1"><Send className="w-3.5 h-3.5" />Soumettre un projet</button>
                         )}
                         {userHasSubmitted && <span className="text-xs text-accent-400 flex items-center gap-1"><CheckCircle className="w-3.5 h-3.5" />Projet soumis</span>}
                         {isAdmin && (
                           <>
                             <button
-                              onClick={(e) => { e.stopPropagation(); setShowAdminProjectForm(showAdminProjectForm === event.id ? null : event.id); }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setShowSubmitProject(null);
+                                setShowAdminProjectForm(showAdminProjectForm === event.id ? null : event.id);
+                              }}
                               className="flex items-center gap-1 text-sm px-3 py-1.5 rounded-lg bg-primary-500/10 text-primary-300 border border-primary-500/30 hover:bg-primary-500/20 transition-colors"
                             >
                               <Plus className="w-3.5 h-3.5" />Ajouter projet
@@ -1084,91 +1206,7 @@ export default function Buildathon() {
                       </div>
                     )}
 
-                    {isAdmin && showAdminProjectForm === event.id && (
-                      <div className="p-6 border-t border-themed bg-primary-500/5">
-                        <div className="flex items-center justify-between mb-3">
-                          <h3 className="text-lg font-semibold text-heading">Ajouter un projet (admin)</h3>
-                          <button onClick={() => setShowAdminProjectForm(null)} className="btn-secondary text-xs">Fermer</button>
-                        </div>
-                        <div className="grid sm:grid-cols-2 gap-3 mb-3">
-                          <input
-                            type="text"
-                            value={adminProject.userIdentifier}
-                            onChange={(e) => setAdminProject((p) => ({ ...p, userIdentifier: e.target.value }))}
-                            className="input-field"
-                            placeholder="Email ou ID (UZA-0SOM3ZSZ)"
-                          />
-                          <input type="text" value={adminProject.teamName} onChange={(e) => setAdminProject((p) => ({ ...p, teamName: e.target.value }))} className="input-field" placeholder="Nom d'équipe" />
-                          <input type="text" value={adminProject.title} onChange={(e) => setAdminProject((p) => ({ ...p, title: e.target.value }))} className="input-field" placeholder="Titre du projet" />
-                          <select value={adminProject.category} onChange={(e) => setAdminProject((p) => ({ ...p, category: e.target.value }))} className="input-field">
-                            {PROJECT_CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
-                          </select>
-                          <input type="url" value={adminProject.repoUrl} onChange={(e) => setAdminProject((p) => ({ ...p, repoUrl: e.target.value }))} className="input-field" placeholder="Lien GitHub" />
-                          <input type="url" value={adminProject.demoUrl} onChange={(e) => setAdminProject((p) => ({ ...p, demoUrl: e.target.value }))} className="input-field" placeholder="Lien démo" />
-                        </div>
-                        <textarea value={adminProject.description} onChange={(e) => setAdminProject((p) => ({ ...p, description: e.target.value }))} className="input-field w-full h-24 resize-none mb-3" placeholder="Description du projet" />
-                        <div className="flex flex-wrap gap-2">
-                          <button onClick={() => handleAdminAddProject(event.id)} className="btn-primary text-sm">Ajouter ce projet</button>
-                          <button
-                            onClick={() => setAdminProject({
-                              userIdentifier: 'UZA-0SOM3ZSZ',
-                              title: 'Lady Fashion',
-                              description: 'Ce projet est une application web de commerce électronique conçue pour offrir une expérience de shopping fluide et visuelle. L\'objectif était de créer une interface utilisateur minimaliste et élégante, mettant en avant les collections de vêtements pour femmes.',
-                              category: 'web',
-                              teamName: 'Lady Fashion',
-                              repoUrl: 'https://github.com/johannabinja/lady-fashion',
-                              demoUrl: 'https://johannabinja.github.io/lady-fashion/',
-                            })}
-                            className="btn-secondary text-sm"
-                          >
-                            Préremplir Lady Fashion
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Submit Project Form */}
-                    {showSubmitProject === event.id && (
-                      <div className="p-6 border-t border-themed bg-primary-500/5">
-                        <h3 className="text-lg font-semibold text-heading mb-4 flex items-center gap-2"><Send className="w-5 h-5 text-primary-400" />Soumettre votre projet</h3>
-                        <div className="space-y-3">
-                          <div className="grid sm:grid-cols-2 gap-3">
-                            <div>
-                              <label className="block text-sm font-medium text-body mb-1">Titre *</label>
-                              <input type="text" value={newProject.title} onChange={(e) => setNewProject((p) => ({ ...p, title: e.target.value }))} className="input-field w-full" placeholder="Nom du projet" />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-body mb-1">Nom d'équipe *</label>
-                              <input type="text" value={newProject.teamName} onChange={(e) => setNewProject((p) => ({ ...p, teamName: e.target.value }))} className="input-field w-full" placeholder="Votre équipe" />
-                            </div>
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-body mb-1">Description</label>
-                            <textarea value={newProject.description} onChange={(e) => setNewProject((p) => ({ ...p, description: e.target.value }))} className="input-field w-full h-20 resize-none" placeholder="Technologies, problème résolu..." />
-                          </div>
-                          <div className="grid sm:grid-cols-3 gap-3">
-                            <div>
-                              <label className="block text-sm font-medium text-body mb-1">Catégorie</label>
-                              <select value={newProject.category} onChange={(e) => setNewProject((p) => ({ ...p, category: e.target.value }))} className="input-field w-full">
-                                {PROJECT_CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
-                              </select>
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-body mb-1"><Link2 className="w-3 h-3 inline mr-1" />Lien GitHub *</label>
-                              <input type="url" value={newProject.repoUrl} onChange={(e) => setNewProject((p) => ({ ...p, repoUrl: e.target.value }))} className="input-field w-full" placeholder="https://github.com/..." required />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-body mb-1"><Video className="w-3 h-3 inline mr-1" />Vidéo démo *</label>
-                              <input type="url" value={newProject.demoUrl} onChange={(e) => setNewProject((p) => ({ ...p, demoUrl: e.target.value }))} className="input-field w-full" placeholder="https://youtube.com/..." required />
-                            </div>
-                          </div>
-                          <div className="flex gap-3 pt-2">
-                            <button onClick={() => handleSubmitProject(event.id)} className="btn-primary flex items-center gap-2"><Send className="w-4 h-4" />Soumettre</button>
-                            <button onClick={() => setShowSubmitProject(null)} className="btn-secondary">Annuler</button>
-                          </div>
-                        </div>
-                      </div>
-                    )}
+                    {/* Inline forms removed: now displayed in dedicated sections above the event list */}
 
                     {/* Projects */}
                     <div className="p-6">
@@ -1191,6 +1229,8 @@ export default function Buildathon() {
                             const isWinner = event.finalized && index < (event.prizes?.length || 3);
                             const canUserVote = canVote && !isOwn && (!userVotedProject || hasVoted);
                             const votePoints = (project.voteCount || 0) * 10;
+                            const rankPrize = [...(event.prizes || [])].sort((a, b) => a.place - b.place)[index];
+                            const canGrantManualPrize = isAdmin && event.finalized && !project.manualPrizeGrantedAt && rankPrize && (rankPrize.rewardType || 'points') === 'points' && Number(rankPrize.points || 0) > 0;
 
                             return (
                               <div key={project.id} className={`p-4 rounded-xl border transition-all ${isWinner ? index === 0 ? 'border-amber-400/50 bg-gradient-to-r from-amber-500/10 to-transparent shadow-lg shadow-amber-500/5' : index === 1 ? 'border-gray-400/40 bg-gradient-to-r from-gray-400/10 to-transparent' : 'border-orange-500/40 bg-gradient-to-r from-orange-500/10 to-transparent' : 'border-themed bg-black/5 dark:bg-white/5'}`}>
@@ -1226,6 +1266,15 @@ export default function Buildathon() {
                                         <Video className="w-3 h-3" />Démo
                                       </a>
                                       <span className="flex items-center gap-1 text-amber-400 font-medium"><Zap className="w-3 h-3" />{votePoints} pts</span>
+                                      {canGrantManualPrize && (
+                                        <button
+                                          onClick={(e) => { e.stopPropagation(); handleGrantProjectBonus(event.id, project.id, index); }}
+                                          className="text-xs px-2 py-1 rounded-md border border-green-500/30 text-green-400 hover:bg-green-500/10 transition-colors"
+                                        >
+                                          Attribuer +{Number(rankPrize.points || 0)}
+                                        </button>
+                                      )}
+                                      {project.manualPrizeGrantedAt && <span className="text-green-400 text-xs">Bonus attribué</span>}
                                       {isWinner && event.prizes?.[index] && (
                                         <span className="flex items-center gap-1 text-green-400 font-medium">
                                           {(event.prizes[index].rewardType || 'points') === 'points'
