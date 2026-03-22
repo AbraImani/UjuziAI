@@ -44,7 +44,7 @@ export default function Certificate() {
   }
 
   const isPassed = progress?.examScore >= 7;
-  const badgeId = progress?.badgeId || `UZA-${moduleId.slice(0, 6).toUpperCase()}-${user?.uid?.slice(0, 8)?.toUpperCase() || 'XXXX'}`;
+  const badgeId = progress?.badgeId || null;
   // Use the stored exam completion date — never changes
   const certDate = progress?.completedAt?.toDate
     ? progress.completedAt.toDate()
@@ -73,16 +73,26 @@ export default function Certificate() {
 
       if (!certRef.current) return;
 
-      // High resolution capture for crisp output
-      const canvas = await html2canvas(certRef.current, {
-        scale: 4,
+      // Force white background and fixed landscape dimensions for A4
+      const el = certRef.current;
+      const origStyle = el.style.cssText;
+      el.style.width = '1122px';  // A4 landscape at 96dpi
+      el.style.height = '793px';
+      el.style.padding = '48px 64px';
+      el.style.backgroundColor = '#ffffff';
+      el.style.color = '#202124';
+
+      const canvas = await html2canvas(el, {
+        scale: 3,
         useCORS: true,
         allowTaint: false,
-        backgroundColor: null,
-        width: certRef.current.scrollWidth,
-        height: certRef.current.scrollHeight,
-        windowWidth: 900,
+        backgroundColor: '#ffffff',
+        width: 1122,
+        height: 793,
       });
+
+      // Restore original styles
+      el.style.cssText = origStyle;
 
       const imgData = canvas.toDataURL('image/png', 1.0);
       const pdf = new jsPDF('landscape', 'mm', 'a4');
@@ -96,11 +106,12 @@ export default function Certificate() {
   };
 
   const handleCopyBadgeId = () => {
+    if (!badgeId) return;
     navigator.clipboard.writeText(badgeId);
     toast.success('Badge ID copié !');
   };
 
-  const verificationUrl = `${window.location.origin}/verify/${badgeId}`;
+  const verificationUrl = badgeId ? `${window.location.origin}/verify/${badgeId}` : window.location.origin;
   const shareText = `Je viens d'obtenir ma certification "${module.title}" sur UjuziAI ! Vérifié par GDG on Campus UCB. Badge ID : ${badgeId}`;
 
   const shareLinkedIn = () => {
@@ -128,66 +139,66 @@ export default function Certificate() {
         Retour au tableau de bord
       </button>
 
-      {/* Certificate */}
+      {/* Certificate - uses inline styles to ensure html2canvas renders correctly */}
       <div
         ref={certRef}
         className="relative bg-white dark:bg-surface border-2 border-primary-500/30 rounded-2xl p-6 sm:p-8 md:p-12 overflow-hidden"
-        style={{ minWidth: '320px' }}
+        style={{ minWidth: '320px', aspectRatio: '1.414 / 1' }}
       >
         {/* Background decoration */}
-        <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-primary-500 via-accent-500 to-primary-500" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary-900/10 dark:from-primary-900/20 via-transparent to-transparent" />
+        <div className="absolute top-0 left-0 w-full h-2" style={{ background: 'linear-gradient(to right, #4285f4, #34a853, #4285f4)' }} />
+        <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at top right, rgba(66,133,244,0.08), transparent, transparent)' }} />
 
-        <div className="relative z-10 text-center">
+        <div className="relative z-10 text-center flex flex-col justify-center h-full">
           {/* Logo */}
           <div className="flex items-center justify-center gap-3 mb-6 sm:mb-8">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-primary-600 rounded-xl flex items-center justify-center">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: '#4285f4' }}>
               <Zap className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
             </div>
-            <span className="text-xl sm:text-2xl font-bold gradient-text">UjuziAI</span>
+            <span className="text-xl sm:text-2xl font-bold" style={{ color: '#4285f4' }}>UjuziAI</span>
           </div>
 
-          <p className="text-gray-600 dark:text-gray-400 uppercase tracking-widest text-xs sm:text-sm mb-3 sm:mb-4">
+          <p className="uppercase tracking-widest text-xs sm:text-sm mb-3 sm:mb-4" style={{ color: '#5f6368' }}>
             Certificat de réussite
           </p>
 
-          <h1 className="text-xl sm:text-3xl md:text-4xl font-bold text-gray-900 dark:text-heading mb-2 px-2">
+          <h1 className="text-xl sm:text-3xl md:text-4xl font-bold mb-2 px-2" style={{ color: '#202124' }}>
             {module.title}
           </h1>
-          <p className="text-gray-500 dark:text-gray-400 text-sm mb-6 sm:mb-8">Build with AI Season</p>
+          <p className="text-sm mb-6 sm:mb-8" style={{ color: '#9aa0a6' }}>Build with AI Season</p>
 
           <div className="mb-6 sm:mb-8">
-            <p className="text-gray-500 dark:text-gray-400 text-xs sm:text-sm">Décerné à</p>
-            <p className="text-lg sm:text-2xl font-bold gradient-text mt-1">
+            <p className="text-xs sm:text-sm" style={{ color: '#5f6368' }}>Décerné à</p>
+            <p className="text-lg sm:text-2xl font-bold mt-1" style={{ color: '#4285f4' }}>
               {user?.displayName || 'Apprenant'}
             </p>
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-8 mb-6 sm:mb-8 text-center">
             <div>
-              <p className="text-gray-500 dark:text-gray-400 text-xs">Score</p>
-              <p className="text-lg sm:text-xl font-bold text-green-600 dark:text-accent-400">{progress.examScore}/10</p>
+              <p className="text-xs" style={{ color: '#5f6368' }}>Score</p>
+              <p className="text-lg sm:text-xl font-bold" style={{ color: '#34a853' }}>{progress.examScore}/10</p>
             </div>
-            <div className="hidden sm:block w-px h-10 bg-gray-300 dark:bg-neutral-700" />
+            <div className="hidden sm:block w-px h-10" style={{ backgroundColor: '#dadce0' }} />
             <div className="max-w-[200px] sm:max-w-none">
-              <p className="text-gray-500 dark:text-gray-400 text-xs">Badge ID</p>
-              <p className="text-xs sm:text-sm font-mono text-primary-600 dark:text-primary-300 break-all">{badgeId}</p>
+              <p className="text-xs" style={{ color: '#5f6368' }}>Badge ID</p>
+              <p className="text-xs sm:text-sm font-mono break-all" style={{ color: '#4285f4' }}>{badgeId || 'En attente'}</p>
             </div>
-            <div className="hidden sm:block w-px h-10 bg-gray-300 dark:bg-neutral-700" />
+            <div className="hidden sm:block w-px h-10" style={{ backgroundColor: '#dadce0' }} />
             <div>
-              <p className="text-gray-500 dark:text-gray-400 text-xs">Date</p>
-              <p className="text-xs sm:text-sm text-gray-700 dark:text-body">{formattedDate}</p>
+              <p className="text-xs" style={{ color: '#5f6368' }}>Date</p>
+              <p className="text-xs sm:text-sm" style={{ color: '#202124' }}>{formattedDate}</p>
             </div>
           </div>
 
           {/* GDG Signature */}
-          <div className="border-t border-gray-200 dark:border-neutral-700 pt-4 sm:pt-6 mb-4">
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Certifié par</p>
-            <p className="text-sm sm:text-base font-semibold text-gray-800 dark:text-heading">GDG on Campus UCB</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Google Developer Group — Université Catholique de Bukavu</p>
+          <div className="pt-4 sm:pt-6 mb-4" style={{ borderTop: '1px solid #dadce0' }}>
+            <p className="text-xs mb-1" style={{ color: '#5f6368' }}>Certifié par</p>
+            <p className="text-sm sm:text-base font-semibold" style={{ color: '#202124' }}>GDG on Campus UCB</p>
+            <p className="text-xs" style={{ color: '#5f6368' }}>Google Developer Group — Université Catholique de Bukavu</p>
           </div>
 
-          <div className="flex items-center justify-center gap-2 text-green-600 dark:text-accent-400">
+          <div className="flex items-center justify-center gap-2" style={{ color: '#34a853' }}>
             <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5" />
             <span className="text-xs sm:text-sm font-medium">Certification vérifiée</span>
           </div>
@@ -219,15 +230,17 @@ export default function Certificate() {
         </p>
         <div className="flex items-center justify-center gap-2 mb-4">
           <code className="bg-surface px-4 py-2 rounded-lg text-primary-600 dark:text-primary-300 font-mono text-xs sm:text-sm break-all">
-            {badgeId}
+            {badgeId || 'Badge non encore généré'}
           </code>
-          <button
-            onClick={handleCopyBadgeId}
-            className="p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors text-body"
-            title="Copier le Badge ID"
-          >
-            <Copy className="w-4 h-4" />
-          </button>
+          {badgeId && (
+            <button
+              onClick={handleCopyBadgeId}
+              className="p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors text-body"
+              title="Copier le Badge ID"
+            >
+              <Copy className="w-4 h-4" />
+            </button>
+          )}
         </div>
         <p className="text-xs text-muted">
           Certifié par <strong className="text-heading">GDG on Campus UCB</strong> — Google Developer Group

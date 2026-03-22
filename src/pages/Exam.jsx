@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { MODULES, EXAM_CONFIG } from '../config/modules';
-import { useExam } from '../hooks/useFirestore';
+import { useExam, useModuleProgress } from '../hooks/useFirestore';
 import ExamInterface from '../components/ExamInterface';
-import { Shield, AlertTriangle, CheckCircle, XCircle, Loader2, ArrowLeft, Play } from 'lucide-react';
+import { Shield, AlertTriangle, CheckCircle, XCircle, Loader2, ArrowLeft, Play, Lock } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 // Générateur de questions en français — difficiles, piégeuses, spécifiques au module
@@ -214,6 +214,17 @@ function generateQuestions(module, attemptNumber = 1) {
     });
   }
 
+  // Shuffle MCQ options for each question (keeps correct answer tracked)
+  mcqQuestions.forEach((q) => {
+    const correctOption = q.options[q.correct];
+    // Fisher-Yates shuffle
+    for (let i = q.options.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [q.options[i], q.options[j]] = [q.options[j], q.options[i]];
+    }
+    q.correct = q.options.indexOf(correctOption);
+  });
+
   return [...mcqQuestions, ...openQuestions];
 }
 
@@ -222,6 +233,7 @@ export default function Exam() {
   const navigate = useNavigate();
   const module = MODULES.find((m) => m.id === moduleId);
   const { getExamStatus, startExam } = useExam();
+  const { moduleOpen } = useModuleProgress(moduleId);
 
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -280,6 +292,24 @@ export default function Exam() {
     return (
       <div className="min-h-screen bg-body flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
+      </div>
+    );
+  }
+
+  // Block exam if module is closed
+  if (!moduleOpen) {
+    return (
+      <div className="min-h-screen bg-body flex items-center justify-center">
+        <div className="text-center max-w-md">
+          <Lock className="w-16 h-16 text-amber-400 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-heading mb-4">Module fermé</h2>
+          <p className="text-body mb-6">
+            Ce module est actuellement fermé par l'administration. L'examen n'est pas disponible pour le moment.
+          </p>
+          <button onClick={() => navigate(`/module/${moduleId}`)} className="btn-primary">
+            Retour au module
+          </button>
+        </div>
       </div>
     );
   }
@@ -394,6 +424,12 @@ export default function Exam() {
           <p className="text-body">
             Tentative {(status.attempts || 0) + 1} sur {EXAM_CONFIG.MAX_ATTEMPTS}
           </p>
+          {(status.attempts || 0) >= 1 && (
+            <div className="mt-3 px-4 py-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 text-sm font-medium inline-flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4" />
+              2ème tentative — questions entièrement différentes + options mélangées
+            </div>
+          )}
         </div>
 
         <div className="space-y-4 mb-8">

@@ -18,13 +18,14 @@ import {
   FileText,
   AlertTriangle,
   Play,
+  Calendar,
 } from 'lucide-react';
 
 export default function ModuleDetail() {
   const { moduleId } = useParams();
   const navigate = useNavigate();
   const module = MODULES.find((m) => m.id === moduleId);
-  const { progress, loading, refetch } = useModuleProgress(moduleId);
+  const { progress, loading, moduleOpen, moduleDates } = useModuleProgress(moduleId);
   const [showSubmitForm, setShowSubmitForm] = useState(false);
 
   if (!module) {
@@ -47,6 +48,20 @@ export default function ModuleDetail() {
   const hasBadge = progress?.badgeId;
 
   function getStatusSection() {
+    if (!moduleOpen && !isPassed) {
+      return (
+        <div className="glass-card p-6 border-amber-500/30">
+          <div className="flex items-center gap-3 mb-3">
+            <Lock className="w-6 h-6 text-amber-400" />
+            <h3 className="text-lg font-semibold text-amber-400">Module fermé</h3>
+          </div>
+          <p className="text-body">
+            Ce module est actuellement fermé par l'administration. Les soumissions et examens ne sont pas disponibles pour le moment.
+          </p>
+        </div>
+      );
+    }
+
     if (isExamLocked) {
       return (
         <div className="glass-card p-6 border-red-500/30">
@@ -125,9 +140,9 @@ export default function ModuleDetail() {
           <p className="text-body mb-4">
             Votre preuve a été soumise. L'examen est en cours de préparation.
           </p>
-          <button onClick={() => refetch()} className="btn-secondary flex items-center gap-2">
+          <button onClick={() => {}} className="btn-secondary flex items-center gap-2">
             <Clock className="w-4 h-4" />
-            Rafraîchir le statut
+            Actualisation automatique
           </button>
         </div>
       );
@@ -180,6 +195,45 @@ export default function ModuleDetail() {
           ))}
         </div>
 
+        {/* Module open/close dates */}
+        {(moduleDates.openDate || moduleDates.closeDate) && (
+          <div className="flex flex-wrap items-center gap-4 mb-6 p-3 rounded-xl bg-black/5 dark:bg-white/5 border border-themed">
+            <Calendar className="w-4 h-4 text-primary-400 flex-shrink-0" />
+            {moduleDates.openDate && (
+              <span className="text-sm text-body">
+                <span className="text-muted">Ouverture :</span>{' '}
+                <span className="font-medium text-heading">
+                  {new Date(moduleDates.openDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                </span>
+              </span>
+            )}
+            {moduleDates.closeDate && (
+              <span className="text-sm text-body">
+                <span className="text-muted">Fermeture :</span>{' '}
+                <span className="font-medium text-heading">
+                  {new Date(moduleDates.closeDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                </span>
+              </span>
+            )}
+            {moduleDates.closeDate && (() => {
+              const now = new Date();
+              const close = new Date(moduleDates.closeDate);
+              close.setHours(23, 59, 59, 999);
+              const diff = close - now;
+              if (diff > 0 && diff < 7 * 86400000) {
+                const days = Math.ceil(diff / 86400000);
+                return (
+                  <span className="text-xs text-amber-400 font-medium flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3" />
+                    {days === 1 ? 'Ferme demain !' : `Ferme dans ${days} jours`}
+                  </span>
+                );
+              }
+              return null;
+            })()}
+          </div>
+        )}
+
         {/* Codelab Link */}
         <a
           href={module.codelabUrl}
@@ -197,7 +251,7 @@ export default function ModuleDetail() {
       {getStatusSection()}
 
       {/* Submission Section */}
-      {!isSubmitted && (
+      {!isSubmitted && moduleOpen && (
         <div className="glass-card p-8 mt-6">
           <div className="flex items-center gap-3 mb-6">
             <Upload className="w-6 h-6 text-primary-400" />
@@ -232,7 +286,6 @@ export default function ModuleDetail() {
               moduleId={moduleId}
               onSuccess={() => {
                 setShowSubmitForm(false);
-                refetch();
               }}
             />
           )}

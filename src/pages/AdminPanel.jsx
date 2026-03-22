@@ -29,6 +29,7 @@ import {
   Pencil,
   Image,
   ExternalLink,
+  Zap,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -61,6 +62,11 @@ export default function AdminPanel() {
   const [submissionDetails, setSubmissionDetails] = useState({});
   const [editingScore, setEditingScore] = useState(null);
   const [newScoreValue, setNewScoreValue] = useState('');
+  const [selectedBonusUserIds, setSelectedBonusUserIds] = useState([]);
+  const [bonusPoints, setBonusPoints] = useState('');
+  const [bonusReason, setBonusReason] = useState('');
+  const [sendingBonus, setSendingBonus] = useState(false);
+  const [loadingSubmissions, setLoadingSubmissions] = useState(false);
 
   const {
     validateSubmission,
@@ -72,54 +78,36 @@ export default function AdminPanel() {
     getExamSettings,
     modifyUserScore,
     getUserSubmissions,
+    addBonusPoints,
   } = useAdmin();
 
   useEffect(() => {
     fetchData();
   }, []);
 
+  // Fast initial load: only users + settings (NO subcollections)
   async function fetchData() {
     setLoading(true);
     try {
-      // Fetch all users with their progress
-      const usersSnap = await getDocs(query(collection(db, 'users'), orderBy('createdAt', 'desc')));
-      const usersData = [];
+      const [usersSnap, settingsSnap, savedExam] = await Promise.all([
+        getDocs(query(collection(db, 'users'), orderBy('createdAt', 'desc'))),
+        getDocs(collection(db, 'moduleSettings')),
+        getExamSettings(),
+      ]);
 
-      for (const userDoc of usersSnap.docs) {
-        const userData = { id: userDoc.id, ...userDoc.data() };
-
-        // Fetch progress for each user
-        const progressSnap = await getDocs(collection(db, 'users', userDoc.id, 'progress'));
-        userData.progress = {};
-        progressSnap.forEach((p) => {
-          userData.progress[p.id] = p.data();
-        });
-
-        // Fetch submissions for each user
-        const subsSnap = await getDocs(collection(db, 'users', userDoc.id, 'submissions'));
-        userData.submissions = [];
-        subsSnap.forEach((s) => {
-          userData.submissions.push({ id: s.id, ...s.data() });
-        });
-
-        usersData.push(userData);
-      }
-
+      const usersData = usersSnap.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+        progress: null,     // lazy-loaded
+        submissions: null,  // lazy-loaded
+      }));
       setUsers(usersData);
 
-      // Fetch module settings
-      const settingsSnap = await getDocs(collection(db, 'moduleSettings'));
       const settings = {};
-      settingsSnap.forEach((s) => {
-        settings[s.id] = s.data();
-      });
+      settingsSnap.forEach((s) => { settings[s.id] = s.data(); });
       setModuleSettings(settings);
 
-      // Fetch exam settings from Firestore (overrides defaults)
-      const saved = await getExamSettings();
-      if (saved) {
-        setExamSettings((prev) => ({ ...prev, ...saved }));
-      }
+      if (savedExam) setExamSettings((prev) => ({ ...prev, ...savedExam }));
     } catch (error) {
       console.error('Error fetching admin data:', error);
       toast.error('Échec du chargement des données admin');
@@ -127,6 +115,34 @@ export default function AdminPanel() {
       setLoading(false);
     }
   }
+
+  // Lazy-load progress + submissions for a single user
+  async function loadUserDetails(userId) {
+    try {
+      const [progressSnap, subsSnap] = await Promise.all([
+        getDocs(collection(db, 'users', userId, 'progress')),
+        getDocs(collection(db, 'users', userId, 'submissions')),
+      ]);
+      const progress = {};
+      progressSnap.forEach((p) => { progress[p.id] = p.data(); });
+      const submissions = [];
+      subsSnap.forEach((s) => { submissions.push({ id: s.id, ...s.data() }); });
+      setUsers((prev) => prev.map((u) => u.id === userId ? { ...u, progress, submissions } : u));
+      return { progress, submissions };
+    } catch (err) {
+      console.error('Error loading user details:', err);
+      return { progress: {}, submissions: [] };
+    }
+  }
+
+  // Load all user details when submissions tab is first opened
+  useEffect(() => {
+    if (activeTab === 'submissions' && users.length > 0 && users[0].progress === null && !loadingSubmissions) {
+      setLoadingSubmissions(true);
+      Promise.all(users.map((u) => loadUserDetails(u.id)))
+        .finally(() => setLoadingSubmissions(false));
+    }
+  }, [activeTab, users.length]);
 
   const handleValidate = async (userId, moduleId, approved) => {
     try {
@@ -213,6 +229,11 @@ export default function AdminPanel() {
       setExpandedSubmission(null);
       return;
     }
+    // Lazy-load user details if not yet loaded
+    const user = users.find((u) => u.id === userId);
+    if (user && user.progress === null) {
+      await loadUserDetails(userId);
+    }
     setExpandedSubmission(userId);
   };
 
@@ -236,13 +257,48 @@ export default function AdminPanel() {
   const filteredUsers = users.filter(
     (u) =>
       u.displayName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.email?.toLowerCase().includes(searchTerm.toLowerCase())
+      u.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      `UZA-${u.id.slice(0, 8)}`.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const filteredBonusUsers = users.filter((u) => {
+    if (!searchTerm) return true;
+    const q = searchTerm.toLowerCase();
+    return (
+      u.displayName?.toLowerCase().includes(q) ||
+      u.email?.toLowerCase().includes(q) ||
+      u.uniqueId?.toLowerCase().includes(q) ||
+      `UZA-${u.id.slice(0, 8)}`.toLowerCase().includes(q)
+    );
+  });
+
+  const handleAddBonus = async () => {
+    if (selectedBonusUserIds.length === 0 || !bonusPoints) {
+      toast.error('Veuillez sélectionner au moins un utilisateur et un nombre de points');
+      return;
+    }
+    setSendingBonus(true);
+    try {
+      await Promise.all(selectedBonusUserIds.map((userId) => addBonusPoints(userId, Number(bonusPoints), bonusReason)));
+      toast.success(`${bonusPoints} point(s) bonus ajouté(s) à ${selectedBonusUserIds.length} utilisateur(s)`);
+      setSelectedBonusUserIds([]);
+      setBonusPoints('');
+      setBonusReason('');
+      fetchData();
+    } catch (err) {
+      toast.error('Échec de l\'ajout de bonus : ' + err.message);
+    } finally {
+      setSendingBonus(false);
+    }
+  };
+
+  const bonusUsersCount = users.filter((u) => (u.bonusPoints || 0) > 0).length;
 
   const tabs = [
     { id: 'submissions', label: 'Soumissions', icon: FileText },
-    { id: 'users', label: 'Utilisateurs', icon: Users },
+    { id: 'users', label: 'Utilisateurs', icon: Users, count: users.length },
     { id: 'modules', label: 'Modules', icon: BookOpen },
+    { id: 'bonus', label: 'Points Bonus', icon: Zap, count: bonusUsersCount, highlight: true },
     { id: 'settings', label: 'Paramètres', icon: Settings },
   ];
 
@@ -259,31 +315,40 @@ export default function AdminPanel() {
 
       {/* Tabs */}
       <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-        {tabs.map(({ id, label, icon: Icon }) => (
+        {tabs.map(({ id, label, icon: Icon, count, highlight }) => (
           <button
             key={id}
             onClick={() => setActiveTab(id)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all border ${
               activeTab === id
-                ? 'bg-primary-600/20 text-primary-300 border border-primary-500/30'
-                : 'text-body hover:text-heading hover:bg-black/5 dark:bg-white/5'
+                ? highlight
+                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-lg shadow-amber-500/10'
+                  : 'bg-primary-600/20 text-primary-300 border-primary-500/30'
+                : highlight
+                  ? 'text-amber-400 border-amber-500/20 hover:bg-amber-500/10'
+                  : 'text-body border-transparent hover:text-heading hover:bg-black/5 dark:hover:bg-white/5 hover:border-themed'
             }`}
           >
             <Icon className="w-4 h-4" />
             {label}
+            {count > 0 && (
+              <span className={`text-xs px-1.5 py-0.5 rounded-full font-bold ${
+                highlight ? 'bg-amber-500/20 text-amber-400' : 'bg-primary-500/20 text-primary-400'
+              }`}>{count}</span>
+            )}
           </button>
         ))}
       </div>
 
       {/* Search */}
-      {(activeTab === 'submissions' || activeTab === 'users') && (
+      {(activeTab === 'submissions' || activeTab === 'users' || activeTab === 'bonus') && (
         <div className="relative mb-6">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Rechercher des utilisateurs..."
+            placeholder="Rechercher par nom, email ou ID (UZA-...)..."
             className="input-field pl-11"
           />
         </div>
@@ -298,7 +363,12 @@ export default function AdminPanel() {
           {/* Submissions Tab — with details viewer and score editing */}
           {activeTab === 'submissions' && (
             <div className="space-y-4">
-              {filteredUsers.length === 0 ? (
+              {loadingSubmissions ? (
+                <div className="flex flex-col items-center justify-center py-16 gap-3">
+                  <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
+                  <p className="text-sm text-muted">Chargement des soumissions...</p>
+                </div>
+              ) : filteredUsers.length === 0 ? (
                 <div className="glass-card p-12 text-center">
                   <FileText className="w-16 h-16 text-muted mx-auto mb-4" />
                   <p className="text-body">Aucune soumission trouvée</p>
@@ -320,6 +390,7 @@ export default function AdminPanel() {
                           <div>
                             <p className="font-medium text-heading">{u.displayName}</p>
                             <p className="text-xs text-muted">{u.email}</p>
+                            <p className="text-[10px] text-muted font-mono">ID: UZA-{u.id.slice(0, 8).toUpperCase()}</p>
                           </div>
                         </div>
                         <button
@@ -541,6 +612,7 @@ export default function AdminPanel() {
                               <div>
                                 <p className="font-medium text-heading">{u.displayName}</p>
                                 <p className="text-xs text-muted">{u.email}</p>
+                                <p className="text-[10px] text-muted font-mono">UZA-{u.id.slice(0, 8).toUpperCase()}</p>
                               </div>
                             </div>
                           </td>
@@ -700,6 +772,134 @@ export default function AdminPanel() {
           )}
 
           {/* Settings Tab — Editable exam parameters */}
+          {activeTab === 'bonus' && (
+            <div className="space-y-6">
+              {/* Bonus Points Form */}
+              <div className="glass-card p-8">
+                <h3 className="text-lg font-semibold text-heading mb-6 flex items-center gap-2">
+                  <Zap className="w-5 h-5 text-amber-400" />
+                  Attribuer des points bonus
+                </h3>
+                <div className="grid sm:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-sm font-medium text-body">Utilisateurs sélectionnés</label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const allFilteredIds = filteredBonusUsers.map((u) => u.id);
+                          const allSelected = allFilteredIds.length > 0 && allFilteredIds.every((id) => selectedBonusUserIds.includes(id));
+                          if (allSelected) {
+                            setSelectedBonusUserIds((prev) => prev.filter((id) => !allFilteredIds.includes(id)));
+                          } else {
+                            setSelectedBonusUserIds((prev) => Array.from(new Set([...prev, ...allFilteredIds])));
+                          }
+                        }}
+                        className="text-xs text-primary-400 hover:text-primary-300"
+                      >
+                        {filteredBonusUsers.length > 0 && filteredBonusUsers.every((u) => selectedBonusUserIds.includes(u.id)) ? 'Tout désélectionner' : 'Tout sélectionner'}
+                      </button>
+                    </div>
+                    <div className="max-h-52 overflow-y-auto border border-themed rounded-xl p-2 space-y-1.5 bg-black/5 dark:bg-white/5">
+                      {filteredBonusUsers.map((u) => {
+                        const checked = selectedBonusUserIds.includes(u.id);
+                        return (
+                          <label key={u.id} className="flex items-center gap-2 p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedBonusUserIds((prev) => [...prev, u.id]);
+                                } else {
+                                  setSelectedBonusUserIds((prev) => prev.filter((id) => id !== u.id));
+                                }
+                              }}
+                            />
+                            <div className="min-w-0">
+                              <p className="text-sm text-heading truncate">{u.displayName || u.email}</p>
+                              <p className="text-[11px] text-muted truncate">{u.email} • {u.uniqueId || `UZA-${u.id.slice(0, 8).toUpperCase()}`}</p>
+                            </div>
+                          </label>
+                        );
+                      })}
+                      {filteredBonusUsers.length === 0 && <p className="text-xs text-muted p-2">Aucun utilisateur trouvé avec ce filtre.</p>}
+                    </div>
+                    <p className="text-xs text-muted mt-2">{selectedBonusUserIds.length} utilisateur(s) sélectionné(s)</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-body mb-2">Points</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="100"
+                      value={bonusPoints}
+                      onChange={(e) => setBonusPoints(e.target.value)}
+                      placeholder="Ex: 10"
+                      className="input-field w-full"
+                    />
+                  </div>
+                </div>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-body mb-2">Raison (optionnel)</label>
+                  <input
+                    type="text"
+                    value={bonusReason}
+                    onChange={(e) => setBonusReason(e.target.value)}
+                    placeholder="Ex: Gagnant buildathon, contribution communautaire..."
+                    className="input-field w-full"
+                  />
+                </div>
+                <button
+                  onClick={handleAddBonus}
+                  disabled={sendingBonus || selectedBonusUserIds.length === 0 || !bonusPoints}
+                  className="btn-primary flex items-center gap-2"
+                >
+                  {sendingBonus ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Zap className="w-4 h-4" />
+                  )}
+                  Attribuer les bonus
+                </button>
+              </div>
+
+              {/* Users with bonus points */}
+              <div className="glass-card p-8">
+                <h3 className="text-lg font-semibold text-heading mb-4">Utilisateurs avec bonus</h3>
+                <div className="space-y-3">
+                  {users
+                    .filter((u) => (u.bonusPoints || 0) > 0)
+                    .sort((a, b) => (b.bonusPoints || 0) - (a.bonusPoints || 0))
+                    .map((u) => (
+                      <div key={u.id} className="flex items-center justify-between p-3 bg-black/5 dark:bg-white/5 rounded-xl">
+                        <div className="flex items-center gap-3">
+                          {u.photoURL ? (
+                            <img src={u.photoURL} alt="" className="w-8 h-8 rounded-full" />
+                          ) : (
+                            <div className="w-8 h-8 rounded-full bg-primary-500/20 flex items-center justify-center text-primary-400 text-sm font-bold">
+                              {(u.displayName || u.email || '?')[0].toUpperCase()}
+                            </div>
+                          )}
+                          <div>
+                            <p className="text-sm font-medium text-heading">{u.displayName || u.email}</p>
+                            <p className="text-xs text-muted">{u.uniqueId || u.id.slice(0, 8)}</p>
+                          </div>
+                        </div>
+                        <span className="flex items-center gap-1 text-amber-400 font-bold text-sm">
+                          <Zap className="w-4 h-4" />
+                          +{u.bonusPoints}
+                        </span>
+                      </div>
+                    ))}
+                  {users.filter((u) => (u.bonusPoints || 0) > 0).length === 0 && (
+                    <p className="text-center text-muted py-4">Aucun utilisateur n'a de points bonus</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {activeTab === 'settings' && (
             <div className="space-y-6">
               {/* Exam Settings — editable */}

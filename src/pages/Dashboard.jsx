@@ -1,11 +1,13 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useAllProgress } from '../hooks/useFirestore';
 import { MODULES, TRACKS, getModulesByTrack, getTrackProgress } from '../config/modules';
 import ModuleCard from '../components/ModuleCard';
 import ProgressRing from '../components/ProgressRing';
-import { BookOpen, Trophy, Target, TrendingUp, Sparkles, ChevronRight, ArrowLeft, Filter } from 'lucide-react';
+import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
+import { db } from '../lib/firebase';
+import { BookOpen, Trophy, Target, TrendingUp, Sparkles, ChevronRight, ArrowLeft, Calendar, Rocket } from 'lucide-react';
 
 const INITIAL_MODULE_COUNT = 4;
 
@@ -15,6 +17,19 @@ export default function Dashboard() {
 
   // View state: null = overview, trackId = track detail
   const [activeTrack, setActiveTrack] = useState(null);
+  const [buildathonEvents, setBuildathonEvents] = useState([]);
+
+  useEffect(() => {
+    const unsubEvents = onSnapshot(
+      query(collection(db, 'buildathons'), orderBy('createdAt', 'desc')),
+      (snap) => {
+        const data = [];
+        snap.forEach((d) => data.push({ id: d.id, ...d.data() }));
+        setBuildathonEvents(data);
+      }
+    );
+    return () => unsubEvents();
+  }, []);
 
   const completedCount = Object.values(progressMap).filter((p) => p.examScore >= 6).length;
   const submittedCount = Object.values(progressMap).filter((p) => p.submitted).length;
@@ -31,6 +46,23 @@ export default function Dashboard() {
   }, [activeTrack]);
 
   const activeTrackData = activeTrack ? TRACKS.find((t) => t.id === activeTrack) : null;
+
+  const highlightedEvents = useMemo(() => {
+    const now = new Date();
+    const withStatus = buildathonEvents.map((event) => {
+      let status = 'active';
+      if (event.status === 'completed') status = 'completed';
+      else if (event.startDate && new Date(event.startDate) > now) status = 'upcoming';
+      else if (event.endDate && new Date(event.endDate) < now) status = 'ended';
+      return { ...event, status };
+    });
+
+    const prioritized = withStatus
+      .filter((event) => event.status === 'active' || event.status === 'upcoming')
+      .sort((a, b) => new Date(a.startDate || 0) - new Date(b.startDate || 0));
+
+    return prioritized.slice(0, 3);
+  }, [buildathonEvents]);
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 animate-fade-in">
@@ -102,6 +134,48 @@ export default function Dashboard() {
             <p className="text-sm text-body">{label}</p>
           </div>
         ))}
+      </div>
+
+      {/* Buildathon/Hackathon quick section */}
+      <div className="glass-card p-6 border border-primary-500/20 bg-gradient-to-r from-primary-500/10 via-surface to-accent-500/10">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
+          <div>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary-500/10 border border-primary-500/20 text-primary-400 text-xs font-semibold mb-2">
+              <Rocket className="w-3.5 h-3.5" />
+              Buildathon & Hackathon
+            </div>
+            <h2 className="text-xl font-bold text-heading">Événements en cours et à venir</h2>
+            <p className="text-sm text-body mt-1">Inscrivez-vous, soumettez vos projets et gagnez des bonus.</p>
+          </div>
+          <Link to="/projects" className="btn-primary inline-flex items-center gap-2 w-fit">
+            Voir tous les événements
+            <ChevronRight className="w-4 h-4" />
+          </Link>
+        </div>
+
+        {highlightedEvents.length === 0 ? (
+          <div className="p-4 rounded-xl border border-themed bg-black/5 dark:bg-white/5 text-sm text-body">
+            Aucun événement actif/à venir pour le moment.
+          </div>
+        ) : (
+          <div className="grid md:grid-cols-3 gap-3">
+            {highlightedEvents.map((event) => (
+              <div key={event.id} className="p-4 rounded-xl border border-themed bg-black/5 dark:bg-white/5">
+                <div className="flex items-center justify-between gap-2 mb-1.5">
+                  <p className="font-semibold text-heading truncate">{event.title}</p>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full border ${event.status === 'active' ? 'bg-green-500/10 text-green-400 border-green-500/30' : 'bg-blue-500/10 text-blue-400 border-blue-500/30'}`}>
+                    {event.status === 'active' ? 'En cours' : 'À venir'}
+                  </span>
+                </div>
+                <p className="text-xs text-muted mb-2">{event.type === 'hackathon' ? 'Hackathon' : 'Buildathon'}</p>
+                <p className="text-xs text-body flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-primary-400" />
+                  {event.startDate ? new Date(event.startDate).toLocaleDateString('fr-FR') : 'Date à définir'}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* ============================================ */}

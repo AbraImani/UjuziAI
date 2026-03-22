@@ -7,6 +7,7 @@ import {
   BookOpen,
   Trophy,
   User,
+  Users,
   Shield,
   LogOut,
   Menu,
@@ -14,6 +15,7 @@ import {
   Zap,
   Sun,
   Moon,
+  Rocket,
 } from 'lucide-react';
 
 export default function Layout({ children }) {
@@ -26,6 +28,7 @@ export default function Layout({ children }) {
   const navItems = [
     { path: '/leaderboard', icon: Trophy, label: 'Classement' },
     { path: '/dashboard', icon: LayoutDashboard, label: 'Modules' },
+    { path: '/projects', icon: Rocket, label: 'Buildathon' },
     { path: '/profile', icon: User, label: 'Profil' },
   ];
 

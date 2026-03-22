@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import {
   collection,
   doc,
@@ -9,9 +9,9 @@ import {
   query,
   where,
   orderBy,
-  limit,
   serverTimestamp,
   increment,
+  onSnapshot,
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../lib/firebase';
@@ -19,35 +19,77 @@ import { useAuth } from '../contexts/AuthContext';
 import { EXAM_CONFIG, MODULES } from '../config/modules';
 
 // ============================================
-// Module Progress Hook
+// Module Progress Hook (real-time via onSnapshot)
 // ============================================
 export function useModuleProgress(moduleId) {
   const { user } = useAuth();
   const [progress, setProgress] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [moduleOpen, setModuleOpen] = useState(true);
+  const [moduleDates, setModuleDates] = useState({ openDate: null, closeDate: null });
 
-  const fetchProgress = useCallback(async () => {
-    if (!user || !moduleId) return;
-    try {
-      const docRef = doc(db, 'users', user.uid, 'progress', moduleId);
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        setProgress({ id: docSnap.id, ...docSnap.data() });
+  useEffect(() => {
+    if (!user || !moduleId) {
+      setLoading(false);
+      return;
+    }
+
+    // Listen to user's progress in real-time (admin score changes reflect instantly)
+    const progressRef = doc(db, 'users', user.uid, 'progress', moduleId);
+    const unsubProgress = onSnapshot(progressRef, (snap) => {
+      if (snap.exists()) {
+        setProgress({ id: snap.id, ...snap.data() });
       } else {
         setProgress(null);
       }
-    } catch (error) {
-      console.error('Error fetching module progress:', error);
-    } finally {
       setLoading(false);
-    }
+    }, (error) => {
+      console.error('Error listening to module progress:', error);
+      setLoading(false);
+    });
+
+    // Listen to module open/close settings in real-time
+    const settingsRef = doc(db, 'moduleSettings', moduleId);
+    const unsubSettings = onSnapshot(settingsRef, (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        setModuleDates({ openDate: data.openDate || null, closeDate: data.closeDate || null });
+        // Check manual isOpen toggle
+        if (data.isOpen === false) {
+          setModuleOpen(false);
+          return;
+        }
+        // Check date-based automation
+        const now = new Date();
+        if (data.openDate) {
+          const openDate = new Date(data.openDate);
+          if (now < openDate) {
+            setModuleOpen(false);
+            return;
+          }
+        }
+        if (data.closeDate) {
+          const closeDate = new Date(data.closeDate);
+          // Close at end of closeDate day
+          closeDate.setHours(23, 59, 59, 999);
+          if (now > closeDate) {
+            setModuleOpen(false);
+            return;
+          }
+        }
+        setModuleOpen(true);
+      } else {
+        setModuleOpen(true); // default open if no settings doc
+      }
+    }, () => { /* ignore errors for settings */ });
+
+    return () => {
+      unsubProgress();
+      unsubSettings();
+    };
   }, [user, moduleId]);
 
-  useEffect(() => {
-    fetchProgress();
-  }, [fetchProgress]);
-
-  return { progress, loading, refetch: fetchProgress };
+  return { progress, loading, moduleOpen, moduleDates };
 }
 
 // ============================================
@@ -244,6 +286,18 @@ export function useExam() {
       /^(.{1,3}\s*){1,3}$/, // Very short repeated words
     ];
 
+    // Generic filler phrases that indicate no real understanding
+    const GENERIC_FILLER_PHRASES = [
+      /c'est\s+(très\s+)?(important|intéressant|bien|bon|utile|nécessaire|essentiel)/i,
+      /je\s+pense\s+que\s+c'est\s+(bien|bon|important|utile)/i,
+      /il\s+faut\s+(bien\s+)?faire\s+attention/i,
+      /c'est\s+un\s+(bon|bel|excellent)\s+(outil|concept|sujet|thème)/i,
+      /en\s+conclusion.*c'est\s+(très\s+)?(bien|important)/i,
+      /j'ai\s+(beaucoup\s+)?appris\s+(beaucoup\s+)?(de\s+)?choses/i,
+      /c'est\s+un\s+sujet\s+(très\s+)?(vaste|large|complexe)/i,
+      /il\s+y\s+a\s+(beaucoup|plusieurs)\s+(de\s+)?(choses|éléments|aspects)\s+(à\s+)?(considérer|prendre\s+en\s+compte|voir)/i,
+    ];
+
     function isNonsenseAnswer(text) {
       if (!text || typeof text !== 'string') return true;
       const trimmed = text.trim();
@@ -257,6 +311,59 @@ export function useExam() {
         if (pattern.test(trimmed)) return true;
       }
       return false;
+    }
+
+    // Detect generic/filler answers that don't demonstrate real understanding
+    function scoreOpenAnswer(answerText, questionText) {
+      if (!answerText || typeof answerText !== 'string') return 0;
+      const trimmed = answerText.trim();
+      const words = trimmed.split(/\s+/).filter(Boolean);
+      const wordCount = words.length;
+      const lowerText = trimmed.toLowerCase();
+      const lowerQuestion = (questionText || '').toLowerCase();
+
+      // Check if answer is mostly a copy of the question
+      if (lowerQuestion.length > 20) {
+        const questionWords = lowerQuestion.split(/\s+/).filter((w) => w.length > 3);
+        const matchCount = questionWords.filter((w) => lowerText.includes(w)).length;
+        const overlapRatio = questionWords.length > 0 ? matchCount / questionWords.length : 0;
+        if (overlapRatio > 0.7 && wordCount < 40) return 0; // Copied the question
+      }
+
+      // Count generic filler matches
+      let fillerCount = 0;
+      for (const pattern of GENERIC_FILLER_PHRASES) {
+        if (pattern.test(lowerText)) fillerCount++;
+      }
+      // If more than 2 filler phrases and short answer = low quality
+      if (fillerCount >= 2 && wordCount < 35) return 0.25;
+
+      // Check for repetitive content (same sentence repeated)
+      const sentences = trimmed.split(/[.!?]+/).filter((s) => s.trim().length > 10);
+      if (sentences.length >= 2) {
+        const uniqueSentences = new Set(sentences.map((s) => s.trim().toLowerCase()));
+        if (uniqueSentences.size < sentences.length * 0.5) return 0.25; // Too repetitive
+      }
+
+      // Check for technical depth indicators
+      const technicalIndicators = [
+        /api|sdk|framework|library|database|serveur|backend|frontend|deploy/i,
+        /fonction|variable|class|module|composant|component|hook|state/i,
+        /firebase|firestore|auth|cloud|storage|hosting|docker|git/i,
+        /algorithme|architecture|pattern|design|mvc|mvvm|rest|graphql/i,
+        /erreur|debug|log|test|unitaire|intégration|performance/i,
+        /sécurité|authentification|autorisation|token|jwt|oauth/i,
+        /code|implémentat|configur|install|import|export|require/i,
+      ];
+      const technicalMatches = technicalIndicators.filter((p) => p.test(lowerText)).length;
+
+      // Scoring based on quality signals
+      if (wordCount >= 40 && technicalMatches >= 2) return 1;      // Detailed + technical
+      if (wordCount >= 25 && technicalMatches >= 1) return 1;      // Good length + some technical
+      if (wordCount >= 25 && fillerCount === 0) return 0.75;       // Good length, no filler
+      if (wordCount >= 15 && technicalMatches >= 1) return 0.5;    // Short but technical
+      if (wordCount >= 15) return 0.5;                              // Valid but short
+      return 0.25;                                                  // Minimal effort
     }
 
     if (questions && questions.length > 0) {
@@ -273,16 +380,8 @@ export function useExam() {
           if (isNonsenseAnswer(userAnswer)) {
             // Nonsense = 0 points
           } else {
-            // Check answer quality: partial (short but valid) = 0.5, good = 1
-            const trimmed = (userAnswer || '').trim();
-            const wordCount = trimmed.split(/\s+/).filter(Boolean).length;
-            if (wordCount >= 25) {
-              // Detailed answer = 1 point
-              openScore += 1;
-            } else {
-              // Valid but short answer = 0.5 points
-              openScore += 0.5;
-            }
+            // Enhanced scoring with technical depth + generic answer detection
+            openScore += scoreOpenAnswer(userAnswer, q.text);
           }
         }
       });
@@ -373,11 +472,12 @@ export function useExam() {
 }
 
 // ============================================
-// Leaderboard Hook
+// Leaderboard Hook (real-time via onSnapshot)
 // ============================================
 export function useLeaderboard() {
   const [leaderboard, setLeaderboard] = useState([]);
   const [userRank, setUserRank] = useState(null);
+  const [totalUsers, setTotalUsers] = useState(0);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
 
@@ -385,39 +485,37 @@ export function useLeaderboard() {
   const ADMIN_EMAILS_HIDDEN = ['abrahamfaith325@gmail.com', 'gdgoncampusucb@gmail.com'];
 
   useEffect(() => {
-    async function fetchLeaderboard() {
-      try {
-        const usersRef = collection(db, 'users');
-        // Fetch more to account for filtered admins
-        const q = query(usersRef, orderBy('totalScore', 'desc'), limit(50));
-        const snap = await getDocs(q);
-        const allData = [];
-        snap.forEach((doc) => {
-          const d = { id: doc.id, ...doc.data() };
-          // Filter out hidden admin emails from public leaderboard
-          if (!ADMIN_EMAILS_HIDDEN.includes(d.email?.toLowerCase())) {
-            allData.push(d);
-          }
-        });
-        setLeaderboard(allData);
+    const usersRef = collection(db, 'users');
+    // No limit — get ALL users for accurate count and ranking
+    const q = query(usersRef, orderBy('totalScore', 'desc'));
 
-        // Find user rank
-        if (user) {
-          const userDoc = allData.find((d) => d.id === user.uid);
-          if (userDoc) {
-            setUserRank(allData.indexOf(userDoc) + 1);
-          }
+    const unsub = onSnapshot(q, (snap) => {
+      const allData = [];
+      snap.forEach((doc) => {
+        const d = { id: doc.id, ...doc.data() };
+        if (!ADMIN_EMAILS_HIDDEN.includes(d.email?.toLowerCase())) {
+          allData.push(d);
         }
-      } catch (error) {
-        console.error('Error fetching leaderboard:', error);
-      } finally {
-        setLoading(false);
+      });
+      // Sort by totalScore + bonusPoints combined
+      allData.sort((a, b) => ((b.totalScore || 0) + (b.bonusPoints || 0)) - ((a.totalScore || 0) + (a.bonusPoints || 0)));
+      setTotalUsers(allData.length);
+      setLeaderboard(allData);
+
+      if (user) {
+        const idx = allData.findIndex((d) => d.id === user.uid);
+        setUserRank(idx >= 0 ? idx + 1 : null);
       }
-    }
-    fetchLeaderboard();
+      setLoading(false);
+    }, (error) => {
+      console.error('Error listening to leaderboard:', error);
+      setLoading(false);
+    });
+
+    return () => unsub();
   }, [user]);
 
-  return { leaderboard, userRank, loading };
+  return { leaderboard, userRank, totalUsers, loading };
 }
 
 // ============================================
@@ -500,9 +598,9 @@ export function useAdmin() {
     const progressSnap = await getDoc(progressRef);
     if (!progressSnap.exists()) throw new Error('Progress not found');
 
-    const passed = newScore >= EXAM_CONFIG.PASSING_SCORE;
+    const earnsCertificate = newScore >= 7;
     const existingBadge = progressSnap.data().badgeId;
-    const badgeId = (passed && !existingBadge) ? `badge-${moduleId}-${userId.slice(0, 6)}-${Date.now().toString(36)}` : null;
+    const badgeId = (earnsCertificate && !existingBadge) ? `badge-${moduleId}-${userId.slice(0, 6)}-${Date.now().toString(36)}` : null;
 
     const update = {
       examScore: newScore,
@@ -510,14 +608,42 @@ export function useAdmin() {
       reviewedAt: serverTimestamp(),
       reviewedBy: user.uid,
     };
-    if (badgeId) update.badgeId = badgeId;
-    // If score is lowered below passing and they had a badge, remove it
-    if (!passed && existingBadge) update.badgeId = null;
+    if (badgeId) {
+      update.badgeId = badgeId;
+
+      // Save badge to public badges collection for verification
+      try {
+        const userRef = doc(db, 'users', userId);
+        const userSnap = await getDoc(userRef);
+        const userData = userSnap.exists() ? userSnap.data() : {};
+        const badgeModule = MODULES.find((m) => m.id === moduleId);
+        const badgeDocRef = doc(db, 'badges', badgeId);
+        await setDoc(badgeDocRef, {
+          badgeId,
+          userId,
+          userName: userData.displayName || 'Apprenant',
+          userEmail: userData.email || '',
+          userPhotoURL: userData.photoURL || null,
+          moduleId,
+          moduleTitle: badgeModule?.title || moduleId,
+          score: newScore,
+          completedAt: serverTimestamp(),
+          completedAtStr: new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' }),
+          issuedBy: 'GDG on Campus UCB',
+          platform: 'UjuziAI',
+          createdAt: serverTimestamp(),
+        });
+      } catch (badgeErr) {
+        console.error('Failed to save public badge:', badgeErr);
+      }
+    }
+    // If score is lowered below earning certificate and they had a badge, remove it
+    if (!earnsCertificate && existingBadge) update.badgeId = null;
 
     await updateDoc(progressRef, update);
 
     // Recalculate totalScore for the user
-    const userRef = doc(db, 'users', userId);
+    const userRefCalc = doc(db, 'users', userId);
     const allProgressSnap = await getDocs(collection(db, 'users', userId, 'progress'));
     let newTotalScore = 0;
     allProgressSnap.forEach((p) => {
@@ -527,7 +653,7 @@ export function useAdmin() {
         newTotalScore += (p.data().examScore || 0);
       }
     });
-    await updateDoc(userRef, { totalScore: newTotalScore });
+    await updateDoc(userRefCalc, { totalScore: newTotalScore });
   }
 
   // ---- Admin: get submission details ----
@@ -538,6 +664,23 @@ export function useAdmin() {
     const data = [];
     snap.forEach((d) => data.push({ id: d.id, ...d.data() }));
     return data;
+  }
+
+  // ---- Admin: add bonus points to a user ----
+  async function addBonusPoints(userId, points, reason = '') {
+    if (!isAdmin) throw new Error('Unauthorized');
+    const userRef = doc(db, 'users', userId);
+    await updateDoc(userRef, {
+      bonusPoints: increment(points),
+    });
+    // Log the bonus in a subcollection for audit trail
+    const logRef = doc(collection(db, 'users', userId, 'bonusLogs'));
+    await setDoc(logRef, {
+      points,
+      reason,
+      grantedBy: user.uid,
+      grantedAt: serverTimestamp(),
+    });
   }
 
   return {
@@ -551,5 +694,6 @@ export function useAdmin() {
     getExamSettings,
     modifyUserScore,
     getUserSubmissions,
+    addBonusPoints,
   };
 }
