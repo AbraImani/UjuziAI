@@ -267,8 +267,8 @@ export default function AdminPanel() {
     return (
       u.displayName?.toLowerCase().includes(q) ||
       u.email?.toLowerCase().includes(q) ||
-      `UZA-${u.id.slice(0, 8)}`.toLowerCase().includes(q) ||
-      u.uniqueId?.toLowerCase().includes(q)
+      u.uniqueId?.toLowerCase().includes(q) ||
+      `UZA-${u.id.slice(0, 8)}`.toLowerCase().includes(q)
     );
   });
 
@@ -279,9 +279,7 @@ export default function AdminPanel() {
     }
     setSendingBonus(true);
     try {
-      await Promise.all(
-        selectedBonusUserIds.map((userId) => addBonusPoints(userId, Number(bonusPoints), bonusReason))
-      );
+      await Promise.all(selectedBonusUserIds.map((userId) => addBonusPoints(userId, Number(bonusPoints), bonusReason)));
       toast.success(`${bonusPoints} point(s) bonus ajouté(s) à ${selectedBonusUserIds.length} utilisateur(s)`);
       setSelectedBonusUserIds([]);
       setBonusPoints('');
@@ -820,7 +818,7 @@ export default function AdminPanel() {
                             />
                             <div className="min-w-0">
                               <p className="text-sm text-heading truncate">{u.displayName || u.email}</p>
-                              <p className="text-[11px] text-muted truncate">{u.email} • UZA-{u.id.slice(0, 8).toUpperCase()}</p>
+                              <p className="text-[11px] text-muted truncate">{u.email} • {u.uniqueId || `UZA-${u.id.slice(0, 8).toUpperCase()}`}</p>
                             </div>
                           </label>
                         );
