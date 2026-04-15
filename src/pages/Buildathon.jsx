@@ -113,6 +113,17 @@ function normalizePrizeInput(prize, idx) {
   };
 }
 
+function normalizeDateLike(value) {
+  if (!value) return null;
+  if (typeof value === 'string') return value;
+  if (value?.toDate && typeof value.toDate === 'function') {
+    const asDate = value.toDate();
+    return Number.isNaN(asDate.getTime()) ? null : asDate.toISOString();
+  }
+  const asDate = new Date(value);
+  return Number.isNaN(asDate.getTime()) ? null : asDate.toISOString();
+}
+
 const DEFAULT_BUILDATHON_CONFIG = {
   votingEnabled: true,
   maxVotesPerUser: 1,
@@ -145,14 +156,16 @@ const DEFAULT_BUILDATHON_PROJECT_META = {
 function normalizeBuildathonEvent(event) {
   const maxVotesRaw = Number(event.maxVotesPerUser);
   const maxVotesPerUser = Number.isFinite(maxVotesRaw) && maxVotesRaw > 0 ? Math.floor(maxVotesRaw) : 1;
+  const safeVoteStartDate = normalizeDateLike(event.voteStartDate) || normalizeDateLike(event.startDate);
+  const safeVoteEndDate = normalizeDateLike(event.voteEndDate) || normalizeDateLike(event.endDate);
 
   return {
     ...event,
     votingEnabled: event.votingEnabled !== false,
     maxVotesPerUser,
     allowSelfVote: event.allowSelfVote === true,
-    voteStartDate: event.voteStartDate || event.startDate || null,
-    voteEndDate: event.voteEndDate || event.endDate || null,
+    voteStartDate: safeVoteStartDate,
+    voteEndDate: safeVoteEndDate,
     projectVisibility: event.projectVisibility || 'published-only',
     submissionOpen: event.submissionOpen !== false,
     publicationStatus: event.publicationStatus || 'published',
@@ -303,8 +316,8 @@ export default function Buildathon() {
         votingEnabled: newEvent.votingEnabled !== false,
         maxVotesPerUser: Number(newEvent.maxVotesPerUser) > 0 ? Number(newEvent.maxVotesPerUser) : 1,
         allowSelfVote: newEvent.allowSelfVote === true,
-        voteStartDate: newEvent.voteStartDate || newEvent.startDate,
-        voteEndDate: newEvent.voteEndDate || newEvent.endDate,
+        voteStartDate: normalizeDateLike(newEvent.voteStartDate) || normalizeDateLike(newEvent.startDate),
+        voteEndDate: normalizeDateLike(newEvent.voteEndDate) || normalizeDateLike(newEvent.endDate),
         projectVisibility: newEvent.projectVisibility || 'published-only',
         submissionOpen: newEvent.submissionOpen !== false,
         publicationStatus: newEvent.publicationStatus || 'published',
@@ -339,8 +352,8 @@ export default function Buildathon() {
       votingEnabled: event.votingEnabled !== false,
       maxVotesPerUser: Number(event.maxVotesPerUser) > 0 ? Number(event.maxVotesPerUser) : 1,
       allowSelfVote: event.allowSelfVote === true,
-      voteStartDate: event.voteStartDate || event.startDate || '',
-      voteEndDate: event.voteEndDate || event.endDate || '',
+      voteStartDate: normalizeDateLike(event.voteStartDate) || normalizeDateLike(event.startDate) || '',
+      voteEndDate: normalizeDateLike(event.voteEndDate) || normalizeDateLike(event.endDate) || '',
       projectVisibility: event.projectVisibility || 'published-only',
       submissionOpen: event.submissionOpen !== false,
       publicationStatus: event.publicationStatus || 'published',
@@ -381,8 +394,8 @@ export default function Buildathon() {
         votingEnabled: editEvent.votingEnabled !== false,
         maxVotesPerUser: Number(editEvent.maxVotesPerUser) > 0 ? Number(editEvent.maxVotesPerUser) : 1,
         allowSelfVote: editEvent.allowSelfVote === true,
-        voteStartDate: editEvent.voteStartDate || editEvent.startDate,
-        voteEndDate: editEvent.voteEndDate || editEvent.endDate,
+        voteStartDate: normalizeDateLike(editEvent.voteStartDate) || normalizeDateLike(editEvent.startDate),
+        voteEndDate: normalizeDateLike(editEvent.voteEndDate) || normalizeDateLike(editEvent.endDate),
         projectVisibility: editEvent.projectVisibility || 'published-only',
         submissionOpen: editEvent.submissionOpen !== false,
         publicationStatus: editEvent.publicationStatus || 'published',
