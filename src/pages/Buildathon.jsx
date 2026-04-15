@@ -240,6 +240,8 @@ export default function Buildathon() {
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedEvent, setExpandedEvent] = useState(null);
   const [filterStatus, setFilterStatus] = useState('all');
+  const [filterDate, setFilterDate] = useState('all');
+  const [filterPopularity, setFilterPopularity] = useState('all');
 
   // Admin: create event
   const [showCreateEvent, setShowCreateEvent] = useState(false);
@@ -836,17 +838,68 @@ export default function Buildathon() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [events, projects, loading]);
 
+  function getSafeDate(value) {
+    if (!value) return null;
+    const d = new Date(value);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+
+  function getEventDateCategory(event) {
+    const now = new Date();
+    const start = getSafeDate(event.startDate);
+    const end = getSafeDate(event.endDate);
+
+    if (!start && !end) return 'undated';
+    if (end && end < now) return 'past';
+
+    const upcomingWindow = new Date(now);
+    upcomingWindow.setDate(upcomingWindow.getDate() + 30);
+    if (start && start >= now && start <= upcomingWindow) return 'upcoming-30';
+
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+    const startsThisMonth = start && start.getFullYear() === currentYear && start.getMonth() === currentMonth;
+    const endsThisMonth = end && end.getFullYear() === currentYear && end.getMonth() === currentMonth;
+    if (startsThisMonth || endsThisMonth) return 'this-month';
+
+    return 'all';
+  }
+
+  function getEventPopularityMetrics(eventId, eventParticipants = []) {
+    const eventProjects = projects.filter((p) => p.buildathonId === eventId);
+    const submittedProjects = eventProjects.length;
+    const participantsCount = Array.isArray(eventParticipants) ? eventParticipants.length : 0;
+    const totalVotes = eventProjects.reduce((sum, p) => sum + (p.voteCount || 0), 0);
+    const popularityScore = (submittedProjects * 3) + participantsCount + totalVotes;
+
+    return { submittedProjects, participantsCount, totalVotes, popularityScore };
+  }
+
+  function getPopularityBucket(event) {
+    const { popularityScore } = getEventPopularityMetrics(event.id, event.participants);
+    if (popularityScore >= 20) return 'high';
+    if (popularityScore >= 8) return 'medium';
+    return 'low';
+  }
+
   const filteredEvents = useMemo(() => {
     return events.filter((e) => {
       const status = getEventStatus(e);
       if (filterStatus !== 'all' && status !== filterStatus) return false;
+
+      const dateCategory = getEventDateCategory(e);
+      if (filterDate !== 'all' && dateCategory !== filterDate) return false;
+
+      const popularityBucket = getPopularityBucket(e);
+      if (filterPopularity !== 'all' && popularityBucket !== filterPopularity) return false;
+
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
         return e.title?.toLowerCase().includes(q) || e.description?.toLowerCase().includes(q);
       }
       return true;
     });
-  }, [events, filterStatus, searchQuery]);
+  }, [events, filterStatus, filterDate, filterPopularity, searchQuery, projects]);
 
   function CountdownTimer({ endDate }) {
     const [timeLeft, setTimeLeft] = useState('');
@@ -903,6 +956,23 @@ export default function Buildathon() {
         <div className="flex gap-2 overflow-x-auto pb-1">
           {[{ value: 'all', label: 'Tous' }, { value: 'active', label: 'En cours' }, { value: 'upcoming', label: 'À venir' }, { value: 'ended', label: 'Vote' }, { value: 'completed', label: 'Passés' }].map(({ value, label }) => (
             <button key={value} onClick={() => setFilterStatus(value)} className={`px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${filterStatus === value ? 'bg-primary-600/20 text-primary-300 border border-primary-500/30' : 'text-body hover:text-heading hover:bg-black/5 dark:hover:bg-white/5'}`}>
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex flex-col sm:flex-row gap-3 mb-6">
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {[{ value: 'all', label: 'Date: toutes' }, { value: 'upcoming-30', label: 'Date: 30 jours' }, { value: 'this-month', label: 'Date: ce mois' }, { value: 'past', label: 'Date: passés' }, { value: 'undated', label: 'Date: non définie' }].map(({ value, label }) => (
+            <button key={value} onClick={() => setFilterDate(value)} className={`px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${filterDate === value ? 'bg-primary-600/20 text-primary-300 border border-primary-500/30' : 'text-body hover:text-heading hover:bg-black/5 dark:hover:bg-white/5'}`}>
+              {label}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {[{ value: 'all', label: 'Popularité: toutes' }, { value: 'high', label: 'Populaire' }, { value: 'medium', label: 'Intermédiaire' }, { value: 'low', label: 'Faible' }].map(({ value, label }) => (
+            <button key={value} onClick={() => setFilterPopularity(value)} className={`px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${filterPopularity === value ? 'bg-accent-600/20 text-accent-300 border border-accent-500/30' : 'text-body hover:text-heading hover:bg-black/5 dark:hover:bg-white/5'}`}>
               {label}
             </button>
           ))}
@@ -1278,6 +1348,7 @@ export default function Buildathon() {
             const status = getEventStatus(event);
             const statusInfo = STATUS_CONFIG[status];
             const eventProjects = sortProjectsForRanking(projects.filter((p) => p.buildathonId === event.id));
+            const metrics = getEventPopularityMetrics(event.id, event.participants);
             const isExpanded = expandedEvent === event.id;
             const isRegistered = event.participants?.includes(user?.uid);
             const userHasSubmitted = eventProjects.some((p) => p.submittedBy === user?.uid);
@@ -1303,12 +1374,16 @@ export default function Buildathon() {
                         </span>
                         <span className="badge bg-surface text-body border border-themed text-xs">{typeLabel}</span>
                       </div>
-                      {event.description && <p className={`text-body text-sm mb-3 ${isExpanded ? 'whitespace-pre-wrap' : 'line-clamp-3'}`}>{event.description}</p>}
+                      {event.description && <p className={`text-body text-sm mb-3 ${isExpanded ? 'whitespace-pre-wrap' : 'line-clamp-2'}`}>{event.description}</p>}
                       <div className="flex flex-wrap items-center gap-4 text-xs text-muted">
                         <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{formatEventDate(event.startDate)} → {formatEventDate(event.endDate)}</span>
                         {event.workDuration && <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{event.workDuration}</span>}
-                        <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5" />{event.participants?.length || 0} inscrit{(event.participants?.length || 0) !== 1 ? 's' : ''}</span>
-                        <span className="flex items-center gap-1"><FileText className="w-3.5 h-3.5" />{eventProjects.length} projet{eventProjects.length !== 1 ? 's' : ''}</span>
+                        <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5" />{metrics.participantsCount} inscrit{metrics.participantsCount !== 1 ? 's' : ''}</span>
+                        <span className="flex items-center gap-1"><FileText className="w-3.5 h-3.5" />{metrics.submittedProjects} projet{metrics.submittedProjects !== 1 ? 's' : ''} soumis</span>
+                        <span className={`flex items-center gap-1 ${event.votingEnabled ? 'text-green-400' : 'text-red-400'}`}>
+                          <ThumbsUp className="w-3.5 h-3.5" />
+                          Vote {event.votingEnabled ? 'activé' : 'désactivé'}
+                        </span>
                         {(status === 'active' || status === 'upcoming') && event.endDate && <span className="text-amber-400"><CountdownTimer endDate={event.endDate} /></span>}
                       </div>
                     </div>
