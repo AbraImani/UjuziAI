@@ -113,6 +113,73 @@ function normalizePrizeInput(prize, idx) {
   };
 }
 
+const DEFAULT_BUILDATHON_CONFIG = {
+  votingEnabled: true,
+  maxVotesPerUser: 1,
+  allowSelfVote: false,
+  voteStartDate: null,
+  voteEndDate: null,
+  projectVisibility: 'published-only',
+  submissionOpen: true,
+  publicationStatus: 'published',
+};
+
+const DEFAULT_BUILDATHON_PROJECT_META = {
+  projectStatus: 'soumis',
+  moderationStatus: 'pending',
+  moderationNote: '',
+  isPublished: false,
+  isPublic: false,
+  likesCount: 0,
+  commentsCount: 0,
+  feedbackCount: 0,
+  likeUserIds: [],
+  validatedAt: null,
+  validatedBy: null,
+  rejectedAt: null,
+  rejectedBy: null,
+  publishedAt: null,
+  publishedBy: null,
+};
+
+function normalizeBuildathonEvent(event) {
+  const maxVotesRaw = Number(event.maxVotesPerUser);
+  const maxVotesPerUser = Number.isFinite(maxVotesRaw) && maxVotesRaw > 0 ? Math.floor(maxVotesRaw) : 1;
+
+  return {
+    ...event,
+    votingEnabled: event.votingEnabled !== false,
+    maxVotesPerUser,
+    allowSelfVote: event.allowSelfVote === true,
+    voteStartDate: event.voteStartDate || event.startDate || null,
+    voteEndDate: event.voteEndDate || event.endDate || null,
+    projectVisibility: event.projectVisibility || 'published-only',
+    submissionOpen: event.submissionOpen !== false,
+    publicationStatus: event.publicationStatus || 'published',
+  };
+}
+
+function normalizeBuildathonProject(project) {
+  const votes = Array.isArray(project.votes) ? project.votes : [];
+  const voteCountRaw = Number(project.voteCount);
+  const voteCount = Number.isFinite(voteCountRaw) ? voteCountRaw : votes.length;
+
+  return {
+    ...project,
+    votes,
+    voteCount,
+    projectStatus: project.projectStatus || 'soumis',
+    moderationStatus: project.moderationStatus || 'pending',
+    moderationNote: project.moderationNote || '',
+    isPublished: project.isPublished === true,
+    isPublic: project.isPublic === true,
+    likesCount: Number.isFinite(Number(project.likesCount)) ? Number(project.likesCount) : 0,
+    commentsCount: Number.isFinite(Number(project.commentsCount)) ? Number(project.commentsCount) : 0,
+    feedbackCount: Number.isFinite(Number(project.feedbackCount)) ? Number(project.feedbackCount) : 0,
+    likeUserIds: Array.isArray(project.likeUserIds) ? project.likeUserIds : [],
+  };
+}
+
 export default function Buildathon() {
   const { user, userProfile, isAdmin } = useAuth();
   const [events, setEvents] = useState([]);
@@ -133,6 +200,7 @@ export default function Buildathon() {
     workDuration: '',
     maxTeamSize: 4,
     prizes: DEFAULT_PRIZES,
+    ...DEFAULT_BUILDATHON_CONFIG,
   });
   const [showEditEvent, setShowEditEvent] = useState(false);
   const [editingEventId, setEditingEventId] = useState(null);
@@ -145,6 +213,7 @@ export default function Buildathon() {
     workDuration: '',
     maxTeamSize: 4,
     prizes: DEFAULT_PRIZES,
+    ...DEFAULT_BUILDATHON_CONFIG,
   });
 
   // User: submit project
@@ -176,7 +245,7 @@ export default function Buildathon() {
       query(collection(db, 'buildathons'), orderBy('createdAt', 'desc')),
       (snap) => {
         const data = [];
-        snap.forEach((d) => data.push({ id: d.id, ...d.data() }));
+        snap.forEach((d) => data.push(normalizeBuildathonEvent({ id: d.id, ...d.data() })));
         setEvents(data);
         setLoading(false);
       },
@@ -187,7 +256,7 @@ export default function Buildathon() {
       collection(db, 'buildathonProjects'),
       (snap) => {
         const data = [];
-        snap.forEach((d) => data.push({ id: d.id, ...d.data() }));
+        snap.forEach((d) => data.push(normalizeBuildathonProject({ id: d.id, ...d.data() })));
         setProjects(data);
       },
       (err) => console.error('Projects error:', err),
@@ -231,15 +300,26 @@ export default function Buildathon() {
         workDuration: newEvent.workDuration,
         maxTeamSize: Number(newEvent.maxTeamSize) || 4,
         prizes: normalizedPrizes,
+        votingEnabled: newEvent.votingEnabled !== false,
+        maxVotesPerUser: Number(newEvent.maxVotesPerUser) > 0 ? Number(newEvent.maxVotesPerUser) : 1,
+        allowSelfVote: newEvent.allowSelfVote === true,
+        voteStartDate: newEvent.voteStartDate || newEvent.startDate,
+        voteEndDate: newEvent.voteEndDate || newEvent.endDate,
+        projectVisibility: newEvent.projectVisibility || 'published-only',
+        submissionOpen: newEvent.submissionOpen !== false,
+        publicationStatus: newEvent.publicationStatus || 'published',
         participants: [],
         status: 'active',
         createdBy: user.uid,
         createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        archivedAt: null,
+        publishedAt: serverTimestamp(),
         finalized: false,
       });
       toast.success(`${newEvent.type === 'hackathon' ? 'Hackathon' : 'Buildathon'} créé !`);
       setShowCreateEvent(false);
-      setNewEvent({ type: 'buildathon', title: '', description: '', startDate: '', endDate: '', workDuration: '', maxTeamSize: 4, prizes: DEFAULT_PRIZES });
+      setNewEvent({ type: 'buildathon', title: '', description: '', startDate: '', endDate: '', workDuration: '', maxTeamSize: 4, prizes: DEFAULT_PRIZES, ...DEFAULT_BUILDATHON_CONFIG });
     } catch (err) {
       toast.error('Erreur: ' + err.message);
     }
@@ -256,6 +336,14 @@ export default function Buildathon() {
       endDate: toInputDateTime(event.endDate),
       workDuration: event.workDuration || '',
       maxTeamSize: Number(event.maxTeamSize) || 4,
+      votingEnabled: event.votingEnabled !== false,
+      maxVotesPerUser: Number(event.maxVotesPerUser) > 0 ? Number(event.maxVotesPerUser) : 1,
+      allowSelfVote: event.allowSelfVote === true,
+      voteStartDate: event.voteStartDate || event.startDate || '',
+      voteEndDate: event.voteEndDate || event.endDate || '',
+      projectVisibility: event.projectVisibility || 'published-only',
+      submissionOpen: event.submissionOpen !== false,
+      publicationStatus: event.publicationStatus || 'published',
       prizes: (event.prizes && event.prizes.length > 0)
         ? [...event.prizes]
             .sort((a, b) => a.place - b.place)
@@ -290,6 +378,14 @@ export default function Buildathon() {
         workDuration: editEvent.workDuration,
         maxTeamSize: Number(editEvent.maxTeamSize) || 4,
         prizes: normalizedPrizes,
+        votingEnabled: editEvent.votingEnabled !== false,
+        maxVotesPerUser: Number(editEvent.maxVotesPerUser) > 0 ? Number(editEvent.maxVotesPerUser) : 1,
+        allowSelfVote: editEvent.allowSelfVote === true,
+        voteStartDate: editEvent.voteStartDate || editEvent.startDate,
+        voteEndDate: editEvent.voteEndDate || editEvent.endDate,
+        projectVisibility: editEvent.projectVisibility || 'published-only',
+        submissionOpen: editEvent.submissionOpen !== false,
+        publicationStatus: editEvent.publicationStatus || 'published',
         updatedAt: serverTimestamp(),
         updatedBy: user.uid,
       });
@@ -361,6 +457,21 @@ export default function Buildathon() {
         members: [{ uid: targetUser.uid, name: targetUser.name, email: targetUser.email }],
         votes: [],
         voteCount: 0,
+        likesCount: 0,
+        commentsCount: 0,
+        feedbackCount: 0,
+        likeUserIds: [],
+        projectStatus: 'publié',
+        moderationStatus: 'approved',
+        moderationNote: '',
+        isPublished: true,
+        isPublic: true,
+        validatedAt: serverTimestamp(),
+        validatedBy: user.uid,
+        rejectedAt: null,
+        rejectedBy: null,
+        publishedAt: serverTimestamp(),
+        publishedBy: user.uid,
         submittedBy: targetUser.uid,
         submittedAt: serverTimestamp(),
       });
@@ -472,6 +583,21 @@ export default function Buildathon() {
         members: [{ uid: user.uid, name: userProfile?.displayName || user.email, email: user.email }],
         votes: [],
         voteCount: 0,
+        likesCount: 0,
+        commentsCount: 0,
+        feedbackCount: 0,
+        likeUserIds: [],
+        projectStatus: DEFAULT_BUILDATHON_PROJECT_META.projectStatus,
+        moderationStatus: DEFAULT_BUILDATHON_PROJECT_META.moderationStatus,
+        moderationNote: DEFAULT_BUILDATHON_PROJECT_META.moderationNote,
+        isPublished: DEFAULT_BUILDATHON_PROJECT_META.isPublished,
+        isPublic: DEFAULT_BUILDATHON_PROJECT_META.isPublic,
+        validatedAt: DEFAULT_BUILDATHON_PROJECT_META.validatedAt,
+        validatedBy: DEFAULT_BUILDATHON_PROJECT_META.validatedBy,
+        rejectedAt: DEFAULT_BUILDATHON_PROJECT_META.rejectedAt,
+        rejectedBy: DEFAULT_BUILDATHON_PROJECT_META.rejectedBy,
+        publishedAt: DEFAULT_BUILDATHON_PROJECT_META.publishedAt,
+        publishedBy: DEFAULT_BUILDATHON_PROJECT_META.publishedBy,
         submittedBy: user.uid,
         submittedAt: serverTimestamp(),
       });
