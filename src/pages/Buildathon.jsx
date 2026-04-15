@@ -193,6 +193,45 @@ function normalizeBuildathonProject(project) {
   };
 }
 
+function toTimestampMs(value) {
+  if (!value) return null;
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (value?.toDate && typeof value.toDate === 'function') {
+    const d = value.toDate();
+    const t = d.getTime();
+    return Number.isNaN(t) ? null : t;
+  }
+  const d = new Date(value);
+  const t = d.getTime();
+  return Number.isNaN(t) ? null : t;
+}
+
+function getProjectSubmissionTimestamp(project) {
+  const submittedAt = toTimestampMs(project?.submittedAt);
+  if (submittedAt !== null) return submittedAt;
+
+  const createdAt = toTimestampMs(project?.createdAt);
+  if (createdAt !== null) return createdAt;
+
+  // Backward compatibility: unknown submission time should rank after known dates.
+  return Number.MAX_SAFE_INTEGER;
+}
+
+function compareProjectsForRanking(a, b) {
+  const voteDiff = (b?.voteCount || 0) - (a?.voteCount || 0);
+  if (voteDiff !== 0) return voteDiff;
+
+  const timeDiff = getProjectSubmissionTimestamp(a) - getProjectSubmissionTimestamp(b);
+  if (timeDiff !== 0) return timeDiff;
+
+  // Stable final fallback for deterministic ordering when data is incomplete.
+  return String(a?.id || '').localeCompare(String(b?.id || ''));
+}
+
+function sortProjectsForRanking(projectList = []) {
+  return [...projectList].sort(compareProjectsForRanking);
+}
+
 export default function Buildathon() {
   const { user, userProfile, isAdmin } = useAuth();
   const [events, setEvents] = useState([]);
@@ -654,7 +693,7 @@ export default function Buildathon() {
   async function handleFinalize(eventId, autoMode = false) {
     const event = events.find((e) => e.id === eventId);
     if (!event || event.finalized) return;
-    const eventProjects = projects.filter((p) => p.buildathonId === eventId).sort((a, b) => (b.voteCount || 0) - (a.voteCount || 0));
+    const eventProjects = sortProjectsForRanking(projects.filter((p) => p.buildathonId === eventId));
     if (eventProjects.length === 0) { if (!autoMode) toast.error('Aucun projet soumis'); return; }
     const prizes = (event.prizes || []).sort((a, b) => a.place - b.place);
     try {
@@ -1238,7 +1277,7 @@ export default function Buildathon() {
           {filteredEvents.map((event) => {
             const status = getEventStatus(event);
             const statusInfo = STATUS_CONFIG[status];
-            const eventProjects = projects.filter((p) => p.buildathonId === event.id).sort((a, b) => (b.voteCount || 0) - (a.voteCount || 0));
+            const eventProjects = sortProjectsForRanking(projects.filter((p) => p.buildathonId === event.id));
             const isExpanded = expandedEvent === event.id;
             const isRegistered = event.participants?.includes(user?.uid);
             const userHasSubmitted = eventProjects.some((p) => p.submittedBy === user?.uid);
@@ -1361,6 +1400,9 @@ export default function Buildathon() {
                             <Trophy className="w-4 h-4 text-amber-400" />
                             Classement des projets ({eventProjects.length})
                           </h3>
+                          <p className="text-xs text-muted mb-3">
+                            Tri: votes décroissants. En cas d'égalité, le projet soumis le plus tôt est classé devant.
+                          </p>
                           {eventProjects.map((project, index) => {
                             const hasVoted = project.votes?.includes(user?.uid);
                             const isOwn = project.submittedBy === user?.uid;
@@ -1507,7 +1549,7 @@ export default function Buildathon() {
                               );
                             })}
                           </div>
-                          <p className="text-xs text-muted mt-3">💡 Chaque vote = 10 pts. 1 vote/personne/événement. Les prix sont répartis entre les membres de l'équipe.</p>
+                          <p className="text-xs text-muted mt-3">💡 Chaque vote = 10 pts. 1 vote/personne/événement. En cas d'égalité de votes, le projet soumis le plus tôt est prioritaire. Les prix sont répartis entre les membres de l'équipe.</p>
                         </div>
                       )}
                     </div>
