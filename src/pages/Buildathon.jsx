@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import {
   collection,
   doc,
@@ -1388,6 +1389,13 @@ export default function Buildathon() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
+                      <Link
+                        to={`/projects/${event.id}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-xs px-3 py-1.5 rounded-lg bg-primary-600/20 text-primary-300 border border-primary-500/30 hover:bg-primary-600/30 transition-colors"
+                      >
+                        Voir le buildathon
+                      </Link>
                       {event.prizes?.length > 0 && (
                         <div className="hidden sm:flex items-center gap-1.5">
                           {event.prizes.slice(0, 3).map((p, i) => (
