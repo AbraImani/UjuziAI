@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { collection, doc, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { ArrowLeft, Calendar, FileText, Loader2, Settings, ThumbsUp, Trophy, Users } from 'lucide-react';
+import { ArrowLeft, Calendar, ExternalLink, FileText, Loader2, Settings, ThumbsUp, Trophy, Users } from 'lucide-react';
 
 const TAB_LIST = [
   { id: 'overview', label: 'Aperçu' },
@@ -79,6 +79,11 @@ function normalizeBuildathonProject(raw) {
     ...raw,
     votes,
     voteCount: Number.isFinite(voteCountRaw) ? voteCountRaw : votes.length,
+    likesCount: Number.isFinite(Number(raw.likesCount)) ? Number(raw.likesCount) : 0,
+    commentsCount: Number.isFinite(Number(raw.commentsCount)) ? Number(raw.commentsCount) : 0,
+    feedbackCount: Number.isFinite(Number(raw.feedbackCount)) ? Number(raw.feedbackCount) : 0,
+    likeUserIds: Array.isArray(raw.likeUserIds) ? raw.likeUserIds : [],
+    tags: Array.isArray(raw.tags) ? raw.tags : [],
   };
 }
 
@@ -102,6 +107,38 @@ function sortProjectsForRanking(projectList = []) {
 
     return String(a?.id || '').localeCompare(String(b?.id || ''));
   });
+}
+
+function getProjectTeamLabel(project) {
+  if (project?.teamName) return project.teamName;
+  const members = Array.isArray(project?.members) ? project.members : [];
+  if (members.length === 0) return 'Équipe non définie';
+  return members.map((member) => member.name).filter(Boolean).join(', ') || 'Équipe non définie';
+}
+
+function getProjectSummary(project) {
+  const description = (project?.description || '').trim();
+  if (!description) return 'Aucun résumé disponible.';
+  return description.length > 140 ? `${description.slice(0, 140).trim()}...` : description;
+}
+
+function getProjectTags(project) {
+  const tags = Array.isArray(project?.tags) ? project.tags.filter(Boolean) : [];
+  if (tags.length > 0) return tags;
+
+  if (project?.category) {
+    return [project.category];
+  }
+
+  return [];
+}
+
+function getProjectStatusLabel(project) {
+  if (project?.projectStatus) return project.projectStatus;
+  if (project?.moderationStatus === 'approved') return 'validé';
+  if (project?.moderationStatus === 'rejected') return 'rejeté';
+  if (project?.status) return project.status;
+  return 'soumis';
 }
 
 export default function BuildathonDetail() {
@@ -257,15 +294,62 @@ export default function BuildathonDetail() {
             {projects.length === 0 ? (
               <p className="text-body">Aucun projet pour le moment.</p>
             ) : (
-              sortedProjects.map((p) => (
-                <div key={p.id} className="p-3 rounded-lg bg-black/5 dark:bg-white/5 border border-themed flex items-center justify-between gap-3">
-                  <div>
-                    <p className="font-medium text-heading">{p.title}</p>
-                    <p className="text-xs text-muted">{p.teamName || 'Équipe non définie'}</p>
-                  </div>
-                  <span className="text-xs text-muted">{p.voteCount || 0} vote{(p.voteCount || 0) > 1 ? 's' : ''}</span>
-                </div>
-              ))
+              <div className="grid md:grid-cols-2 gap-4">
+                {sortedProjects.map((p) => {
+                  const tags = getProjectTags(p);
+                  const feedbackCount = p.feedbackCount || p.commentsCount || 0;
+                  return (
+                    <div key={p.id} className="p-4 rounded-xl bg-black/5 dark:bg-white/5 border border-themed space-y-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="font-semibold text-heading truncate">{p.title}</p>
+                          <p className="text-xs text-muted">{getProjectTeamLabel(p)}</p>
+                        </div>
+                        <div className="text-right">
+                          <span className="block text-xs text-muted whitespace-nowrap">{p.voteCount || 0} vote{(p.voteCount || 0) > 1 ? 's' : ''}</span>
+                          <span className="inline-flex mt-1 text-[10px] px-2 py-0.5 rounded-full border border-themed bg-surface text-muted">
+                            {getProjectStatusLabel(p)}
+                          </span>
+                        </div>
+                      </div>
+
+                      <p className="text-sm text-body line-clamp-2">{getProjectSummary(p)}</p>
+
+                      <div className="flex flex-wrap gap-2">
+                        {tags.length > 0 ? tags.map((tag) => (
+                          <span key={tag} className="text-[10px] px-2 py-0.5 rounded-full border border-themed bg-surface text-muted">
+                            {tag}
+                          </span>
+                        )) : (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full border border-themed bg-surface text-muted">
+                            Aucun tag
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-3 text-xs text-muted">
+                        <span>{p.likesCount || 0} like{(p.likesCount || 0) > 1 ? 's' : ''}</span>
+                        <span>{feedbackCount} feedback/commentaire{feedbackCount > 1 ? 's' : ''}</span>
+                        {p.demoUrl && (
+                          <a href={p.demoUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary-400 hover:text-primary-300">
+                            <ExternalLink className="w-3 h-3" />
+                            Démo
+                          </a>
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-end">
+                        <Link
+                          to={`/projects/${event.id}/project/${p.id}`}
+                          className="text-xs px-3 py-1.5 rounded-lg bg-primary-600/20 text-primary-300 border border-primary-500/30 hover:bg-primary-600/30 transition-colors"
+                        >
+                          Voir le projet
+                        </Link>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </div>
         )}

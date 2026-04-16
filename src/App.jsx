@@ -17,6 +17,7 @@ import Verify from './pages/Verify';
 import AllModules from './pages/AllModules';
 import Buildathon from './pages/Buildathon';
 import BuildathonDetail from './pages/BuildathonDetail';
+import BuildathonProjectDetail from './pages/BuildathonProjectDetail';
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth();
@@ -72,6 +73,7 @@ function AppRoutes() {
       <Route path="/leaderboard" element={<PrivateRoute><Layout><Leaderboard /></Layout></PrivateRoute>} />
       <Route path="/projects" element={<PrivateRoute><Layout><Buildathon /></Layout></PrivateRoute>} />
       <Route path="/projects/:buildathonId" element={<PrivateRoute><Layout><BuildathonDetail /></Layout></PrivateRoute>} />
+      <Route path="/projects/:buildathonId/project/:projectId" element={<PrivateRoute><Layout><BuildathonProjectDetail /></Layout></PrivateRoute>} />
       <Route path="/profile" element={<PrivateRoute><Layout><Profile /></Layout></PrivateRoute>} />
       <Route path="/certificate/:moduleId" element={<PrivateRoute><Layout><Certificate /></Layout></PrivateRoute>} />
       <Route path="/verify/:badgeId" element={<Verify />} />
