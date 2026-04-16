@@ -18,6 +18,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
+import AdminBuildathonEventForm from '../components/buildathon/AdminBuildathonEventForm';
 import toast from 'react-hot-toast';
 import {
   Trophy,
@@ -129,8 +130,17 @@ const DEFAULT_BUILDATHON_CONFIG = {
   votingEnabled: true,
   maxVotesPerUser: 1,
   allowSelfVote: false,
+  shortDescription: '',
+  fullDescription: '',
+  coverImageUrl: '',
+  submissionStartDate: null,
+  submissionEndDate: null,
   voteStartDate: null,
   voteEndDate: null,
+  participationRules: '',
+  evaluationCriteria: '',
+  tieBreakRuleText: 'En cas d\'égalité, le projet soumis le plus tôt est prioritaire.',
+  rewardsVisible: true,
   projectVisibility: 'published-only',
   submissionOpen: true,
   publicationStatus: 'published',
@@ -162,11 +172,20 @@ function normalizeBuildathonEvent(event) {
 
   return {
     ...event,
+    shortDescription: event.shortDescription || '',
+    fullDescription: event.fullDescription || event.description || '',
+    coverImageUrl: event.coverImageUrl || '',
     votingEnabled: event.votingEnabled !== false,
     maxVotesPerUser,
     allowSelfVote: event.allowSelfVote === true,
+    submissionStartDate: normalizeDateLike(event.submissionStartDate) || normalizeDateLike(event.startDate),
+    submissionEndDate: normalizeDateLike(event.submissionEndDate) || normalizeDateLike(event.endDate),
     voteStartDate: safeVoteStartDate,
     voteEndDate: safeVoteEndDate,
+    participationRules: event.participationRules || '',
+    evaluationCriteria: event.evaluationCriteria || '',
+    tieBreakRuleText: event.tieBreakRuleText || 'En cas d\'égalité, le projet soumis le plus tôt est prioritaire.',
+    rewardsVisible: event.rewardsVisible !== false,
     projectVisibility: event.projectVisibility || 'published-only',
     submissionOpen: event.submissionOpen !== false,
     publicationStatus: event.publicationStatus || 'published',
@@ -250,6 +269,7 @@ export default function Buildathon() {
     type: 'buildathon',
     title: '',
     description: '',
+    status: 'active',
     startDate: '',
     endDate: '',
     workDuration: '',
@@ -263,6 +283,7 @@ export default function Buildathon() {
     type: 'buildathon',
     title: '',
     description: '',
+    status: 'active',
     startDate: '',
     endDate: '',
     workDuration: '',
@@ -349,9 +370,15 @@ export default function Buildathon() {
       await setDoc(doc(db, 'buildathons', id), {
         type: newEvent.type,
         title: newEvent.title,
-        description: newEvent.description,
+        shortDescription: (newEvent.shortDescription || '').trim(),
+        fullDescription: (newEvent.fullDescription || '').trim(),
+        description: (newEvent.fullDescription || newEvent.shortDescription || newEvent.description || '').trim(),
+        coverImageUrl: (newEvent.coverImageUrl || '').trim(),
+        status: newEvent.status || 'active',
         startDate: newEvent.startDate,
         endDate: newEvent.endDate,
+        submissionStartDate: normalizeDateLike(newEvent.submissionStartDate) || normalizeDateLike(newEvent.startDate),
+        submissionEndDate: normalizeDateLike(newEvent.submissionEndDate) || normalizeDateLike(newEvent.endDate),
         workDuration: newEvent.workDuration,
         maxTeamSize: Number(newEvent.maxTeamSize) || 4,
         prizes: normalizedPrizes,
@@ -360,6 +387,10 @@ export default function Buildathon() {
         allowSelfVote: newEvent.allowSelfVote === true,
         voteStartDate: normalizeDateLike(newEvent.voteStartDate) || normalizeDateLike(newEvent.startDate),
         voteEndDate: normalizeDateLike(newEvent.voteEndDate) || normalizeDateLike(newEvent.endDate),
+        participationRules: (newEvent.participationRules || '').trim(),
+        evaluationCriteria: (newEvent.evaluationCriteria || '').trim(),
+        tieBreakRuleText: (newEvent.tieBreakRuleText || '').trim() || 'En cas d\'égalité, le projet soumis le plus tôt est prioritaire.',
+        rewardsVisible: newEvent.rewardsVisible !== false,
         projectVisibility: newEvent.projectVisibility || 'published-only',
         submissionOpen: newEvent.submissionOpen !== false,
         publicationStatus: newEvent.publicationStatus || 'published',
@@ -374,7 +405,7 @@ export default function Buildathon() {
       });
       toast.success(`${newEvent.type === 'hackathon' ? 'Hackathon' : 'Buildathon'} créé !`);
       setShowCreateEvent(false);
-      setNewEvent({ type: 'buildathon', title: '', description: '', startDate: '', endDate: '', workDuration: '', maxTeamSize: 4, prizes: DEFAULT_PRIZES, ...DEFAULT_BUILDATHON_CONFIG });
+      setNewEvent({ type: 'buildathon', title: '', description: '', status: 'active', startDate: '', endDate: '', workDuration: '', maxTeamSize: 4, prizes: DEFAULT_PRIZES, ...DEFAULT_BUILDATHON_CONFIG });
     } catch (err) {
       toast.error('Erreur: ' + err.message);
     }
@@ -387,8 +418,14 @@ export default function Buildathon() {
       type: event.type || 'buildathon',
       title: event.title || '',
       description: event.description || '',
+      shortDescription: event.shortDescription || '',
+      fullDescription: event.fullDescription || event.description || '',
+      coverImageUrl: event.coverImageUrl || '',
+      status: event.status || 'active',
       startDate: toInputDateTime(event.startDate),
       endDate: toInputDateTime(event.endDate),
+      submissionStartDate: toInputDateTime(event.submissionStartDate || event.startDate),
+      submissionEndDate: toInputDateTime(event.submissionEndDate || event.endDate),
       workDuration: event.workDuration || '',
       maxTeamSize: Number(event.maxTeamSize) || 4,
       votingEnabled: event.votingEnabled !== false,
@@ -396,6 +433,10 @@ export default function Buildathon() {
       allowSelfVote: event.allowSelfVote === true,
       voteStartDate: normalizeDateLike(event.voteStartDate) || normalizeDateLike(event.startDate) || '',
       voteEndDate: normalizeDateLike(event.voteEndDate) || normalizeDateLike(event.endDate) || '',
+      participationRules: event.participationRules || '',
+      evaluationCriteria: event.evaluationCriteria || '',
+      tieBreakRuleText: event.tieBreakRuleText || 'En cas d\'égalité, le projet soumis le plus tôt est prioritaire.',
+      rewardsVisible: event.rewardsVisible !== false,
       projectVisibility: event.projectVisibility || 'published-only',
       submissionOpen: event.submissionOpen !== false,
       publicationStatus: event.publicationStatus || 'published',
@@ -427,9 +468,15 @@ export default function Buildathon() {
       await updateDoc(doc(db, 'buildathons', editingEventId), {
         type: editEvent.type,
         title: editEvent.title,
-        description: editEvent.description,
+        shortDescription: (editEvent.shortDescription || '').trim(),
+        fullDescription: (editEvent.fullDescription || '').trim(),
+        description: (editEvent.fullDescription || editEvent.shortDescription || editEvent.description || '').trim(),
+        coverImageUrl: (editEvent.coverImageUrl || '').trim(),
+        status: editEvent.status || 'active',
         startDate: editEvent.startDate,
         endDate: editEvent.endDate,
+        submissionStartDate: normalizeDateLike(editEvent.submissionStartDate) || normalizeDateLike(editEvent.startDate),
+        submissionEndDate: normalizeDateLike(editEvent.submissionEndDate) || normalizeDateLike(editEvent.endDate),
         workDuration: editEvent.workDuration,
         maxTeamSize: Number(editEvent.maxTeamSize) || 4,
         prizes: normalizedPrizes,
@@ -438,6 +485,10 @@ export default function Buildathon() {
         allowSelfVote: editEvent.allowSelfVote === true,
         voteStartDate: normalizeDateLike(editEvent.voteStartDate) || normalizeDateLike(editEvent.startDate),
         voteEndDate: normalizeDateLike(editEvent.voteEndDate) || normalizeDateLike(editEvent.endDate),
+        participationRules: (editEvent.participationRules || '').trim(),
+        evaluationCriteria: (editEvent.evaluationCriteria || '').trim(),
+        tieBreakRuleText: (editEvent.tieBreakRuleText || '').trim() || 'En cas d\'égalité, le projet soumis le plus tôt est prioritaire.',
+        rewardsVisible: editEvent.rewardsVisible !== false,
         projectVisibility: editEvent.projectVisibility || 'published-only',
         submissionOpen: editEvent.submissionOpen !== false,
         publicationStatus: editEvent.publicationStatus || 'published',
@@ -1052,110 +1103,14 @@ export default function Buildathon() {
             <button onClick={() => setShowCreateEvent(false)} className="text-muted hover:text-heading"><X className="w-5 h-5" /></button>
           </div>
 
-          <form onSubmit={handleCreateEvent} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-body mb-2">Type d'événement *</label>
-              <div className="flex gap-3">
-                {EVENT_TYPES.map((t) => (
-                  <button key={t.value} type="button" onClick={() => setNewEvent((p) => ({ ...p, type: t.value }))} className={`flex items-center gap-2 px-4 py-3 rounded-xl border-2 transition-all ${newEvent.type === t.value ? 'border-primary-500 bg-primary-500/10 text-heading' : 'border-themed text-body hover:border-primary-500/50'}`}>
-                    <span className="text-xl">{t.icon}</span>
-                    <span className="font-medium">{t.label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-body mb-1">Titre *</label>
-              <input type="text" value={newEvent.title} onChange={(e) => setNewEvent((p) => ({ ...p, title: e.target.value }))} className="input-field w-full" placeholder="Ex: Buildathon IA Mars 2026" required />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-body mb-1">Description</label>
-              <textarea value={newEvent.description} onChange={(e) => setNewEvent((p) => ({ ...p, description: e.target.value }))} className="input-field w-full h-24 resize-none" placeholder="Thème, règles, objectifs..." />
-            </div>
-
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-body mb-1">Date de début *</label>
-                <input type="datetime-local" value={newEvent.startDate} onChange={(e) => setNewEvent((p) => ({ ...p, startDate: e.target.value }))} className="input-field w-full" required />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-body mb-1">Date de fin *</label>
-                <input type="datetime-local" value={newEvent.endDate} onChange={(e) => setNewEvent((p) => ({ ...p, endDate: e.target.value }))} className="input-field w-full" required />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-body mb-1">Durée de travail</label>
-                <input type="text" value={newEvent.workDuration} onChange={(e) => setNewEvent((p) => ({ ...p, workDuration: e.target.value }))} className="input-field w-full" placeholder="Ex: 48h" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-body mb-1">Taille max équipe</label>
-                <input type="number" min="1" max="10" value={newEvent.maxTeamSize} onChange={(e) => setNewEvent((p) => ({ ...p, maxTeamSize: e.target.value }))} className="input-field w-full" />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-body mb-2">Prix (points, swag ou prix spécial)</label>
-              <div className="space-y-2">
-                {newEvent.prizes.map((prize, i) => (
-                  <div key={i} className="grid sm:grid-cols-4 gap-2 items-center">
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg">{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${prize.place}`}</span>
-                      <span className="text-sm text-body">Place {prize.place}</span>
-                    </div>
-                    <select
-                      value={prize.rewardType || 'points'}
-                      onChange={(e) => {
-                        const u = [...newEvent.prizes];
-                        u[i] = { ...u[i], rewardType: e.target.value };
-                        setNewEvent((p) => ({ ...p, prizes: u }));
-                      }}
-                      className="input-field w-full"
-                    >
-                      <option value="points">Points</option>
-                      <option value="swag">Swag</option>
-                      <option value="prize">Prix</option>
-                    </select>
-                    {(prize.rewardType || 'points') === 'points' ? (
-                      <input
-                        type="number"
-                        min="0"
-                        value={prize.points}
-                        onChange={(e) => {
-                          const u = [...newEvent.prizes];
-                          u[i] = { ...u[i], points: e.target.value };
-                          setNewEvent((p) => ({ ...p, prizes: u }));
-                        }}
-                        className="input-field w-full"
-                        placeholder="Ex: 25"
-                      />
-                    ) : (
-                      <input
-                        type="text"
-                        value={prize.label || ''}
-                        onChange={(e) => {
-                          const u = [...newEvent.prizes];
-                          u[i] = { ...u[i], label: e.target.value };
-                          setNewEvent((p) => ({ ...p, prizes: u }));
-                        }}
-                        className="input-field w-full"
-                        placeholder={(prize.rewardType || 'points') === 'swag' ? 'Ex: T-shirt + stickers' : 'Ex: Bon d\'achat 100$'}
-                      />
-                    )}
-                    <span className="text-xs text-muted">
-                      {(prize.rewardType || 'points') === 'points' ? 'pts' : 'récompense'}
-                    </span>
-                  </div>
-                ))}
-                <button type="button" onClick={() => setNewEvent((p) => ({ ...p, prizes: [...p.prizes, { place: p.prizes.length + 1, rewardType: 'points', points: '', label: '' }] }))} className="text-sm text-primary-400 hover:text-primary-300">+ Ajouter un prix</button>
-              </div>
-            </div>
-
-            <div className="flex gap-3 pt-2">
-              <button type="submit" className="btn-primary flex items-center gap-2"><Rocket className="w-4 h-4" />Créer l'événement</button>
-              <button type="button" onClick={() => setShowCreateEvent(false)} className="btn-secondary">Annuler</button>
-            </div>
-          </form>
+          <AdminBuildathonEventForm
+            mode="create"
+            value={newEvent}
+            onChange={setNewEvent}
+            onSubmit={handleCreateEvent}
+            onCancel={() => setShowCreateEvent(false)}
+            eventTypes={EVENT_TYPES}
+          />
         </div>
       )}
 
@@ -1175,115 +1130,14 @@ export default function Buildathon() {
             </button>
           </div>
 
-          <form onSubmit={handleUpdateEvent} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-body mb-2">Type d'événement *</label>
-              <div className="flex gap-3">
-                {EVENT_TYPES.map((t) => (
-                  <button
-                    key={t.value}
-                    type="button"
-                    onClick={() => setEditEvent((p) => ({ ...p, type: t.value }))}
-                    className={`flex items-center gap-2 px-4 py-3 rounded-xl border-2 transition-all ${editEvent.type === t.value ? 'border-amber-500 bg-amber-500/10 text-heading' : 'border-themed text-body hover:border-amber-500/50'}`}
-                  >
-                    <span className="text-xl">{t.icon}</span>
-                    <span className="font-medium">{t.label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-body mb-1">Titre *</label>
-              <input type="text" value={editEvent.title} onChange={(e) => setEditEvent((p) => ({ ...p, title: e.target.value }))} className="input-field w-full" required />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-body mb-1">Description</label>
-              <textarea value={editEvent.description} onChange={(e) => setEditEvent((p) => ({ ...p, description: e.target.value }))} className="input-field w-full h-24 resize-none" />
-            </div>
-
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-body mb-1">Date de début *</label>
-                <input type="datetime-local" value={editEvent.startDate} onChange={(e) => setEditEvent((p) => ({ ...p, startDate: e.target.value }))} className="input-field w-full" required />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-body mb-1">Date de fin *</label>
-                <input type="datetime-local" value={editEvent.endDate} onChange={(e) => setEditEvent((p) => ({ ...p, endDate: e.target.value }))} className="input-field w-full" required />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-body mb-1">Durée de travail</label>
-                <input type="text" value={editEvent.workDuration} onChange={(e) => setEditEvent((p) => ({ ...p, workDuration: e.target.value }))} className="input-field w-full" placeholder="Ex: 48h" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-body mb-1">Taille max équipe</label>
-                <input type="number" min="1" max="10" value={editEvent.maxTeamSize} onChange={(e) => setEditEvent((p) => ({ ...p, maxTeamSize: e.target.value }))} className="input-field w-full" />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-body mb-2">Prix (points, swag ou prix spécial)</label>
-              <div className="space-y-2">
-                {editEvent.prizes.map((prize, i) => (
-                  <div key={i} className="grid sm:grid-cols-4 gap-2 items-center">
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg">{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${prize.place}`}</span>
-                      <span className="text-sm text-body">Place {prize.place}</span>
-                    </div>
-                    <select
-                      value={prize.rewardType || 'points'}
-                      onChange={(e) => {
-                        const u = [...editEvent.prizes];
-                        u[i] = { ...u[i], rewardType: e.target.value };
-                        setEditEvent((p) => ({ ...p, prizes: u }));
-                      }}
-                      className="input-field w-full"
-                    >
-                      <option value="points">Points</option>
-                      <option value="swag">Swag</option>
-                      <option value="prize">Prix</option>
-                    </select>
-                    {(prize.rewardType || 'points') === 'points' ? (
-                      <input
-                        type="number"
-                        min="0"
-                        value={prize.points}
-                        onChange={(e) => {
-                          const u = [...editEvent.prizes];
-                          u[i] = { ...u[i], points: e.target.value };
-                          setEditEvent((p) => ({ ...p, prizes: u }));
-                        }}
-                        className="input-field w-full"
-                        placeholder="Ex: 25"
-                      />
-                    ) : (
-                      <input
-                        type="text"
-                        value={prize.label || ''}
-                        onChange={(e) => {
-                          const u = [...editEvent.prizes];
-                          u[i] = { ...u[i], label: e.target.value };
-                          setEditEvent((p) => ({ ...p, prizes: u }));
-                        }}
-                        className="input-field w-full"
-                        placeholder={(prize.rewardType || 'points') === 'swag' ? 'Ex: T-shirt + stickers' : 'Ex: Bon d\'achat 100$'}
-                      />
-                    )}
-                    <span className="text-xs text-muted">
-                      {(prize.rewardType || 'points') === 'points' ? 'pts' : 'récompense'}
-                    </span>
-                  </div>
-                ))}
-                <button type="button" onClick={() => setEditEvent((p) => ({ ...p, prizes: [...p.prizes, { place: p.prizes.length + 1, rewardType: 'points', points: '', label: '' }] }))} className="text-sm text-amber-400 hover:text-amber-300">+ Ajouter un prix</button>
-              </div>
-            </div>
-
-            <div className="flex gap-3 pt-2">
-              <button type="submit" className="btn-primary flex items-center gap-2"><Pencil className="w-4 h-4" />Enregistrer</button>
-              <button type="button" onClick={() => { setShowEditEvent(false); setEditingEventId(null); }} className="btn-secondary">Annuler</button>
-            </div>
-          </form>
+          <AdminBuildathonEventForm
+            mode="edit"
+            value={editEvent}
+            onChange={setEditEvent}
+            onSubmit={handleUpdateEvent}
+            onCancel={() => { setShowEditEvent(false); setEditingEventId(null); }}
+            eventTypes={EVENT_TYPES}
+          />
         </div>
       )}
 
