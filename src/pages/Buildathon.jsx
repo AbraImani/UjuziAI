@@ -303,6 +303,19 @@ function getProjectSubmissionTimestamp(project) {
   return Number.MAX_SAFE_INTEGER;
 }
 
+function formatProjectSubmittedAt(value) {
+  if (!value) return 'Non defini';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return 'Non defini';
+  return d.toLocaleString('fr-FR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 function compareProjectsForRanking(a, b) {
   const voteDiff = (b?.voteCount || 0) - (a?.voteCount || 0);
   if (voteDiff !== 0) return voteDiff;
@@ -1419,6 +1432,7 @@ export default function Buildathon() {
               : allEventProjects.filter((p) => isProjectVisibleForParticipant(p, event, user?.uid));
             const metrics = getEventPopularityMetrics(event.id, event.participants);
             const adminSupervisionMetrics = getBuildathonSupervisionMetrics(event, allEventProjects);
+            const adminRankingProjects = sortProjectsForRanking(allEventProjects);
             const isExpanded = expandedEvent === event.id;
             const isRegistered = event.participants?.includes(user?.uid);
             const userHasSubmitted = allEventProjects.some((p) => p.submittedBy === user?.uid);
@@ -1576,6 +1590,60 @@ export default function Buildathon() {
                                 </p>
                               </div>
                             </div>
+                          </div>
+
+                          <div className="mt-3 p-3 rounded-lg border border-themed bg-black/5 dark:bg-white/5">
+                            <div className="flex items-center justify-between gap-2 mb-2">
+                              <p className="text-[11px] uppercase tracking-wide text-primary-300">Maintenance leaderboard</p>
+                              <p className="text-[11px] text-muted">Tri: votes ↓ puis submittedAt ↑</p>
+                            </div>
+
+                            {adminRankingProjects.length === 0 ? (
+                              <p className="text-xs text-muted">Aucun projet classable pour le moment.</p>
+                            ) : (
+                              <div className="overflow-x-auto">
+                                <table className="min-w-full text-xs">
+                                  <thead>
+                                    <tr className="text-muted border-b border-themed">
+                                      <th className="text-left py-1.5 pr-3">#</th>
+                                      <th className="text-left py-1.5 pr-3">Projet</th>
+                                      <th className="text-left py-1.5 pr-3">Equipe / auteur</th>
+                                      <th className="text-left py-1.5 pr-3">Votes</th>
+                                      <th className="text-left py-1.5 pr-3">Soumis le</th>
+                                      <th className="text-left py-1.5">Statut</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {adminRankingProjects.map((project, rankingIndex) => {
+                                      const projectStatus = getCanonicalProjectStatus(project);
+                                      const statusBadge = getProjectStatusBadge(projectStatus);
+                                      const voteValue = Number.isFinite(Number(project?.voteCount))
+                                        ? Number(project.voteCount)
+                                        : (Array.isArray(project?.votes) ? project.votes.length : 0);
+                                      const submittedAt = normalizeDateLike(project?.submittedAt) || normalizeDateLike(project?.createdAt);
+                                      const teamOrAuthor = project?.teamName
+                                        || project?.submittedBy
+                                        || (project?.members?.[0]?.name || 'Equipe non definie');
+
+                                      return (
+                                        <tr key={project.id} className="border-b border-themed/60">
+                                          <td className="py-1.5 pr-3 font-semibold text-heading">#{rankingIndex + 1}</td>
+                                          <td className="py-1.5 pr-3 text-body">{project.title || 'Sans titre'}</td>
+                                          <td className="py-1.5 pr-3 text-muted">{teamOrAuthor}</td>
+                                          <td className="py-1.5 pr-3 text-heading font-medium">{voteValue}</td>
+                                          <td className="py-1.5 pr-3 text-muted">{formatProjectSubmittedAt(submittedAt)}</td>
+                                          <td className="py-1.5">
+                                            <span className={`inline-flex px-2 py-0.5 rounded-full border ${statusBadge.className}`}>
+                                              {statusBadge.label}
+                                            </span>
+                                          </td>
+                                        </tr>
+                                      );
+                                    })}
+                                  </tbody>
+                                </table>
+                              </div>
+                            )}
                           </div>
                         </div>
                       )}
