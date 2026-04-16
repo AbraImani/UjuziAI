@@ -54,8 +54,8 @@ import {
 } from 'lucide-react';
 
 const EVENT_TYPES = [
-  { value: 'buildathon', label: 'Buildathon', icon: '­ƒÅù´©Å' },
-  { value: 'hackathon', label: 'Hackathon', icon: '­ƒÆ╗' },
+  { value: 'buildathon', label: 'Buildathon', icon: '🏗️' },
+  { value: 'hackathon', label: 'Hackathon', icon: '💻' },
 ];
 
 const PROJECT_CATEGORIES = [
@@ -76,10 +76,10 @@ function getEventStatus(b) {
 }
 
 const STATUS_CONFIG = {
-  upcoming: { label: '├Ç venir', color: 'bg-blue-500/10 text-blue-400 border-blue-500/30', dot: 'bg-blue-400' },
+  upcoming: { label: 'À venir', color: 'bg-blue-500/10 text-blue-400 border-blue-500/30', dot: 'bg-blue-400' },
   active: { label: 'En cours', color: 'bg-green-500/10 text-green-400 border-green-500/30', dot: 'bg-green-400' },
   ended: { label: 'Vote ouvert', color: 'bg-amber-500/10 text-amber-400 border-amber-500/30', dot: 'bg-amber-400' },
-  completed: { label: 'Termin├®', color: 'bg-gray-500/10 text-gray-400 border-gray-500/30', dot: 'bg-gray-400' },
+  completed: { label: 'Terminé', color: 'bg-gray-500/10 text-gray-400 border-gray-500/30', dot: 'bg-gray-400' },
 };
 
 const DEFAULT_PRIZES = [
@@ -104,9 +104,9 @@ function toInputDateTime(value) {
 }
 
 function formatEventDate(value) {
-  if (!value) return 'Date non d├®finie';
+  if (!value) return 'Date non définie';
   const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return 'Date non d├®finie';
+  if (Number.isNaN(d.getTime())) return 'Date non définie';
   return d.toLocaleString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
@@ -146,7 +146,7 @@ const DEFAULT_BUILDATHON_CONFIG = {
   voteEndDate: null,
   participationRules: '',
   evaluationCriteria: '',
-  tieBreakRuleText: 'En cas d\'├®galit├®, le projet soumis le plus t├┤t est prioritaire.',
+  tieBreakRuleText: 'En cas d\'égalité, le projet soumis le plus tôt est prioritaire.',
   rewardsVisible: true,
   projectVisibility: 'published-only',
   submissionOpen: true,
@@ -176,9 +176,9 @@ const PROJECT_STATUSES = ['brouillon', 'soumis', 'valide', 'rejete', 'publie'];
 function getCanonicalProjectStatus(project = {}) {
   const raw = String(project.projectStatus || '').toLowerCase();
   const normalizedRaw = raw
-    .replace('├®', 'e')
-    .replace('├á', 'a')
-    .replace('├╗', 'u')
+    .replace('é', 'e')
+    .replace('à', 'a')
+    .replace('û', 'u')
     .trim();
 
   if (normalizedRaw === 'brouillon' || normalizedRaw === 'draft') return 'brouillon';
@@ -249,7 +249,7 @@ function normalizeBuildathonEvent(event) {
     voteEndDate: safeVoteEndDate,
     participationRules: event.participationRules || '',
     evaluationCriteria: event.evaluationCriteria || '',
-    tieBreakRuleText: event.tieBreakRuleText || 'En cas d\'├®galit├®, le projet soumis le plus t├┤t est prioritaire.',
+    tieBreakRuleText: event.tieBreakRuleText || 'En cas d\'égalité, le projet soumis le plus tôt est prioritaire.',
     rewardsVisible: event.rewardsVisible !== false,
     projectVisibility: event.projectVisibility || 'published-only',
     submissionOpen: event.submissionOpen !== false,
@@ -439,7 +439,7 @@ export default function Buildathon() {
   async function handleCreateEvent(e) {
     e.preventDefault();
     if (!newEvent.title || !newEvent.startDate || !newEvent.endDate) {
-      toast.error('Titre, date de d├®but et date de fin sont obligatoires');
+      toast.error('Titre, date de début et date de fin sont obligatoires');
       return;
     }
     try {
@@ -469,7 +469,7 @@ export default function Buildathon() {
         voteEndDate: normalizeDateLike(newEvent.voteEndDate) || normalizeDateLike(newEvent.endDate),
         participationRules: (newEvent.participationRules || '').trim(),
         evaluationCriteria: (newEvent.evaluationCriteria || '').trim(),
-        tieBreakRuleText: (newEvent.tieBreakRuleText || '').trim() || 'En cas d\'├®galit├®, le projet soumis le plus t├┤t est prioritaire.',
+        tieBreakRuleText: (newEvent.tieBreakRuleText || '').trim() || 'En cas d\'égalité, le projet soumis le plus tôt est prioritaire.',
         rewardsVisible: newEvent.rewardsVisible !== false,
         projectVisibility: newEvent.projectVisibility || 'published-only',
         submissionOpen: newEvent.submissionOpen !== false,
@@ -483,7 +483,7 @@ export default function Buildathon() {
         publishedAt: serverTimestamp(),
         finalized: false,
       });
-      toast.success(`${newEvent.type === 'hackathon' ? 'Hackathon' : 'Buildathon'} cr├®├® !`);
+      toast.success(`${newEvent.type === 'hackathon' ? 'Hackathon' : 'Buildathon'} créé !`);
       setShowCreateEvent(false);
       setNewEvent({ type: 'buildathon', title: '', description: '', status: 'active', startDate: '', endDate: '', workDuration: '', maxTeamSize: 4, prizes: DEFAULT_PRIZES, ...DEFAULT_BUILDATHON_CONFIG });
     } catch (err) {
@@ -515,7 +515,7 @@ export default function Buildathon() {
       voteEndDate: toInputDateTime(event.voteEndDate || event.endDate),
       participationRules: event.participationRules || '',
       evaluationCriteria: event.evaluationCriteria || '',
-      tieBreakRuleText: event.tieBreakRuleText || 'En cas d\'├®galit├®, le projet soumis le plus t├┤t est prioritaire.',
+      tieBreakRuleText: event.tieBreakRuleText || 'En cas d\'égalité, le projet soumis le plus tôt est prioritaire.',
       rewardsVisible: event.rewardsVisible !== false,
       projectVisibility: event.projectVisibility || 'published-only',
       submissionOpen: event.submissionOpen !== false,
@@ -538,7 +538,7 @@ export default function Buildathon() {
     e.preventDefault();
     if (!editingEventId) return;
     if (!editEvent.title || !editEvent.startDate || !editEvent.endDate) {
-      toast.error('Titre, date de d├®but et date de fin sont obligatoires');
+      toast.error('Titre, date de début et date de fin sont obligatoires');
       return;
     }
     try {
@@ -567,7 +567,7 @@ export default function Buildathon() {
         voteEndDate: normalizeDateLike(editEvent.voteEndDate) || normalizeDateLike(editEvent.endDate),
         participationRules: (editEvent.participationRules || '').trim(),
         evaluationCriteria: (editEvent.evaluationCriteria || '').trim(),
-        tieBreakRuleText: (editEvent.tieBreakRuleText || '').trim() || 'En cas d\'├®galit├®, le projet soumis le plus t├┤t est prioritaire.',
+        tieBreakRuleText: (editEvent.tieBreakRuleText || '').trim() || 'En cas d\'égalité, le projet soumis le plus tôt est prioritaire.',
         rewardsVisible: editEvent.rewardsVisible !== false,
         projectVisibility: editEvent.projectVisibility || 'published-only',
         submissionOpen: editEvent.submissionOpen !== false,
@@ -575,7 +575,7 @@ export default function Buildathon() {
         updatedAt: serverTimestamp(),
         updatedBy: user.uid,
       });
-      toast.success('├ëv├®nement mis ├á jour avec succ├¿s');
+      toast.success('Événement mis à jour avec succès');
       setShowEditEvent(false);
       setEditingEventId(null);
     } catch (err) {
@@ -621,7 +621,7 @@ export default function Buildathon() {
 
   async function handleAdminAddProject(eventId) {
     if (!adminProject.userIdentifier || !adminProject.title || !adminProject.teamName || !adminProject.repoUrl || !adminProject.demoUrl) {
-      toast.error('Compl├®tez utilisateur, titre, ├®quipe, GitHub et d├®mo');
+      toast.error('Complétez utilisateur, titre, équipe, GitHub et démo');
       return;
     }
     try {
@@ -647,7 +647,7 @@ export default function Buildathon() {
         commentsCount: 0,
         feedbackCount: 0,
         likeUserIds: [],
-        projectStatus: 'publi├®',
+        projectStatus: 'publie',
         moderationStatus: 'approved',
         moderationNote: '',
         isPublished: true,
@@ -663,7 +663,7 @@ export default function Buildathon() {
       });
 
       await updateDoc(doc(db, 'buildathons', eventId), { participants: arrayUnion(targetUser.uid) });
-      toast.success(`Projet ajout├® pour ${targetUser.name}`);
+      toast.success(`Projet ajouté pour ${targetUser.name}`);
       setShowAdminProjectForm(null);
       setAdminProject({ userIdentifier: '', title: '', description: '', category: 'web', teamName: '', repoUrl: '', demoUrl: '' });
     } catch (err) {
@@ -695,7 +695,7 @@ export default function Buildathon() {
         const logRef = doc(collection(db, 'users', member.uid, 'bonusLogs'));
         await setDoc(logRef, {
           points: pointsPerMember,
-          reason: `${event.type === 'hackathon' ? 'Hackathon' : 'Buildathon'} "${event.title}" - Attribution manuelle place ${rankIndex + 1} (${totalPoints} pts ├À ${memberCount} membre${memberCount > 1 ? 's' : ''})`,
+          reason: `${event.type === 'hackathon' ? 'Hackathon' : 'Buildathon'} "${event.title}" - Attribution manuelle place ${rankIndex + 1} (${totalPoints} pts à ${memberCount} membre${memberCount > 1 ? 's' : ''})`,
           grantedBy: user.uid,
           grantedAt: serverTimestamp(),
         });
@@ -706,14 +706,14 @@ export default function Buildathon() {
         manualPrizeGrantedBy: user.uid,
         manualPrizeGrantedPoints: totalPoints,
       });
-      toast.success(`Bonus attribu├®: +${totalPoints} pts`);
+      toast.success(`Bonus attribué: +${totalPoints} pts`);
     } catch (err) {
       toast.error('Erreur: ' + err.message);
     }
   }
 
   async function handleDeleteEvent(eventId) {
-    if (!confirm('Supprimer cet ├®v├®nement ? Cette action supprimera aussi les projets et invitations li├®s.')) return;
+    if (!confirm('Supprimer cet événement ? Cette action supprimera aussi les projets et invitations liés.')) return;
     try {
       const projectSnap = await getDocs(query(collection(db, 'buildathonProjects'), where('buildathonId', '==', eventId)));
       for (const projectDoc of projectSnap.docs) {
@@ -726,7 +726,7 @@ export default function Buildathon() {
       }
 
       await deleteDoc(doc(db, 'buildathons', eventId));
-      toast.success('├ëv├®nement supprim├®');
+      toast.success('Événement supprimé');
     } catch (err) {
       toast.error('Erreur: ' + err.message);
     }
@@ -793,7 +793,7 @@ export default function Buildathon() {
   async function handleRegister(eventId) {
     try {
       await updateDoc(doc(db, 'buildathons', eventId), { participants: arrayUnion(user.uid) });
-      toast.success('Inscrit avec succ├¿s !');
+      toast.success('Inscrit avec succès !');
     } catch (err) {
       toast.error('Erreur: ' + err.message);
     }
@@ -802,7 +802,7 @@ export default function Buildathon() {
   // ---- User: Submit Project (GitHub + demo video mandatory) ----
   async function handleSubmitProject(eventId) {
     if (!newProject.title || !newProject.teamName) {
-      toast.error('Le titre et le nom d\'├®quipe sont obligatoires');
+      toast.error('Le titre et le nom d\'équipe sont obligatoires');
       return;
     }
     if (!newProject.repoUrl) {
@@ -810,7 +810,7 @@ export default function Buildathon() {
       return;
     }
     if (!newProject.demoUrl) {
-      toast.error('Le lien vid├®o d├®mo est obligatoire');
+      toast.error('Le lien vidéo démo est obligatoire');
       return;
     }
     try {
@@ -861,7 +861,7 @@ export default function Buildathon() {
       const eventProjects = projects.filter((p) => p.buildathonId === buildathonId);
       const alreadyVoted = eventProjects.some((p) => p.id !== projectId && p.votes?.includes(user.uid));
       if (alreadyVoted) {
-        toast.error('Vous ne pouvez voter que pour un seul projet par ├®v├®nement');
+        toast.error('Vous ne pouvez voter que pour un seul projet par événement');
         return;
       }
     }
@@ -887,7 +887,7 @@ export default function Buildathon() {
         }
 
         if (lockedProjectId && lockedProjectId !== projectId) {
-          throw new Error('Vous ne pouvez voter que pour un seul projet par ├®v├®nement');
+          throw new Error('Vous ne pouvez voter que pour un seul projet par événement');
         }
 
         const nextVotes = [...votes, user.uid];
@@ -902,9 +902,9 @@ export default function Buildathon() {
       });
 
       if (result.action === 'removed') {
-        toast.success('Vote retir├®');
+        toast.success('Vote retiré');
       } else {
-        toast.success('Vote enregistr├® ! (+10 pts pour ce projet)');
+        toast.success('Vote enregistré ! (+10 pts pour ce projet)');
       }
     } catch (err) {
       toast.error('Erreur: ' + err.message);
@@ -934,7 +934,7 @@ export default function Buildathon() {
             const logRef = doc(collection(db, 'users', member.uid, 'bonusLogs'));
             await setDoc(logRef, {
               points: pointsPerMember,
-              reason: `${event.type === 'hackathon' ? 'Hackathon' : 'Buildathon'} "${event.title}" - Place ${prize.place} (${totalPoints} pts ├À ${memberCount} membre${memberCount > 1 ? 's' : ''})`,
+              reason: `${event.type === 'hackathon' ? 'Hackathon' : 'Buildathon'} "${event.title}" - Place ${prize.place} (${totalPoints} pts à ${memberCount} membre${memberCount > 1 ? 's' : ''})`,
               grantedBy: autoMode ? 'system' : user.uid,
               grantedAt: serverTimestamp(),
             });
@@ -942,7 +942,7 @@ export default function Buildathon() {
         }
       }
       await updateDoc(doc(db, 'buildathons', eventId), { status: 'completed', finalized: true, finalizedAt: serverTimestamp(), finalizedBy: autoMode ? 'system' : user.uid });
-      if (!autoMode) toast.success('├ëv├®nement finalis├® ! Points bonus r├®partis entre les membres.');
+      if (!autoMode) toast.success('Événement finalisé ! Points bonus répartis entre les membres.');
     } catch (err) {
       if (!autoMode) toast.error('Erreur: ' + err.message);
       console.error('Finalize error:', err);
@@ -957,13 +957,13 @@ export default function Buildathon() {
       const friendUid = targetUser?.uid;
       const friendName = targetUser?.name;
       const friendEmail = targetUser?.email;
-      if (!friendUid) { toast.error('Utilisateur non trouv├®'); return; }
-      if (friendUid === user.uid) { toast.error('Vous ne pouvez pas vous inviter vous-m├¬me'); return; }
+      if (!friendUid) { toast.error('Utilisateur non trouvé'); return; }
+      if (friendUid === user.uid) { toast.error('Vous ne pouvez pas vous inviter vous-même'); return; }
 
       // Check if already a member
       const project = projects.find((p) => p.id === projectId);
       if (project?.members?.some((m) => m.uid === friendUid)) {
-        toast.error('Cet utilisateur est d├®j├á membre de l\'├®quipe');
+        toast.error('Cet utilisateur est déjà membre de l\'équipe');
         return;
       }
 
@@ -972,7 +972,7 @@ export default function Buildathon() {
         query(collection(db, 'projectInvitations'), where('projectId', '==', projectId), where('invitedUid', '==', friendUid), where('status', '==', 'pending'))
       );
       if (!existingInvSnap.empty) {
-        toast.error('Une invitation est d├®j├á en attente pour cet utilisateur');
+        toast.error('Une invitation est déjà en attente pour cet utilisateur');
         return;
       }
 
@@ -990,7 +990,7 @@ export default function Buildathon() {
         status: 'pending',
         createdAt: serverTimestamp(),
       });
-      toast.success(`Invitation envoy├®e ├á ${friendName} !`);
+      toast.success(`Invitation envoyée à ${friendName} !`);
       setNewProject((p) => ({ ...p, inviteIdentifier: '' }));
     } catch (err) {
       toast.error('Erreur: ' + err.message);
@@ -1012,7 +1012,7 @@ export default function Buildathon() {
       }
       // Delete the invitation
       await deleteDoc(doc(db, 'projectInvitations', invitation.id));
-      toast.success(`Vous avez rejoint l'├®quipe "${invitation.teamName}" !`);
+      toast.success(`Vous avez rejoint l'équipe "${invitation.teamName}" !`);
     } catch (err) {
       toast.error('Erreur: ' + err.message);
     }
@@ -1022,7 +1022,7 @@ export default function Buildathon() {
   async function handleDeclineInvitation(invitation) {
     try {
       await deleteDoc(doc(db, 'projectInvitations', invitation.id));
-      toast.success('Invitation refus├®e');
+      toast.success('Invitation refusée');
     } catch (err) {
       toast.error('Erreur: ' + err.message);
     }
@@ -1232,7 +1232,7 @@ export default function Buildathon() {
         const now = new Date();
         const end = new Date(endDate);
         const diff = end - now;
-        if (diff <= 0) { setTimeLeft('Termin├®'); return; }
+        if (diff <= 0) { setTimeLeft('Terminé'); return; }
         const d = Math.floor(diff / 86400000);
         const h = Math.floor((diff / 3600000) % 24);
         const m = Math.floor((diff / 60000) % 60);
@@ -1259,14 +1259,14 @@ export default function Buildathon() {
         <div className="flex items-center gap-3">
           <Rocket className="w-8 h-8 text-primary-400" />
           <div>
-            <h1 className="section-title">├ëv├®nements</h1>
-            <p className="section-subtitle">Buildathons & Hackathons ÔÇö participez, votez, gagnez !</p>
+            <h1 className="section-title">Événements</h1>
+            <p className="section-subtitle">Buildathons & Hackathons — participez, votez, gagnez !</p>
           </div>
         </div>
         {isAdmin && (
           <button onClick={() => setShowCreateEvent(true)} className="btn-primary flex items-center gap-2">
             <Plus className="w-4 h-4" />
-            Cr├®er un ├®v├®nement
+            Créer un événement
           </button>
         )}
       </div>
@@ -1275,10 +1275,10 @@ export default function Buildathon() {
       <div className="flex flex-col sm:flex-row gap-3 mb-6">
         <div className="relative flex-1">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
-          <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Rechercher un ├®v├®nement..." className="input-field pl-11 w-full" />
+          <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Rechercher un événement..." className="input-field pl-11 w-full" />
         </div>
         <div className="flex gap-2 overflow-x-auto pb-1">
-          {[{ value: 'all', label: 'Tous' }, { value: 'active', label: 'En cours' }, { value: 'upcoming', label: '├Ç venir' }, { value: 'ended', label: 'Vote' }, { value: 'completed', label: 'Pass├®s' }].map(({ value, label }) => (
+          {[{ value: 'all', label: 'Tous' }, { value: 'active', label: 'En cours' }, { value: 'upcoming', label: 'À venir' }, { value: 'ended', label: 'Vote' }, { value: 'completed', label: 'Passés' }].map(({ value, label }) => (
             <button key={value} onClick={() => setFilterStatus(value)} className={`px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${filterStatus === value ? 'bg-primary-600/20 text-primary-300 border border-primary-500/30' : 'text-body hover:text-heading hover:bg-black/5 dark:hover:bg-white/5'}`}>
               {label}
             </button>
@@ -1288,14 +1288,14 @@ export default function Buildathon() {
 
       <div className="flex flex-col sm:flex-row gap-3 mb-6">
         <div className="flex gap-2 overflow-x-auto pb-1">
-          {[{ value: 'all', label: 'Date: toutes' }, { value: 'upcoming-30', label: 'Date: 30 jours' }, { value: 'this-month', label: 'Date: ce mois' }, { value: 'past', label: 'Date: pass├®s' }, { value: 'undated', label: 'Date: non d├®finie' }].map(({ value, label }) => (
+          {[{ value: 'all', label: 'Date: toutes' }, { value: 'upcoming-30', label: 'Date: 30 jours' }, { value: 'this-month', label: 'Date: ce mois' }, { value: 'past', label: 'Date: passés' }, { value: 'undated', label: 'Date: non définie' }].map(({ value, label }) => (
             <button key={value} onClick={() => setFilterDate(value)} className={`px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${filterDate === value ? 'bg-primary-600/20 text-primary-300 border border-primary-500/30' : 'text-body hover:text-heading hover:bg-black/5 dark:hover:bg-white/5'}`}>
               {label}
             </button>
           ))}
         </div>
         <div className="flex gap-2 overflow-x-auto pb-1">
-          {[{ value: 'all', label: 'Popularit├®: toutes' }, { value: 'high', label: 'Populaire' }, { value: 'medium', label: 'Interm├®diaire' }, { value: 'low', label: 'Faible' }].map(({ value, label }) => (
+          {[{ value: 'all', label: 'Popularité: toutes' }, { value: 'high', label: 'Populaire' }, { value: 'medium', label: 'Intermédiaire' }, { value: 'low', label: 'Faible' }].map(({ value, label }) => (
             <button key={value} onClick={() => setFilterPopularity(value)} className={`px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${filterPopularity === value ? 'bg-accent-600/20 text-accent-300 border border-accent-500/30' : 'text-body hover:text-heading hover:bg-black/5 dark:hover:bg-white/5'}`}>
               {label}
             </button>
@@ -1315,7 +1315,7 @@ export default function Buildathon() {
               <div className="flex items-center justify-between gap-3 flex-wrap">
                 <div className="flex-1 min-w-0">
                   <p className="text-heading font-medium">
-                    <span className="text-primary-400">{inv.invitedByName}</span> vous invite ├á rejoindre l'├®quipe <span className="font-bold">"{inv.teamName}"</span>
+                    <span className="text-primary-400">{inv.invitedByName}</span> vous invite à rejoindre l'équipe <span className="font-bold">"{inv.teamName}"</span>
                   </p>
                   <p className="text-sm text-muted mt-0.5">Projet : {inv.projectTitle}</p>
                 </div>
@@ -1339,7 +1339,7 @@ export default function Buildathon() {
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-bold text-heading flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-primary-400" />
-              Nouvel ├®v├®nement
+              Nouvel événement
             </h2>
             <button onClick={() => setShowCreateEvent(false)} className="text-muted hover:text-heading"><X className="w-5 h-5" /></button>
           </div>
@@ -1361,7 +1361,7 @@ export default function Buildathon() {
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-bold text-heading flex items-center gap-2">
               <Pencil className="w-5 h-5 text-amber-400" />
-              Modifier l'├®v├®nement
+              Modifier l'événement
             </h2>
             <button
               onClick={() => { setShowEditEvent(false); setEditingEventId(null); }}
@@ -1399,17 +1399,17 @@ export default function Buildathon() {
                 <input type="text" value={newProject.title} onChange={(e) => setNewProject((p) => ({ ...p, title: e.target.value }))} className="input-field w-full" placeholder="Nom du projet" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-body mb-1">Nom d'├®quipe *</label>
-                <input type="text" value={newProject.teamName} onChange={(e) => setNewProject((p) => ({ ...p, teamName: e.target.value }))} className="input-field w-full" placeholder="Votre ├®quipe" />
+                <label className="block text-sm font-medium text-body mb-1">Nom d'équipe *</label>
+                <input type="text" value={newProject.teamName} onChange={(e) => setNewProject((p) => ({ ...p, teamName: e.target.value }))} className="input-field w-full" placeholder="Votre équipe" />
               </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-body mb-1">Description</label>
-              <textarea value={newProject.description} onChange={(e) => setNewProject((p) => ({ ...p, description: e.target.value }))} className="input-field w-full h-24 resize-none" placeholder="Technologies, probl├¿me r├®solu..." />
+              <textarea value={newProject.description} onChange={(e) => setNewProject((p) => ({ ...p, description: e.target.value }))} className="input-field w-full h-24 resize-none" placeholder="Technologies, problème résolu..." />
             </div>
             <div className="grid sm:grid-cols-3 gap-3">
               <div>
-                <label className="block text-sm font-medium text-body mb-1">Cat├®gorie</label>
+                <label className="block text-sm font-medium text-body mb-1">Catégorie</label>
                 <select value={newProject.category} onChange={(e) => setNewProject((p) => ({ ...p, category: e.target.value }))} className="input-field w-full">
                   {PROJECT_CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
                 </select>
@@ -1419,7 +1419,7 @@ export default function Buildathon() {
                 <input type="url" value={newProject.repoUrl} onChange={(e) => setNewProject((p) => ({ ...p, repoUrl: e.target.value }))} className="input-field w-full" placeholder="https://github.com/..." required />
               </div>
               <div>
-                <label className="block text-sm font-medium text-body mb-1"><Video className="w-3 h-3 inline mr-1" />Vid├®o d├®mo *</label>
+                <label className="block text-sm font-medium text-body mb-1"><Video className="w-3 h-3 inline mr-1" />Vidéo démo *</label>
                 <input type="url" value={newProject.demoUrl} onChange={(e) => setNewProject((p) => ({ ...p, demoUrl: e.target.value }))} className="input-field w-full" placeholder="https://youtube.com/..." required />
               </div>
             </div>
@@ -1440,13 +1440,13 @@ export default function Buildathon() {
           </div>
           <div className="grid sm:grid-cols-2 gap-3 mb-3">
             <input type="text" value={adminProject.userIdentifier} onChange={(e) => setAdminProject((p) => ({ ...p, userIdentifier: e.target.value }))} className="input-field" placeholder="Email ou ID (UZA-0SOM3ZSZ)" />
-            <input type="text" value={adminProject.teamName} onChange={(e) => setAdminProject((p) => ({ ...p, teamName: e.target.value }))} className="input-field" placeholder="Nom d'├®quipe" />
+            <input type="text" value={adminProject.teamName} onChange={(e) => setAdminProject((p) => ({ ...p, teamName: e.target.value }))} className="input-field" placeholder="Nom d'équipe" />
             <input type="text" value={adminProject.title} onChange={(e) => setAdminProject((p) => ({ ...p, title: e.target.value }))} className="input-field" placeholder="Titre du projet" />
             <select value={adminProject.category} onChange={(e) => setAdminProject((p) => ({ ...p, category: e.target.value }))} className="input-field">
               {PROJECT_CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
             </select>
             <input type="url" value={adminProject.repoUrl} onChange={(e) => setAdminProject((p) => ({ ...p, repoUrl: e.target.value }))} className="input-field" placeholder="Lien GitHub" />
-            <input type="url" value={adminProject.demoUrl} onChange={(e) => setAdminProject((p) => ({ ...p, demoUrl: e.target.value }))} className="input-field" placeholder="Lien d├®mo" />
+            <input type="url" value={adminProject.demoUrl} onChange={(e) => setAdminProject((p) => ({ ...p, demoUrl: e.target.value }))} className="input-field" placeholder="Lien démo" />
           </div>
           <textarea value={adminProject.description} onChange={(e) => setAdminProject((p) => ({ ...p, description: e.target.value }))} className="input-field w-full h-24 resize-none mb-3" placeholder="Description du projet" />
           <div className="flex gap-3 pt-2">
@@ -1461,12 +1461,12 @@ export default function Buildathon() {
         <div className="glass-card p-16 text-center">
           <Rocket className="w-20 h-20 text-muted mx-auto mb-4 opacity-30" />
           <h3 className="text-xl font-bold text-heading mb-2">
-            {searchQuery || filterStatus !== 'all' ? 'Aucun ├®v├®nement trouv├®' : 'Aucun ├®v├®nement pr├®vu pour le moment'}
+            {searchQuery || filterStatus !== 'all' ? 'Aucun événement trouvé' : 'Aucun événement prévu pour le moment'}
           </h3>
           <p className="text-body max-w-md mx-auto">
             {isAdmin
-              ? 'Cr├®ez le premier Buildathon ou Hackathon pour lancer la comp├®tition !'
-              : 'Il n\'y a pas encore de Buildathon ou Hackathon pr├®vu. Revenez bient├┤t pour d├®couvrir les prochains ├®v├®nements !'}
+              ? 'Créez le premier Buildathon ou Hackathon pour lancer la compétition !'
+              : 'Il n\'y a pas encore de Buildathon ou Hackathon prévu. Revenez bientôt pour découvrir les prochains événements !'}
           </p>
         </div>
       ) : (
@@ -1495,7 +1495,7 @@ export default function Buildathon() {
             const canVote = status === 'active' || status === 'ended';
             const canRegister = (status === 'upcoming' || status === 'active') && !isRegistered;
             const typeLabel = event.type === 'hackathon' ? 'Hackathon' : 'Buildathon';
-            const typeIcon = event.type === 'hackathon' ? '­ƒÆ╗' : '­ƒÅù´©Å';
+            const typeIcon = event.type === 'hackathon' ? '💻' : '🏗️';
             const userVotedProject = allEventProjects.find((p) => p.votes?.includes(user?.uid));
 
             return (
