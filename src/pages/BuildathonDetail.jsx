@@ -88,8 +88,9 @@ function isProjectOwnerOrMember(project, uid) {
 
 function isProjectVisibleForParticipant(project, event, uid) {
   const status = getCanonicalProjectStatus(project);
-  if (status === 'rejete') return false;
   if (isProjectOwnerOrMember(project, uid)) return true;
+
+  if (status === 'rejete') return false;
 
   if ((event?.projectVisibility || 'published-only') === 'all-submitted') {
     return status !== 'brouillon';

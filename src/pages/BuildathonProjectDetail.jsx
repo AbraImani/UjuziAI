@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import {
   collection,
   doc,
+  increment,
   onSnapshot,
   query,
   runTransaction,
@@ -58,10 +59,50 @@ function normalizeEvent(raw) {
     votingEnabled: raw.votingEnabled !== false,
     participants: Array.isArray(raw.participants) ? raw.participants : [],
     maxVotesPerUser: Number(raw.maxVotesPerUser) > 0 ? Number(raw.maxVotesPerUser) : 1,
+    projectVisibility: raw.projectVisibility || 'published-only',
   };
 }
 
+function getCanonicalProjectStatus(project = {}) {
+  const raw = String(project.projectStatus || '').toLowerCase();
+  const normalizedRaw = raw
+    .replace('é', 'e')
+    .replace('à', 'a')
+    .replace('û', 'u')
+    .trim();
+
+  if (normalizedRaw === 'brouillon' || normalizedRaw === 'draft') return 'brouillon';
+  if (normalizedRaw === 'soumis' || normalizedRaw === 'submitted' || normalizedRaw === 'pending') return 'soumis';
+  if (normalizedRaw === 'valide' || normalizedRaw === 'validated' || normalizedRaw === 'approved') return 'valide';
+  if (normalizedRaw === 'rejete' || normalizedRaw === 'rejected') return 'rejete';
+  if (normalizedRaw === 'publie' || normalizedRaw === 'published') return 'publie';
+
+  if (project?.moderationStatus === 'rejected') return 'rejete';
+  if (project?.isPublished === true || project?.isPublic === true) return 'publie';
+  if (project?.moderationStatus === 'approved') return 'valide';
+  return 'soumis';
+}
+
+function isProjectOwnerOrMember(project, uid) {
+  if (!uid) return false;
+  if (project?.submittedBy === uid) return true;
+  return Array.isArray(project?.members) && project.members.some((member) => member?.uid === uid);
+}
+
+function isProjectVisibleForParticipant(project, event, uid) {
+  const status = getCanonicalProjectStatus(project);
+  if (isProjectOwnerOrMember(project, uid)) return true;
+
+  if (status === 'rejete') return false;
+
+  if ((event?.projectVisibility || 'published-only') === 'all-submitted') {
+    return status !== 'brouillon';
+  }
+  return status === 'publie';
+}
+
 function normalizeProject(raw) {
+  const projectStatus = getCanonicalProjectStatus(raw);
   const votes = Array.isArray(raw.votes) ? raw.votes : [];
   const likeUserIds = Array.isArray(raw.likeUserIds) ? raw.likeUserIds : [];
   const voteCount = Number.isFinite(Number(raw.voteCount)) ? Number(raw.voteCount) : votes.length;
@@ -79,7 +120,8 @@ function normalizeProject(raw) {
     feedbackCount,
     commentsCount: Number.isFinite(Number(raw.commentsCount)) ? Number(raw.commentsCount) : feedbackCount,
     submittedAt: normalizeDateLike(raw.submittedAt) || normalizeDateLike(raw.createdAt),
-    statusLabel: raw.projectStatus || raw.moderationStatus || raw.status || 'soumis',
+    projectStatus,
+    statusLabel: projectStatus,
   };
 }
 
@@ -118,7 +160,7 @@ function getProjectStack(project) {
 
 export default function BuildathonProjectDetail() {
   const { buildathonId, projectId } = useParams();
-  const { user, userProfile } = useAuth();
+  const { user, userProfile, isAdmin } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [event, setEvent] = useState(null);
@@ -378,6 +420,22 @@ export default function BuildathonProjectDetail() {
         <div className="glass-card p-8 text-center">
           <h1 className="text-2xl font-bold text-heading mb-2">Projet introuvable</h1>
           <p className="text-body mb-6">Ce projet n'existe pas ou n'est plus accessible.</p>
+          <Link to={`/projects/${buildathonId}`} className="btn-primary inline-flex items-center gap-2">
+            <ArrowLeft className="w-4 h-4" />
+            Retour au buildathon
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  const canViewProject = isAdmin || isProjectVisibleForParticipant(project, event, user?.uid);
+  if (!canViewProject) {
+    return (
+      <div className="max-w-4xl mx-auto py-10">
+        <div className="glass-card p-8 text-center">
+          <h1 className="text-2xl font-bold text-heading mb-2">Projet non accessible</h1>
+          <p className="text-body mb-6">Ce projet n'est pas public pour le moment.</p>
           <Link to={`/projects/${buildathonId}`} className="btn-primary inline-flex items-center gap-2">
             <ArrowLeft className="w-4 h-4" />
             Retour au buildathon
