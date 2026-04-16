@@ -1151,6 +1151,54 @@ export default function Buildathon() {
     };
   }
 
+  function getProjectIntegrityWarnings(project) {
+    const warnings = [];
+    const status = getCanonicalProjectStatus(project);
+    const title = (project?.title || '').trim();
+    const teamName = (project?.teamName || '').trim();
+    const hasRepo = Boolean((project?.repoUrl || '').trim());
+    const hasDemo = Boolean((project?.demoUrl || '').trim());
+
+    if (!title) warnings.push('Titre manquant');
+    if (!teamName) warnings.push('Equipe manquante');
+    if (!hasRepo) warnings.push('Repo manquant');
+    if (!hasDemo) warnings.push('Demo manquante');
+
+    const submittedAtMs = toTimestampMs(project?.submittedAt);
+    const createdAtMs = toTimestampMs(project?.createdAt);
+    if (submittedAtMs === null && createdAtMs === null) {
+      warnings.push('submittedAt/createdAt manquant');
+    }
+
+    if (status === 'publie' && (project?.isPublished !== true || project?.isPublic !== true)) {
+      warnings.push('Statut publie mais flags public/published incoherents');
+    }
+
+    if (status !== 'publie' && (project?.isPublished === true || project?.isPublic === true)) {
+      warnings.push('Flags public/published actifs hors statut publie');
+    }
+
+    const voteCount = Number.isFinite(Number(project?.voteCount)) ? Number(project.voteCount) : 0;
+    const votesLength = Array.isArray(project?.votes) ? project.votes.length : 0;
+    if (Number.isFinite(Number(project?.voteCount)) && Array.isArray(project?.votes) && voteCount !== votesLength) {
+      warnings.push('voteCount different de votes.length');
+    }
+
+    const likesCount = Number.isFinite(Number(project?.likesCount)) ? Number(project.likesCount) : 0;
+    const likeUserIdsLength = Array.isArray(project?.likeUserIds) ? project.likeUserIds.length : 0;
+    if (Number.isFinite(Number(project?.likesCount)) && Array.isArray(project?.likeUserIds) && likesCount !== likeUserIdsLength) {
+      warnings.push('likesCount different de likeUserIds.length');
+    }
+
+    const commentsCount = Number.isFinite(Number(project?.commentsCount)) ? Number(project.commentsCount) : 0;
+    const feedbackCount = Number.isFinite(Number(project?.feedbackCount)) ? Number(project.feedbackCount) : 0;
+    if (commentsCount > 0 && feedbackCount > 0 && Math.abs(commentsCount - feedbackCount) > 3) {
+      warnings.push('Ecart notable entre commentsCount et feedbackCount');
+    }
+
+    return warnings;
+  }
+
   function getPopularityBucket(event) {
     const { popularityScore } = getEventPopularityMetrics(event.id, event.participants);
     if (popularityScore >= 20) return 'high';
@@ -1433,6 +1481,13 @@ export default function Buildathon() {
             const metrics = getEventPopularityMetrics(event.id, event.participants);
             const adminSupervisionMetrics = getBuildathonSupervisionMetrics(event, allEventProjects);
             const adminRankingProjects = sortProjectsForRanking(allEventProjects);
+            const integrityWarningsByProject = allEventProjects
+              .map((project) => ({
+                projectId: project.id,
+                title: project.title || 'Sans titre',
+                warnings: getProjectIntegrityWarnings(project),
+              }))
+              .filter((entry) => entry.warnings.length > 0);
             const isExpanded = expandedEvent === event.id;
             const isRegistered = event.participants?.includes(user?.uid);
             const userHasSubmitted = allEventProjects.some((p) => p.submittedBy === user?.uid);
@@ -1642,6 +1697,26 @@ export default function Buildathon() {
                                     })}
                                   </tbody>
                                 </table>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="mt-3 p-3 rounded-lg border border-themed bg-black/5 dark:bg-white/5">
+                            <div className="flex items-center justify-between gap-2 mb-2">
+                              <p className="text-[11px] uppercase tracking-wide text-primary-300">Signaux d'integrite</p>
+                              <p className="text-[11px] text-muted">{integrityWarningsByProject.length} projet(s) avec avertissements</p>
+                            </div>
+
+                            {integrityWarningsByProject.length === 0 ? (
+                              <p className="text-xs text-green-400">Aucun signal d'alerte detecte sur les projets de cet evenement.</p>
+                            ) : (
+                              <div className="space-y-2">
+                                {integrityWarningsByProject.map((entry) => (
+                                  <div key={entry.projectId} className="rounded-md border border-amber-500/20 bg-amber-500/5 px-2.5 py-2">
+                                    <p className="text-xs font-semibold text-heading">{entry.title}</p>
+                                    <p className="text-[11px] text-amber-300">{entry.warnings.join(' • ')}</p>
+                                  </div>
+                                ))}
                               </div>
                             )}
                           </div>
