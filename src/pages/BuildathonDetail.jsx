@@ -51,10 +51,15 @@ function normalizeBuildathonEvent(raw) {
     ...raw,
     participants: Array.isArray(raw.participants) ? raw.participants : [],
     votingEnabled: raw.votingEnabled !== false,
+    rewardsVisible: raw.rewardsVisible !== false,
     startDate: normalizeDateLike(raw.startDate),
     endDate: normalizeDateLike(raw.endDate),
     voteStartDate: normalizeDateLike(raw.voteStartDate) || normalizeDateLike(raw.startDate),
     voteEndDate: normalizeDateLike(raw.voteEndDate) || normalizeDateLike(raw.endDate),
+    participationRules: raw.participationRules || '',
+    evaluationCriteria: raw.evaluationCriteria || '',
+    tieBreakRuleText: raw.tieBreakRuleText || 'En cas d\'égalité, le projet soumis le plus tôt est prioritaire.',
+    prizes: Array.isArray(raw.prizes) ? raw.prizes : [],
     projectVisibility: raw.projectVisibility || 'published-only',
     publicationStatus: raw.publicationStatus || 'published',
   };
@@ -285,6 +290,26 @@ export default function BuildathonDetail() {
                 <p className="text-sm font-medium text-heading">{event.publicationStatus || 'published'}</p>
               </div>
             </div>
+
+            {event.rewardsVisible && event.prizes.length > 0 && (
+              <div className="p-4 rounded-lg bg-black/5 dark:bg-white/5 border border-themed space-y-2">
+                <p className="text-sm font-semibold text-heading">Récompenses</p>
+                <div className="flex flex-wrap gap-2">
+                  {event.prizes
+                    .slice()
+                    .sort((a, b) => (a.place || 0) - (b.place || 0))
+                    .map((prize, idx) => {
+                      const rewardType = prize.rewardType || 'points';
+                      const label = rewardType === 'points' ? `${Number(prize.points || 0)} pts` : (prize.label || 'Récompense');
+                      return (
+                        <span key={`${prize.place || idx}-${label}`} className="text-xs px-2.5 py-1 rounded-full border border-themed bg-surface text-body">
+                          #{prize.place || idx + 1} - {label}
+                        </span>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -360,7 +385,7 @@ export default function BuildathonDetail() {
               <Trophy className="w-5 h-5 text-amber-400" />
               Classement
             </h2>
-            <p className="text-xs text-muted">Tri: votes décroissants. En cas d'égalité, le projet soumis le plus tôt est prioritaire.</p>
+            <p className="text-xs text-muted">Tri: votes décroissants. {event.tieBreakRuleText}</p>
             {sortedProjects.length === 0 ? (
               <p className="text-body">Aucun projet classable pour le moment.</p>
             ) : (
@@ -386,8 +411,20 @@ export default function BuildathonDetail() {
         {activeTab === 'rules' && (
           <div className="space-y-3">
             <h2 className="text-lg font-semibold text-heading">Règles</h2>
-            <p className="text-body">Les règles détaillées de participation seront centralisées ici.</p>
-            <p className="text-xs text-muted">Rappel actuel: un vote par personne selon la configuration de l'événement.</p>
+            <div className="space-y-3">
+              <div className="p-3 rounded-lg bg-black/5 dark:bg-white/5 border border-themed">
+                <p className="text-xs text-muted mb-1">Participation</p>
+                <p className="text-sm text-body">{event.participationRules || 'Aucune règle de participation détaillée pour cet événement.'}</p>
+              </div>
+              <div className="p-3 rounded-lg bg-black/5 dark:bg-white/5 border border-themed">
+                <p className="text-xs text-muted mb-1">Critères d'évaluation</p>
+                <p className="text-sm text-body">{event.evaluationCriteria || 'Aucun critère d\'évaluation détaillé pour cet événement.'}</p>
+              </div>
+              <div className="p-3 rounded-lg bg-black/5 dark:bg-white/5 border border-themed">
+                <p className="text-xs text-muted mb-1">Règle de départage</p>
+                <p className="text-sm text-body">{event.tieBreakRuleText}</p>
+              </div>
+            </div>
           </div>
         )}
 

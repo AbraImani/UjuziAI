@@ -90,6 +90,13 @@ const DEFAULT_PRIZES = [
 
 function toInputDateTime(value) {
   if (!value) return '';
+  if (typeof value === 'string') {
+    // Preserve local datetime strings as-is to avoid timezone drift in datetime-local inputs.
+    const localNoTimezonePattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?$/;
+    if (localNoTimezonePattern.test(value)) {
+      return value.slice(0, 16);
+    }
+  }
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return '';
   const pad = (n) => String(n).padStart(2, '0');
@@ -1281,7 +1288,7 @@ export default function Buildathon() {
                       >
                         Voir le buildathon
                       </Link>
-                      {event.prizes?.length > 0 && (
+                      {event.rewardsVisible !== false && event.prizes?.length > 0 && (
                         <div className="hidden sm:flex items-center gap-1.5">
                           {event.prizes.slice(0, 3).map((p, i) => (
                             <span key={i} className="flex items-center gap-0.5 badge bg-amber-500/10 text-amber-400 border-amber-500/30 text-xs">
@@ -1497,7 +1504,7 @@ export default function Buildathon() {
                       )}
 
                       {/* Prizes */}
-                      {event.prizes?.length > 0 && (
+                      {event.rewardsVisible !== false && event.prizes?.length > 0 && (
                         <div className="mt-6 pt-4 border-t border-themed">
                           <h4 className="text-sm font-semibold text-heading mb-3 flex items-center gap-2"><Award className="w-4 h-4 text-amber-400" />Prix</h4>
                           <div className="flex flex-wrap gap-3">
