@@ -208,6 +208,27 @@ function getProjectStatusBadge(status) {
   return { label: 'Soumis', className: 'bg-amber-500/10 text-amber-400 border-amber-500/30' };
 }
 
+function isProjectOwnerOrMember(project, uid) {
+  if (!uid) return false;
+  if (project?.submittedBy === uid) return true;
+  return Array.isArray(project?.members) && project.members.some((member) => member?.uid === uid);
+}
+
+function isProjectVisibleForParticipant(project, event, uid) {
+  const status = getCanonicalProjectStatus(project);
+  if (status === 'rejete') return false;
+
+  const isOwner = isProjectOwnerOrMember(project, uid);
+  if (isOwner) return true;
+
+  if ((event?.projectVisibility || 'published-only') === 'all-submitted') {
+    return status !== 'brouillon';
+  }
+
+  // Validation/publication-gated mode.
+  return status === 'publie';
+}
+
 function normalizeBuildathonEvent(event) {
   const maxVotesRaw = Number(event.maxVotesPerUser);
   const maxVotesPerUser = Number.isFinite(maxVotesRaw) && maxVotesRaw > 0 ? Math.floor(maxVotesRaw) : 1;
@@ -1336,17 +1357,20 @@ export default function Buildathon() {
           {filteredEvents.map((event) => {
             const status = getEventStatus(event);
             const statusInfo = STATUS_CONFIG[status];
-            const eventProjects = sortProjectsForRanking(projects.filter((p) => p.buildathonId === event.id));
+            const allEventProjects = sortProjectsForRanking(projects.filter((p) => p.buildathonId === event.id));
+            const eventProjects = isAdmin
+              ? allEventProjects
+              : allEventProjects.filter((p) => isProjectVisibleForParticipant(p, event, user?.uid));
             const metrics = getEventPopularityMetrics(event.id, event.participants);
             const isExpanded = expandedEvent === event.id;
             const isRegistered = event.participants?.includes(user?.uid);
-            const userHasSubmitted = eventProjects.some((p) => p.submittedBy === user?.uid);
+            const userHasSubmitted = allEventProjects.some((p) => p.submittedBy === user?.uid);
             const canSubmit = status === 'active' && isRegistered;
             const canVote = status === 'active' || status === 'ended';
             const canRegister = (status === 'upcoming' || status === 'active') && !isRegistered;
             const typeLabel = event.type === 'hackathon' ? 'Hackathon' : 'Buildathon';
             const typeIcon = event.type === 'hackathon' ? '💻' : '🏗️';
-            const userVotedProject = eventProjects.find((p) => p.votes?.includes(user?.uid));
+            const userVotedProject = allEventProjects.find((p) => p.votes?.includes(user?.uid));
 
             return (
               <div key={event.id} className="glass-card overflow-hidden">

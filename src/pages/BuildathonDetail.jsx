@@ -65,6 +65,38 @@ function normalizeBuildathonEvent(raw) {
   };
 }
 
+function getCanonicalProjectStatus(project = {}) {
+  const raw = String(project.projectStatus || '').toLowerCase();
+  const normalizedRaw = raw.replace('é', 'e').trim();
+  if (normalizedRaw === 'brouillon' || normalizedRaw === 'draft') return 'brouillon';
+  if (normalizedRaw === 'soumis' || normalizedRaw === 'submitted' || normalizedRaw === 'pending') return 'soumis';
+  if (normalizedRaw === 'valide' || normalizedRaw === 'validated' || normalizedRaw === 'approved') return 'valide';
+  if (normalizedRaw === 'rejete' || normalizedRaw === 'rejected') return 'rejete';
+  if (normalizedRaw === 'publie' || normalizedRaw === 'published') return 'publie';
+
+  if (project?.moderationStatus === 'rejected') return 'rejete';
+  if (project?.isPublished === true || project?.isPublic === true) return 'publie';
+  if (project?.moderationStatus === 'approved') return 'valide';
+  return 'soumis';
+}
+
+function isProjectOwnerOrMember(project, uid) {
+  if (!uid) return false;
+  if (project?.submittedBy === uid) return true;
+  return Array.isArray(project?.members) && project.members.some((member) => member?.uid === uid);
+}
+
+function isProjectVisibleForParticipant(project, event, uid) {
+  const status = getCanonicalProjectStatus(project);
+  if (status === 'rejete') return false;
+  if (isProjectOwnerOrMember(project, uid)) return true;
+
+  if ((event?.projectVisibility || 'published-only') === 'all-submitted') {
+    return status !== 'brouillon';
+  }
+  return status === 'publie';
+}
+
 function toTimestampMs(value) {
   if (!value) return null;
   if (value?.toDate && typeof value.toDate === 'function') {
@@ -80,10 +112,12 @@ function toTimestampMs(value) {
 function normalizeBuildathonProject(raw) {
   const votes = Array.isArray(raw.votes) ? raw.votes : [];
   const voteCountRaw = Number(raw.voteCount);
+  const projectStatus = getCanonicalProjectStatus(raw);
   return {
     ...raw,
     votes,
     voteCount: Number.isFinite(voteCountRaw) ? voteCountRaw : votes.length,
+    projectStatus,
     likesCount: Number.isFinite(Number(raw.likesCount)) ? Number(raw.likesCount) : 0,
     commentsCount: Number.isFinite(Number(raw.commentsCount)) ? Number(raw.commentsCount) : 0,
     feedbackCount: Number.isFinite(Number(raw.feedbackCount)) ? Number(raw.feedbackCount) : 0,
@@ -139,16 +173,17 @@ function getProjectTags(project) {
 }
 
 function getProjectStatusLabel(project) {
-  if (project?.projectStatus) return project.projectStatus;
-  if (project?.moderationStatus === 'approved') return 'validé';
-  if (project?.moderationStatus === 'rejected') return 'rejeté';
-  if (project?.status) return project.status;
+  const status = getCanonicalProjectStatus(project);
+  if (status === 'publie') return 'publie';
+  if (status === 'valide') return 'valide';
+  if (status === 'rejete') return 'rejete';
+  if (status === 'brouillon') return 'brouillon';
   return 'soumis';
 }
 
 export default function BuildathonDetail() {
   const { buildathonId } = useParams();
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [event, setEvent] = useState(null);
@@ -196,7 +231,12 @@ export default function BuildathonDetail() {
     return TAB_LIST.filter((tab) => !tab.adminOnly || isAdmin);
   }, [isAdmin]);
 
-  const sortedProjects = useMemo(() => sortProjectsForRanking(projects), [projects]);
+  const visibleProjects = useMemo(() => {
+    if (isAdmin) return projects;
+    return projects.filter((project) => isProjectVisibleForParticipant(project, event, user?.uid));
+  }, [projects, event, user?.uid, isAdmin]);
+
+  const sortedProjects = useMemo(() => sortProjectsForRanking(visibleProjects), [visibleProjects]);
 
   if (loading) {
     return (
