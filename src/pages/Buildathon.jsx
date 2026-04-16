@@ -171,6 +171,43 @@ const DEFAULT_BUILDATHON_PROJECT_META = {
   publishedBy: null,
 };
 
+const PROJECT_STATUSES = ['brouillon', 'soumis', 'valide', 'rejete', 'publie'];
+
+function getCanonicalProjectStatus(project = {}) {
+  const raw = String(project.projectStatus || '').toLowerCase();
+  const normalizedRaw = raw
+    .replace('é', 'e')
+    .replace('à', 'a')
+    .replace('û', 'u')
+    .trim();
+
+  if (normalizedRaw === 'brouillon' || normalizedRaw === 'draft') return 'brouillon';
+  if (normalizedRaw === 'soumis' || normalizedRaw === 'submitted' || normalizedRaw === 'pending') return 'soumis';
+  if (normalizedRaw === 'valide' || normalizedRaw === 'validated' || normalizedRaw === 'approved') return 'valide';
+  if (normalizedRaw === 'rejete' || normalizedRaw === 'rejected') return 'rejete';
+  if (normalizedRaw === 'publie' || normalizedRaw === 'published') return 'publie';
+
+  // Legacy fallback mapping for old documents.
+  if (project?.moderationStatus === 'rejected') return 'rejete';
+  if (project?.isPublished === true || project?.isPublic === true) return 'publie';
+  if (project?.moderationStatus === 'approved') return 'valide';
+  return 'soumis';
+}
+
+function getModerationStatusFromProjectStatus(projectStatus) {
+  if (projectStatus === 'valide' || projectStatus === 'publie') return 'approved';
+  if (projectStatus === 'rejete') return 'rejected';
+  return 'pending';
+}
+
+function getProjectStatusBadge(status) {
+  if (status === 'publie') return { label: 'Publie', className: 'bg-green-500/10 text-green-400 border-green-500/30' };
+  if (status === 'valide') return { label: 'Valide', className: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' };
+  if (status === 'rejete') return { label: 'Rejete', className: 'bg-red-500/10 text-red-400 border-red-500/30' };
+  if (status === 'brouillon') return { label: 'Brouillon', className: 'bg-gray-500/10 text-gray-400 border-gray-500/30' };
+  return { label: 'Soumis', className: 'bg-amber-500/10 text-amber-400 border-amber-500/30' };
+}
+
 function normalizeBuildathonEvent(event) {
   const maxVotesRaw = Number(event.maxVotesPerUser);
   const maxVotesPerUser = Number.isFinite(maxVotesRaw) && maxVotesRaw > 0 ? Math.floor(maxVotesRaw) : 1;
@@ -203,16 +240,17 @@ function normalizeBuildathonProject(project) {
   const votes = Array.isArray(project.votes) ? project.votes : [];
   const voteCountRaw = Number(project.voteCount);
   const voteCount = Number.isFinite(voteCountRaw) ? voteCountRaw : votes.length;
+  const projectStatus = getCanonicalProjectStatus(project);
 
   return {
     ...project,
     votes,
     voteCount,
-    projectStatus: project.projectStatus || 'soumis',
-    moderationStatus: project.moderationStatus || 'pending',
+    projectStatus,
+    moderationStatus: getModerationStatusFromProjectStatus(projectStatus),
     moderationNote: project.moderationNote || '',
-    isPublished: project.isPublished === true,
-    isPublic: project.isPublic === true,
+    isPublished: projectStatus === 'publie' ? true : project.isPublished === true,
+    isPublic: projectStatus === 'publie' ? true : project.isPublic === true,
     likesCount: Number.isFinite(Number(project.likesCount)) ? Number(project.likesCount) : 0,
     commentsCount: Number.isFinite(Number(project.commentsCount)) ? Number(project.commentsCount) : 0,
     feedbackCount: Number.isFinite(Number(project.feedbackCount)) ? Number(project.feedbackCount) : 0,
@@ -322,6 +360,7 @@ export default function Buildathon() {
     demoUrl: '',
   });
   const [invitations, setInvitations] = useState([]);
+  const [moderationNotes, setModerationNotes] = useState({});
 
   useEffect(() => {
     const unsubEvents = onSnapshot(
@@ -656,6 +695,63 @@ export default function Buildathon() {
       toast.success('Événement supprimé');
     } catch (err) {
       toast.error('Erreur: ' + err.message);
+    }
+  }
+
+  async function handleModerateProject(project, targetStatus) {
+    if (!isAdmin || !user?.uid || !project?.id) return;
+    if (!PROJECT_STATUSES.includes(targetStatus)) return;
+
+    const currentStatus = getCanonicalProjectStatus(project);
+    if (currentStatus === targetStatus) return;
+
+    if (targetStatus === 'publie' && currentStatus !== 'valide') {
+      toast.error('Un projet doit etre valide avant publication');
+      return;
+    }
+
+    const note = (moderationNotes[project.id] ?? project.moderationNote ?? '').trim();
+    const payload = {
+      projectStatus: targetStatus,
+      moderationStatus: getModerationStatusFromProjectStatus(targetStatus),
+      moderationNote: note,
+      updatedAt: serverTimestamp(),
+      moderatedBy: user.uid,
+      moderatedAt: serverTimestamp(),
+      isPublished: targetStatus === 'publie',
+      isPublic: targetStatus === 'publie',
+    };
+
+    if (targetStatus === 'valide') {
+      payload.validatedAt = serverTimestamp();
+      payload.validatedBy = user.uid;
+      payload.rejectedAt = null;
+      payload.rejectedBy = null;
+      if (currentStatus === 'publie') {
+        payload.publishedAt = null;
+        payload.publishedBy = null;
+      }
+    }
+
+    if (targetStatus === 'rejete') {
+      payload.rejectedAt = serverTimestamp();
+      payload.rejectedBy = user.uid;
+      payload.publishedAt = null;
+      payload.publishedBy = null;
+    }
+
+    if (targetStatus === 'publie') {
+      payload.publishedAt = serverTimestamp();
+      payload.publishedBy = user.uid;
+      payload.validatedAt = project.validatedAt || serverTimestamp();
+      payload.validatedBy = project.validatedBy || user.uid;
+    }
+
+    try {
+      await updateDoc(doc(db, 'buildathonProjects', project.id), payload);
+      toast.success(`Projet passe a l'etat ${getProjectStatusBadge(targetStatus).label}`);
+    } catch (err) {
+      toast.error('Erreur moderation: ' + err.message);
     }
   }
 
@@ -1390,6 +1486,8 @@ export default function Buildathon() {
                             const hasVoted = project.votes?.includes(user?.uid);
                             const isOwn = project.submittedBy === user?.uid;
                             const categoryInfo = PROJECT_CATEGORIES.find((c) => c.value === project.category);
+                            const projectStatus = getCanonicalProjectStatus(project);
+                            const statusBadge = getProjectStatusBadge(projectStatus);
                             const isWinner = event.finalized && index < (event.prizes?.length || 3);
                             const canUserVote = canVote && !isOwn && (!userVotedProject || hasVoted);
                             const votePoints = (project.voteCount || 0) * 10;
@@ -1406,6 +1504,7 @@ export default function Buildathon() {
                                       {isWinner && index > 0 && <Award className="w-4 h-4 text-amber-500" />}
                                       <span className="font-semibold text-heading">{project.title}</span>
                                       {categoryInfo && <span className={`badge text-xs border ${categoryInfo.color}`}>{categoryInfo.label}</span>}
+                                      {(isOwn || isAdmin) && <span className={`badge text-[10px] border ${statusBadge.className}`}>{statusBadge.label}</span>}
                                       {isOwn && <span className="badge-primary text-[10px]">Votre projet</span>}
                                     </div>
                                     {project.description && <p className="text-sm text-body mb-2 line-clamp-2">{project.description}</p>}
@@ -1475,6 +1574,53 @@ export default function Buildathon() {
                                     {!isOwn && project.members?.some((m) => m.uid === user?.uid) && (
                                       <div className="mt-2">
                                         <span className="text-xs text-green-400 flex items-center gap-1"><UserCheck className="w-3 h-3" />Vous êtes membre de cette équipe</span>
+                                      </div>
+                                    )}
+
+                                    {isAdmin && (
+                                      <div className="mt-3 p-3 rounded-lg bg-black/5 dark:bg-white/5 border border-themed space-y-2">
+                                        <p className="text-[11px] uppercase tracking-wide text-primary-300">Moderation</p>
+                                        <textarea
+                                          value={moderationNotes[project.id] ?? project.moderationNote ?? ''}
+                                          onChange={(e) => setModerationNotes((prev) => ({ ...prev, [project.id]: e.target.value }))}
+                                          className="input-field w-full h-16 resize-none text-xs"
+                                          placeholder="Note de moderation (optionnelle)"
+                                          onClick={(e) => e.stopPropagation()}
+                                        />
+                                        <div className="flex flex-wrap gap-2">
+                                          {(projectStatus === 'brouillon' || projectStatus === 'soumis' || projectStatus === 'rejete') && (
+                                            <button
+                                              onClick={(e) => { e.stopPropagation(); handleModerateProject(project, 'valide'); }}
+                                              className="text-xs px-2 py-1 rounded-md border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
+                                            >
+                                              Valider
+                                            </button>
+                                          )}
+                                          {projectStatus !== 'rejete' && (
+                                            <button
+                                              onClick={(e) => { e.stopPropagation(); handleModerateProject(project, 'rejete'); }}
+                                              className="text-xs px-2 py-1 rounded-md border border-red-500/30 text-red-400 hover:bg-red-500/10"
+                                            >
+                                              Rejeter
+                                            </button>
+                                          )}
+                                          {projectStatus === 'valide' && (
+                                            <button
+                                              onClick={(e) => { e.stopPropagation(); handleModerateProject(project, 'publie'); }}
+                                              className="text-xs px-2 py-1 rounded-md border border-green-500/30 text-green-400 hover:bg-green-500/10"
+                                            >
+                                              Publier
+                                            </button>
+                                          )}
+                                          {projectStatus === 'publie' && (
+                                            <button
+                                              onClick={(e) => { e.stopPropagation(); handleModerateProject(project, 'valide'); }}
+                                              className="text-xs px-2 py-1 rounded-md border border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
+                                            >
+                                              Depublier
+                                            </button>
+                                          )}
+                                        </div>
                                       </div>
                                     )}
                                   </div>
