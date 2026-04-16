@@ -19,6 +19,7 @@ import toast from 'react-hot-toast';
 import {
   ArrowLeft,
   Calendar,
+  Copy,
   ExternalLink,
   FileText,
   Flag,
@@ -26,6 +27,7 @@ import {
   Heart,
   Loader2,
   MessageSquare,
+  Share2,
   Send,
   ThumbsUp,
   Users,
@@ -199,6 +201,7 @@ export default function BuildathonProjectDetail() {
   const [reportDetails, setReportDetails] = useState({});
   const [moderatingCommentId, setModeratingCommentId] = useState(null);
   const [expandedReportsCommentId, setExpandedReportsCommentId] = useState(null);
+  const [copyingShareLink, setCopyingShareLink] = useState(false);
 
   useEffect(() => {
     if (!buildathonId || !projectId) {
@@ -549,6 +552,28 @@ export default function BuildathonProjectDetail() {
     }
   }
 
+  async function handleCopyShareLink(shareUrl) {
+    if (!shareUrl || copyingShareLink) return;
+    setCopyingShareLink(true);
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareUrl);
+      } else {
+        const tempInput = document.createElement('textarea');
+        tempInput.value = shareUrl;
+        document.body.appendChild(tempInput);
+        tempInput.select();
+        document.execCommand('copy');
+        document.body.removeChild(tempInput);
+      }
+      toast.success('Lien du projet copié');
+    } catch (error) {
+      toast.error('Impossible de copier le lien');
+    } finally {
+      setCopyingShareLink(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
@@ -590,6 +615,14 @@ export default function BuildathonProjectDetail() {
 
   const tags = getProjectTags(project);
   const stack = getProjectStack(project);
+  const isPubliclyShareable = getCanonicalProjectStatus(project) === 'publie';
+  const shareUrl = typeof window !== 'undefined'
+    ? `${window.location.origin}/projects/${buildathonId}/project/${project.id}`
+    : '';
+  const shareText = `Découvrez ce projet Buildathon: ${project.title}`;
+  const whatsappShareUrl = `https://wa.me/?text=${encodeURIComponent(`${shareText} ${shareUrl}`)}`;
+  const xShareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`;
+  const linkedinShareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`;
   const feedbackCount = Math.max(
     Number(project.feedbackCount || 0),
     Number(project.commentsCount || 0),
@@ -707,6 +740,58 @@ export default function BuildathonProjectDetail() {
             <MessageSquare className="w-4 h-4" />
             Feedback ({feedbackCount})
           </span>
+        </div>
+
+        <div className="pt-3 border-t border-themed space-y-2">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <p className="text-xs text-muted inline-flex items-center gap-1.5">
+              <Share2 className="w-3.5 h-3.5" />
+              Partage du projet
+            </p>
+            {!isPubliclyShareable && (
+              <p className="text-[11px] text-amber-400">Lien partageable activé uniquement pour les projets publiés.</p>
+            )}
+          </div>
+
+          {isPubliclyShareable ? (
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => handleCopyShareLink(shareUrl)}
+                disabled={copyingShareLink}
+                className="px-3 py-1.5 rounded-lg border border-themed text-xs text-body hover:text-heading hover:bg-black/5 dark:hover:bg-white/5 disabled:opacity-60 inline-flex items-center gap-1.5"
+              >
+                <Copy className="w-3.5 h-3.5" />
+                {copyingShareLink ? 'Copie...' : 'Copier le lien'}
+              </button>
+              <a
+                href={whatsappShareUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3 py-1.5 rounded-lg border border-themed text-xs text-body hover:text-heading hover:bg-black/5 dark:hover:bg-white/5"
+              >
+                WhatsApp
+              </a>
+              <a
+                href={xShareUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3 py-1.5 rounded-lg border border-themed text-xs text-body hover:text-heading hover:bg-black/5 dark:hover:bg-white/5"
+              >
+                X
+              </a>
+              <a
+                href={linkedinShareUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3 py-1.5 rounded-lg border border-themed text-xs text-body hover:text-heading hover:bg-black/5 dark:hover:bg-white/5"
+              >
+                LinkedIn
+              </a>
+            </div>
+          ) : (
+            <p className="text-xs text-muted">Publiez ce projet pour activer le partage public et obtenir des votes.</p>
+          )}
         </div>
       </div>
 
