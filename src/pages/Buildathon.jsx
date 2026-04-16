@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+﻿import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
   collection,
@@ -43,7 +43,6 @@ import {
   Timer,
   ChevronDown,
   ChevronUp,
-  ChevronRight,
   Globe,
   Video,
   Rocket,
@@ -55,8 +54,8 @@ import {
 } from 'lucide-react';
 
 const EVENT_TYPES = [
-  { value: 'buildathon', label: 'Buildathon', icon: '🏗️' },
-  { value: 'hackathon', label: 'Hackathon', icon: '💻' },
+  { value: 'buildathon', label: 'Buildathon', icon: '­ƒÅù´©Å' },
+  { value: 'hackathon', label: 'Hackathon', icon: '­ƒÆ╗' },
 ];
 
 const PROJECT_CATEGORIES = [
@@ -77,10 +76,10 @@ function getEventStatus(b) {
 }
 
 const STATUS_CONFIG = {
-  upcoming: { label: 'À venir', color: 'bg-blue-500/10 text-blue-400 border-blue-500/30', dot: 'bg-blue-400' },
+  upcoming: { label: '├Ç venir', color: 'bg-blue-500/10 text-blue-400 border-blue-500/30', dot: 'bg-blue-400' },
   active: { label: 'En cours', color: 'bg-green-500/10 text-green-400 border-green-500/30', dot: 'bg-green-400' },
   ended: { label: 'Vote ouvert', color: 'bg-amber-500/10 text-amber-400 border-amber-500/30', dot: 'bg-amber-400' },
-  completed: { label: 'Terminé', color: 'bg-gray-500/10 text-gray-400 border-gray-500/30', dot: 'bg-gray-400' },
+  completed: { label: 'Termin├®', color: 'bg-gray-500/10 text-gray-400 border-gray-500/30', dot: 'bg-gray-400' },
 };
 
 const DEFAULT_PRIZES = [
@@ -105,9 +104,9 @@ function toInputDateTime(value) {
 }
 
 function formatEventDate(value) {
-  if (!value) return 'Date non définie';
+  if (!value) return 'Date non d├®finie';
   const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return 'Date non définie';
+  if (Number.isNaN(d.getTime())) return 'Date non d├®finie';
   return d.toLocaleString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
@@ -147,7 +146,7 @@ const DEFAULT_BUILDATHON_CONFIG = {
   voteEndDate: null,
   participationRules: '',
   evaluationCriteria: '',
-  tieBreakRuleText: 'En cas d\'égalité, le projet soumis le plus tôt est prioritaire.',
+  tieBreakRuleText: 'En cas d\'├®galit├®, le projet soumis le plus t├┤t est prioritaire.',
   rewardsVisible: true,
   projectVisibility: 'published-only',
   submissionOpen: true,
@@ -177,9 +176,9 @@ const PROJECT_STATUSES = ['brouillon', 'soumis', 'valide', 'rejete', 'publie'];
 function getCanonicalProjectStatus(project = {}) {
   const raw = String(project.projectStatus || '').toLowerCase();
   const normalizedRaw = raw
-    .replace('é', 'e')
-    .replace('à', 'a')
-    .replace('û', 'u')
+    .replace('├®', 'e')
+    .replace('├á', 'a')
+    .replace('├╗', 'u')
     .trim();
 
   if (normalizedRaw === 'brouillon' || normalizedRaw === 'draft') return 'brouillon';
@@ -250,7 +249,7 @@ function normalizeBuildathonEvent(event) {
     voteEndDate: safeVoteEndDate,
     participationRules: event.participationRules || '',
     evaluationCriteria: event.evaluationCriteria || '',
-    tieBreakRuleText: event.tieBreakRuleText || 'En cas d\'égalité, le projet soumis le plus tôt est prioritaire.',
+    tieBreakRuleText: event.tieBreakRuleText || 'En cas d\'├®galit├®, le projet soumis le plus t├┤t est prioritaire.',
     rewardsVisible: event.rewardsVisible !== false,
     projectVisibility: event.projectVisibility || 'published-only',
     submissionOpen: event.submissionOpen !== false,
@@ -440,7 +439,7 @@ export default function Buildathon() {
   async function handleCreateEvent(e) {
     e.preventDefault();
     if (!newEvent.title || !newEvent.startDate || !newEvent.endDate) {
-      toast.error('Titre, date de début et date de fin sont obligatoires');
+      toast.error('Titre, date de d├®but et date de fin sont obligatoires');
       return;
     }
     try {
@@ -470,7 +469,7 @@ export default function Buildathon() {
         voteEndDate: normalizeDateLike(newEvent.voteEndDate) || normalizeDateLike(newEvent.endDate),
         participationRules: (newEvent.participationRules || '').trim(),
         evaluationCriteria: (newEvent.evaluationCriteria || '').trim(),
-        tieBreakRuleText: (newEvent.tieBreakRuleText || '').trim() || 'En cas d\'égalité, le projet soumis le plus tôt est prioritaire.',
+        tieBreakRuleText: (newEvent.tieBreakRuleText || '').trim() || 'En cas d\'├®galit├®, le projet soumis le plus t├┤t est prioritaire.',
         rewardsVisible: newEvent.rewardsVisible !== false,
         projectVisibility: newEvent.projectVisibility || 'published-only',
         submissionOpen: newEvent.submissionOpen !== false,
@@ -484,7 +483,7 @@ export default function Buildathon() {
         publishedAt: serverTimestamp(),
         finalized: false,
       });
-      toast.success(`${newEvent.type === 'hackathon' ? 'Hackathon' : 'Buildathon'} créé !`);
+      toast.success(`${newEvent.type === 'hackathon' ? 'Hackathon' : 'Buildathon'} cr├®├® !`);
       setShowCreateEvent(false);
       setNewEvent({ type: 'buildathon', title: '', description: '', status: 'active', startDate: '', endDate: '', workDuration: '', maxTeamSize: 4, prizes: DEFAULT_PRIZES, ...DEFAULT_BUILDATHON_CONFIG });
     } catch (err) {
@@ -516,7 +515,7 @@ export default function Buildathon() {
       voteEndDate: toInputDateTime(event.voteEndDate || event.endDate),
       participationRules: event.participationRules || '',
       evaluationCriteria: event.evaluationCriteria || '',
-      tieBreakRuleText: event.tieBreakRuleText || 'En cas d\'égalité, le projet soumis le plus tôt est prioritaire.',
+      tieBreakRuleText: event.tieBreakRuleText || 'En cas d\'├®galit├®, le projet soumis le plus t├┤t est prioritaire.',
       rewardsVisible: event.rewardsVisible !== false,
       projectVisibility: event.projectVisibility || 'published-only',
       submissionOpen: event.submissionOpen !== false,
@@ -539,7 +538,7 @@ export default function Buildathon() {
     e.preventDefault();
     if (!editingEventId) return;
     if (!editEvent.title || !editEvent.startDate || !editEvent.endDate) {
-      toast.error('Titre, date de début et date de fin sont obligatoires');
+      toast.error('Titre, date de d├®but et date de fin sont obligatoires');
       return;
     }
     try {
@@ -568,7 +567,7 @@ export default function Buildathon() {
         voteEndDate: normalizeDateLike(editEvent.voteEndDate) || normalizeDateLike(editEvent.endDate),
         participationRules: (editEvent.participationRules || '').trim(),
         evaluationCriteria: (editEvent.evaluationCriteria || '').trim(),
-        tieBreakRuleText: (editEvent.tieBreakRuleText || '').trim() || 'En cas d\'égalité, le projet soumis le plus tôt est prioritaire.',
+        tieBreakRuleText: (editEvent.tieBreakRuleText || '').trim() || 'En cas d\'├®galit├®, le projet soumis le plus t├┤t est prioritaire.',
         rewardsVisible: editEvent.rewardsVisible !== false,
         projectVisibility: editEvent.projectVisibility || 'published-only',
         submissionOpen: editEvent.submissionOpen !== false,
@@ -576,7 +575,7 @@ export default function Buildathon() {
         updatedAt: serverTimestamp(),
         updatedBy: user.uid,
       });
-      toast.success('Événement mis à jour avec succès');
+      toast.success('├ëv├®nement mis ├á jour avec succ├¿s');
       setShowEditEvent(false);
       setEditingEventId(null);
     } catch (err) {
@@ -622,7 +621,7 @@ export default function Buildathon() {
 
   async function handleAdminAddProject(eventId) {
     if (!adminProject.userIdentifier || !adminProject.title || !adminProject.teamName || !adminProject.repoUrl || !adminProject.demoUrl) {
-      toast.error('Complétez utilisateur, titre, équipe, GitHub et démo');
+      toast.error('Compl├®tez utilisateur, titre, ├®quipe, GitHub et d├®mo');
       return;
     }
     try {
@@ -648,7 +647,7 @@ export default function Buildathon() {
         commentsCount: 0,
         feedbackCount: 0,
         likeUserIds: [],
-        projectStatus: 'publié',
+        projectStatus: 'publi├®',
         moderationStatus: 'approved',
         moderationNote: '',
         isPublished: true,
@@ -664,7 +663,7 @@ export default function Buildathon() {
       });
 
       await updateDoc(doc(db, 'buildathons', eventId), { participants: arrayUnion(targetUser.uid) });
-      toast.success(`Projet ajouté pour ${targetUser.name}`);
+      toast.success(`Projet ajout├® pour ${targetUser.name}`);
       setShowAdminProjectForm(null);
       setAdminProject({ userIdentifier: '', title: '', description: '', category: 'web', teamName: '', repoUrl: '', demoUrl: '' });
     } catch (err) {
@@ -696,7 +695,7 @@ export default function Buildathon() {
         const logRef = doc(collection(db, 'users', member.uid, 'bonusLogs'));
         await setDoc(logRef, {
           points: pointsPerMember,
-          reason: `${event.type === 'hackathon' ? 'Hackathon' : 'Buildathon'} "${event.title}" - Attribution manuelle place ${rankIndex + 1} (${totalPoints} pts ÷ ${memberCount} membre${memberCount > 1 ? 's' : ''})`,
+          reason: `${event.type === 'hackathon' ? 'Hackathon' : 'Buildathon'} "${event.title}" - Attribution manuelle place ${rankIndex + 1} (${totalPoints} pts ├À ${memberCount} membre${memberCount > 1 ? 's' : ''})`,
           grantedBy: user.uid,
           grantedAt: serverTimestamp(),
         });
@@ -707,14 +706,14 @@ export default function Buildathon() {
         manualPrizeGrantedBy: user.uid,
         manualPrizeGrantedPoints: totalPoints,
       });
-      toast.success(`Bonus attribué: +${totalPoints} pts`);
+      toast.success(`Bonus attribu├®: +${totalPoints} pts`);
     } catch (err) {
       toast.error('Erreur: ' + err.message);
     }
   }
 
   async function handleDeleteEvent(eventId) {
-    if (!confirm('Supprimer cet événement ? Cette action supprimera aussi les projets et invitations liés.')) return;
+    if (!confirm('Supprimer cet ├®v├®nement ? Cette action supprimera aussi les projets et invitations li├®s.')) return;
     try {
       const projectSnap = await getDocs(query(collection(db, 'buildathonProjects'), where('buildathonId', '==', eventId)));
       for (const projectDoc of projectSnap.docs) {
@@ -727,7 +726,7 @@ export default function Buildathon() {
       }
 
       await deleteDoc(doc(db, 'buildathons', eventId));
-      toast.success('Événement supprimé');
+      toast.success('├ëv├®nement supprim├®');
     } catch (err) {
       toast.error('Erreur: ' + err.message);
     }
@@ -794,7 +793,7 @@ export default function Buildathon() {
   async function handleRegister(eventId) {
     try {
       await updateDoc(doc(db, 'buildathons', eventId), { participants: arrayUnion(user.uid) });
-      toast.success('Inscrit avec succès !');
+      toast.success('Inscrit avec succ├¿s !');
     } catch (err) {
       toast.error('Erreur: ' + err.message);
     }
@@ -803,7 +802,7 @@ export default function Buildathon() {
   // ---- User: Submit Project (GitHub + demo video mandatory) ----
   async function handleSubmitProject(eventId) {
     if (!newProject.title || !newProject.teamName) {
-      toast.error('Le titre et le nom d\'équipe sont obligatoires');
+      toast.error('Le titre et le nom d\'├®quipe sont obligatoires');
       return;
     }
     if (!newProject.repoUrl) {
@@ -811,7 +810,7 @@ export default function Buildathon() {
       return;
     }
     if (!newProject.demoUrl) {
-      toast.error('Le lien vidéo démo est obligatoire');
+      toast.error('Le lien vid├®o d├®mo est obligatoire');
       return;
     }
     try {
@@ -862,7 +861,7 @@ export default function Buildathon() {
       const eventProjects = projects.filter((p) => p.buildathonId === buildathonId);
       const alreadyVoted = eventProjects.some((p) => p.id !== projectId && p.votes?.includes(user.uid));
       if (alreadyVoted) {
-        toast.error('Vous ne pouvez voter que pour un seul projet par événement');
+        toast.error('Vous ne pouvez voter que pour un seul projet par ├®v├®nement');
         return;
       }
     }
@@ -888,7 +887,7 @@ export default function Buildathon() {
         }
 
         if (lockedProjectId && lockedProjectId !== projectId) {
-          throw new Error('Vous ne pouvez voter que pour un seul projet par événement');
+          throw new Error('Vous ne pouvez voter que pour un seul projet par ├®v├®nement');
         }
 
         const nextVotes = [...votes, user.uid];
@@ -903,9 +902,9 @@ export default function Buildathon() {
       });
 
       if (result.action === 'removed') {
-        toast.success('Vote retiré');
+        toast.success('Vote retir├®');
       } else {
-        toast.success('Vote enregistré ! (+10 pts pour ce projet)');
+        toast.success('Vote enregistr├® ! (+10 pts pour ce projet)');
       }
     } catch (err) {
       toast.error('Erreur: ' + err.message);
@@ -935,7 +934,7 @@ export default function Buildathon() {
             const logRef = doc(collection(db, 'users', member.uid, 'bonusLogs'));
             await setDoc(logRef, {
               points: pointsPerMember,
-              reason: `${event.type === 'hackathon' ? 'Hackathon' : 'Buildathon'} "${event.title}" - Place ${prize.place} (${totalPoints} pts ÷ ${memberCount} membre${memberCount > 1 ? 's' : ''})`,
+              reason: `${event.type === 'hackathon' ? 'Hackathon' : 'Buildathon'} "${event.title}" - Place ${prize.place} (${totalPoints} pts ├À ${memberCount} membre${memberCount > 1 ? 's' : ''})`,
               grantedBy: autoMode ? 'system' : user.uid,
               grantedAt: serverTimestamp(),
             });
@@ -943,7 +942,7 @@ export default function Buildathon() {
         }
       }
       await updateDoc(doc(db, 'buildathons', eventId), { status: 'completed', finalized: true, finalizedAt: serverTimestamp(), finalizedBy: autoMode ? 'system' : user.uid });
-      if (!autoMode) toast.success('Événement finalisé ! Points bonus répartis entre les membres.');
+      if (!autoMode) toast.success('├ëv├®nement finalis├® ! Points bonus r├®partis entre les membres.');
     } catch (err) {
       if (!autoMode) toast.error('Erreur: ' + err.message);
       console.error('Finalize error:', err);
@@ -958,13 +957,13 @@ export default function Buildathon() {
       const friendUid = targetUser?.uid;
       const friendName = targetUser?.name;
       const friendEmail = targetUser?.email;
-      if (!friendUid) { toast.error('Utilisateur non trouvé'); return; }
-      if (friendUid === user.uid) { toast.error('Vous ne pouvez pas vous inviter vous-même'); return; }
+      if (!friendUid) { toast.error('Utilisateur non trouv├®'); return; }
+      if (friendUid === user.uid) { toast.error('Vous ne pouvez pas vous inviter vous-m├¬me'); return; }
 
       // Check if already a member
       const project = projects.find((p) => p.id === projectId);
       if (project?.members?.some((m) => m.uid === friendUid)) {
-        toast.error('Cet utilisateur est déjà membre de l\'équipe');
+        toast.error('Cet utilisateur est d├®j├á membre de l\'├®quipe');
         return;
       }
 
@@ -973,7 +972,7 @@ export default function Buildathon() {
         query(collection(db, 'projectInvitations'), where('projectId', '==', projectId), where('invitedUid', '==', friendUid), where('status', '==', 'pending'))
       );
       if (!existingInvSnap.empty) {
-        toast.error('Une invitation est déjà en attente pour cet utilisateur');
+        toast.error('Une invitation est d├®j├á en attente pour cet utilisateur');
         return;
       }
 
@@ -991,7 +990,7 @@ export default function Buildathon() {
         status: 'pending',
         createdAt: serverTimestamp(),
       });
-      toast.success(`Invitation envoyée à ${friendName} !`);
+      toast.success(`Invitation envoy├®e ├á ${friendName} !`);
       setNewProject((p) => ({ ...p, inviteIdentifier: '' }));
     } catch (err) {
       toast.error('Erreur: ' + err.message);
@@ -1013,7 +1012,7 @@ export default function Buildathon() {
       }
       // Delete the invitation
       await deleteDoc(doc(db, 'projectInvitations', invitation.id));
-      toast.success(`Vous avez rejoint l'équipe "${invitation.teamName}" !`);
+      toast.success(`Vous avez rejoint l'├®quipe "${invitation.teamName}" !`);
     } catch (err) {
       toast.error('Erreur: ' + err.message);
     }
@@ -1023,7 +1022,7 @@ export default function Buildathon() {
   async function handleDeclineInvitation(invitation) {
     try {
       await deleteDoc(doc(db, 'projectInvitations', invitation.id));
-      toast.success('Invitation refusée');
+      toast.success('Invitation refus├®e');
     } catch (err) {
       toast.error('Erreur: ' + err.message);
     }
@@ -1233,7 +1232,7 @@ export default function Buildathon() {
         const now = new Date();
         const end = new Date(endDate);
         const diff = end - now;
-        if (diff <= 0) { setTimeLeft('Terminé'); return; }
+        if (diff <= 0) { setTimeLeft('Termin├®'); return; }
         const d = Math.floor(diff / 86400000);
         const h = Math.floor((diff / 3600000) % 24);
         const m = Math.floor((diff / 60000) % 60);
@@ -1260,14 +1259,14 @@ export default function Buildathon() {
         <div className="flex items-center gap-3">
           <Rocket className="w-8 h-8 text-primary-400" />
           <div>
-            <h1 className="section-title">Événements</h1>
-            <p className="section-subtitle">Buildathons & Hackathons — participez, votez, gagnez !</p>
+            <h1 className="section-title">├ëv├®nements</h1>
+            <p className="section-subtitle">Buildathons & Hackathons ÔÇö participez, votez, gagnez !</p>
           </div>
         </div>
         {isAdmin && (
           <button onClick={() => setShowCreateEvent(true)} className="btn-primary flex items-center gap-2">
             <Plus className="w-4 h-4" />
-            Créer un événement
+            Cr├®er un ├®v├®nement
           </button>
         )}
       </div>
@@ -1276,10 +1275,10 @@ export default function Buildathon() {
       <div className="flex flex-col sm:flex-row gap-3 mb-6">
         <div className="relative flex-1">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
-          <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Rechercher un événement..." className="input-field pl-11 w-full" />
+          <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Rechercher un ├®v├®nement..." className="input-field pl-11 w-full" />
         </div>
         <div className="flex gap-2 overflow-x-auto pb-1">
-          {[{ value: 'all', label: 'Tous' }, { value: 'active', label: 'En cours' }, { value: 'upcoming', label: 'À venir' }, { value: 'ended', label: 'Vote' }, { value: 'completed', label: 'Passés' }].map(({ value, label }) => (
+          {[{ value: 'all', label: 'Tous' }, { value: 'active', label: 'En cours' }, { value: 'upcoming', label: '├Ç venir' }, { value: 'ended', label: 'Vote' }, { value: 'completed', label: 'Pass├®s' }].map(({ value, label }) => (
             <button key={value} onClick={() => setFilterStatus(value)} className={`px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${filterStatus === value ? 'bg-primary-600/20 text-primary-300 border border-primary-500/30' : 'text-body hover:text-heading hover:bg-black/5 dark:hover:bg-white/5'}`}>
               {label}
             </button>
@@ -1289,14 +1288,14 @@ export default function Buildathon() {
 
       <div className="flex flex-col sm:flex-row gap-3 mb-6">
         <div className="flex gap-2 overflow-x-auto pb-1">
-          {[{ value: 'all', label: 'Date: toutes' }, { value: 'upcoming-30', label: 'Date: 30 jours' }, { value: 'this-month', label: 'Date: ce mois' }, { value: 'past', label: 'Date: passés' }, { value: 'undated', label: 'Date: non définie' }].map(({ value, label }) => (
+          {[{ value: 'all', label: 'Date: toutes' }, { value: 'upcoming-30', label: 'Date: 30 jours' }, { value: 'this-month', label: 'Date: ce mois' }, { value: 'past', label: 'Date: pass├®s' }, { value: 'undated', label: 'Date: non d├®finie' }].map(({ value, label }) => (
             <button key={value} onClick={() => setFilterDate(value)} className={`px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${filterDate === value ? 'bg-primary-600/20 text-primary-300 border border-primary-500/30' : 'text-body hover:text-heading hover:bg-black/5 dark:hover:bg-white/5'}`}>
               {label}
             </button>
           ))}
         </div>
         <div className="flex gap-2 overflow-x-auto pb-1">
-          {[{ value: 'all', label: 'Popularité: toutes' }, { value: 'high', label: 'Populaire' }, { value: 'medium', label: 'Intermédiaire' }, { value: 'low', label: 'Faible' }].map(({ value, label }) => (
+          {[{ value: 'all', label: 'Popularit├®: toutes' }, { value: 'high', label: 'Populaire' }, { value: 'medium', label: 'Interm├®diaire' }, { value: 'low', label: 'Faible' }].map(({ value, label }) => (
             <button key={value} onClick={() => setFilterPopularity(value)} className={`px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${filterPopularity === value ? 'bg-accent-600/20 text-accent-300 border border-accent-500/30' : 'text-body hover:text-heading hover:bg-black/5 dark:hover:bg-white/5'}`}>
               {label}
             </button>
@@ -1316,7 +1315,7 @@ export default function Buildathon() {
               <div className="flex items-center justify-between gap-3 flex-wrap">
                 <div className="flex-1 min-w-0">
                   <p className="text-heading font-medium">
-                    <span className="text-primary-400">{inv.invitedByName}</span> vous invite à rejoindre l'équipe <span className="font-bold">"{inv.teamName}"</span>
+                    <span className="text-primary-400">{inv.invitedByName}</span> vous invite ├á rejoindre l'├®quipe <span className="font-bold">"{inv.teamName}"</span>
                   </p>
                   <p className="text-sm text-muted mt-0.5">Projet : {inv.projectTitle}</p>
                 </div>
@@ -1340,7 +1339,7 @@ export default function Buildathon() {
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-bold text-heading flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-primary-400" />
-              Nouvel événement
+              Nouvel ├®v├®nement
             </h2>
             <button onClick={() => setShowCreateEvent(false)} className="text-muted hover:text-heading"><X className="w-5 h-5" /></button>
           </div>
@@ -1362,7 +1361,7 @@ export default function Buildathon() {
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-bold text-heading flex items-center gap-2">
               <Pencil className="w-5 h-5 text-amber-400" />
-              Modifier l'événement
+              Modifier l'├®v├®nement
             </h2>
             <button
               onClick={() => { setShowEditEvent(false); setEditingEventId(null); }}
@@ -1400,17 +1399,17 @@ export default function Buildathon() {
                 <input type="text" value={newProject.title} onChange={(e) => setNewProject((p) => ({ ...p, title: e.target.value }))} className="input-field w-full" placeholder="Nom du projet" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-body mb-1">Nom d'équipe *</label>
-                <input type="text" value={newProject.teamName} onChange={(e) => setNewProject((p) => ({ ...p, teamName: e.target.value }))} className="input-field w-full" placeholder="Votre équipe" />
+                <label className="block text-sm font-medium text-body mb-1">Nom d'├®quipe *</label>
+                <input type="text" value={newProject.teamName} onChange={(e) => setNewProject((p) => ({ ...p, teamName: e.target.value }))} className="input-field w-full" placeholder="Votre ├®quipe" />
               </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-body mb-1">Description</label>
-              <textarea value={newProject.description} onChange={(e) => setNewProject((p) => ({ ...p, description: e.target.value }))} className="input-field w-full h-24 resize-none" placeholder="Technologies, problème résolu..." />
+              <textarea value={newProject.description} onChange={(e) => setNewProject((p) => ({ ...p, description: e.target.value }))} className="input-field w-full h-24 resize-none" placeholder="Technologies, probl├¿me r├®solu..." />
             </div>
             <div className="grid sm:grid-cols-3 gap-3">
               <div>
-                <label className="block text-sm font-medium text-body mb-1">Catégorie</label>
+                <label className="block text-sm font-medium text-body mb-1">Cat├®gorie</label>
                 <select value={newProject.category} onChange={(e) => setNewProject((p) => ({ ...p, category: e.target.value }))} className="input-field w-full">
                   {PROJECT_CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
                 </select>
@@ -1420,7 +1419,7 @@ export default function Buildathon() {
                 <input type="url" value={newProject.repoUrl} onChange={(e) => setNewProject((p) => ({ ...p, repoUrl: e.target.value }))} className="input-field w-full" placeholder="https://github.com/..." required />
               </div>
               <div>
-                <label className="block text-sm font-medium text-body mb-1"><Video className="w-3 h-3 inline mr-1" />Vidéo démo *</label>
+                <label className="block text-sm font-medium text-body mb-1"><Video className="w-3 h-3 inline mr-1" />Vid├®o d├®mo *</label>
                 <input type="url" value={newProject.demoUrl} onChange={(e) => setNewProject((p) => ({ ...p, demoUrl: e.target.value }))} className="input-field w-full" placeholder="https://youtube.com/..." required />
               </div>
             </div>
@@ -1441,13 +1440,13 @@ export default function Buildathon() {
           </div>
           <div className="grid sm:grid-cols-2 gap-3 mb-3">
             <input type="text" value={adminProject.userIdentifier} onChange={(e) => setAdminProject((p) => ({ ...p, userIdentifier: e.target.value }))} className="input-field" placeholder="Email ou ID (UZA-0SOM3ZSZ)" />
-            <input type="text" value={adminProject.teamName} onChange={(e) => setAdminProject((p) => ({ ...p, teamName: e.target.value }))} className="input-field" placeholder="Nom d'équipe" />
+            <input type="text" value={adminProject.teamName} onChange={(e) => setAdminProject((p) => ({ ...p, teamName: e.target.value }))} className="input-field" placeholder="Nom d'├®quipe" />
             <input type="text" value={adminProject.title} onChange={(e) => setAdminProject((p) => ({ ...p, title: e.target.value }))} className="input-field" placeholder="Titre du projet" />
             <select value={adminProject.category} onChange={(e) => setAdminProject((p) => ({ ...p, category: e.target.value }))} className="input-field">
               {PROJECT_CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
             </select>
             <input type="url" value={adminProject.repoUrl} onChange={(e) => setAdminProject((p) => ({ ...p, repoUrl: e.target.value }))} className="input-field" placeholder="Lien GitHub" />
-            <input type="url" value={adminProject.demoUrl} onChange={(e) => setAdminProject((p) => ({ ...p, demoUrl: e.target.value }))} className="input-field" placeholder="Lien démo" />
+            <input type="url" value={adminProject.demoUrl} onChange={(e) => setAdminProject((p) => ({ ...p, demoUrl: e.target.value }))} className="input-field" placeholder="Lien d├®mo" />
           </div>
           <textarea value={adminProject.description} onChange={(e) => setAdminProject((p) => ({ ...p, description: e.target.value }))} className="input-field w-full h-24 resize-none mb-3" placeholder="Description du projet" />
           <div className="flex gap-3 pt-2">
@@ -1462,12 +1461,12 @@ export default function Buildathon() {
         <div className="glass-card p-16 text-center">
           <Rocket className="w-20 h-20 text-muted mx-auto mb-4 opacity-30" />
           <h3 className="text-xl font-bold text-heading mb-2">
-            {searchQuery || filterStatus !== 'all' ? 'Aucun événement trouvé' : 'Aucun événement prévu pour le moment'}
+            {searchQuery || filterStatus !== 'all' ? 'Aucun ├®v├®nement trouv├®' : 'Aucun ├®v├®nement pr├®vu pour le moment'}
           </h3>
           <p className="text-body max-w-md mx-auto">
             {isAdmin
-              ? 'Créez le premier Buildathon ou Hackathon pour lancer la compétition !'
-              : 'Il n\'y a pas encore de Buildathon ou Hackathon prévu. Revenez bientôt pour découvrir les prochains événements !'}
+              ? 'Cr├®ez le premier Buildathon ou Hackathon pour lancer la comp├®tition !'
+              : 'Il n\'y a pas encore de Buildathon ou Hackathon pr├®vu. Revenez bient├┤t pour d├®couvrir les prochains ├®v├®nements !'}
           </p>
         </div>
       ) : (
@@ -1496,18 +1495,15 @@ export default function Buildathon() {
             const canVote = status === 'active' || status === 'ended';
             const canRegister = (status === 'upcoming' || status === 'active') && !isRegistered;
             const typeLabel = event.type === 'hackathon' ? 'Hackathon' : 'Buildathon';
-            const typeIcon = event.type === 'hackathon' ? '💻' : '🏗️';
+            const typeIcon = event.type === 'hackathon' ? '­ƒÆ╗' : '­ƒÅù´©Å';
             const userVotedProject = allEventProjects.find((p) => p.votes?.includes(user?.uid));
 
             return (
               <div key={event.id} className="glass-card overflow-hidden">
                 {/* Event Header */}
-                <Link
-                  to={`/projects/${event.id}`}
-                  className="block p-6 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
-                >
+                <div className="p-6">
                   <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-3 mb-2 flex-wrap">
                         <span className="text-2xl">{typeIcon}</span>
                         <h2 className="text-xl font-bold text-heading">{event.title}</h2>
@@ -1517,22 +1513,29 @@ export default function Buildathon() {
                         </span>
                         <span className="badge bg-surface text-body border border-themed text-xs">{typeLabel}</span>
                       </div>
-                      {event.description && <p className="text-body text-sm mb-3 line-clamp-2">{event.description}</p>}
-                      <div className="flex flex-wrap items-center gap-4 text-xs text-muted">
-                        <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{formatEventDate(event.startDate)} → {formatEventDate(event.endDate)}</span>
-                        {event.workDuration && <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{event.workDuration}</span>}
-                        <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5" />{metrics.participantsCount} inscrit{metrics.participantsCount !== 1 ? 's' : ''}</span>
-                        <span className="flex items-center gap-1"><FileText className="w-3.5 h-3.5" />{metrics.submittedProjects} projet{metrics.submittedProjects !== 1 ? 's' : ''} soumis</span>
-                        <span className={`flex items-center gap-1 ${event.votingEnabled ? 'text-green-400' : 'text-red-400'}`}>
-                          <ThumbsUp className="w-3.5 h-3.5" />
-                          Vote {event.votingEnabled ? 'activé' : 'désactivé'}
-                        </span>
-                        {(status === 'active' || status === 'upcoming') && event.endDate && <span className="text-amber-400"><CountdownTimer endDate={event.endDate} /></span>}
+                      <p className="text-body text-sm mb-4 line-clamp-2">{event.description || 'Aucune description disponible.'}</p>
+                      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-xs">
+                        <div className="rounded-lg border border-themed bg-black/5 dark:bg-white/5 px-3 py-2">
+                          <p className="text-muted mb-1">Début</p>
+                          <p className="text-heading font-medium">{formatEventDate(event.startDate)}</p>
+                        </div>
+                        <div className="rounded-lg border border-themed bg-black/5 dark:bg-white/5 px-3 py-2">
+                          <p className="text-muted mb-1">Fin</p>
+                          <p className="text-heading font-medium">{formatEventDate(event.endDate)}</p>
+                        </div>
+                        <div className="rounded-lg border border-themed bg-black/5 dark:bg-white/5 px-3 py-2">
+                          <p className="text-muted mb-1">Participants</p>
+                          <p className="text-heading font-medium">{metrics.participantsCount}</p>
+                        </div>
+                        <div className="rounded-lg border border-themed bg-black/5 dark:bg-white/5 px-3 py-2">
+                          <p className="text-muted mb-1">Projets</p>
+                          <p className="text-heading font-medium">{metrics.submittedProjects}</p>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 shrink-0">
                       {event.rewardsVisible !== false && event.prizes?.length > 0 && (
-                        <div className="hidden sm:flex items-center gap-1.5">
+                        <div className="hidden sm:flex items-center gap-1.5 flex-wrap max-w-[240px] justify-end">
                           {event.prizes.slice(0, 3).map((p, i) => (
                             <span key={i} className="flex items-center gap-0.5 badge bg-amber-500/10 text-amber-400 border-amber-500/30 text-xs">
                               {(p.rewardType || 'points') === 'points' ? <Zap className="w-3 h-3" /> : <Gift className="w-3 h-3" />}
@@ -1541,198 +1544,33 @@ export default function Buildathon() {
                           ))}
                         </div>
                       )}
-                      <ChevronRight className="w-5 h-5 text-muted" />
                     </div>
                   </div>
-                </Link>
 
-                {/* Admin Actions (Always visible) */}
-                {isAdmin && (
-                  <div className="border-t border-themed px-6 py-4 bg-black/5 dark:bg-white/5 space-y-3">
-                    <p className="text-[11px] uppercase tracking-wide text-primary-300 mb-3">Configuration admin</p>
-                    <div className="flex items-center gap-2 flex-wrap">
+                  <div className="mt-4 flex flex-wrap items-center gap-2">
+                    <Link
+                      to={`/projects/${event.id}`}
+                      className="btn-primary text-sm inline-flex items-center gap-1"
+                    >
+                      Voir le buildathon
+                    </Link>
+                    {canRegister && (
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setShowSubmitProject(null);
-                          setShowAdminProjectForm(showAdminProjectForm === event.id ? null : event.id);
-                        }}
-                        className="flex items-center gap-1 text-sm px-3 py-1.5 rounded-lg bg-primary-500/10 text-primary-300 border border-primary-500/30 hover:bg-primary-500/20 transition-colors"
+                        onClick={(e) => { e.stopPropagation(); handleRegister(event.id); }}
+                        className="btn-secondary text-sm inline-flex items-center gap-1"
                       >
-                        <Plus className="w-3.5 h-3.5" />Ajouter projet
+                        <UserPlus className="w-3.5 h-3.5" />
+                        S'inscrire
                       </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleOpenEditEvent(event); }}
-                        className="flex items-center gap-1 text-sm px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/30 hover:bg-blue-500/20 transition-colors"
-                      >
-                        <Pencil className="w-3.5 h-3.5" />Configurer
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleDeleteEvent(event.id); }}
-                        className="flex items-center gap-1 text-sm px-3 py-1.5 rounded-lg bg-red-500/10 text-red-400 border border-red-500/30 hover:bg-red-500/20 transition-colors"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />Supprimer
-                      </button>
-                      {!event.finalized && (status === 'ended' || status === 'active') && (
-                        <button onClick={(e) => { e.stopPropagation(); if (confirm('Finaliser et attribuer les points ?')) handleFinalize(event.id); }} className="flex items-center gap-1 text-sm px-3 py-1.5 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/30 hover:bg-amber-500/20 transition-colors">
-                          <Award className="w-3.5 h-3.5" />Finaliser & Attribuer prix
-                        </button>
-                      )}
-                    </div>
+                    )}
+                    {isRegistered && (
+                      <span className="text-xs text-green-400 flex items-center gap-1">
+                        <CheckCircle className="w-3.5 h-3.5" />
+                        Inscrit
+                      </span>
+                    )}
                   </div>
-                )}
-              </div>
-            );
-          })                                          Attribuer +{Number(rankPrize.points || 0)}
-                                        </button>
-                                      )}
-                                      {project.manualPrizeGrantedAt && <span className="text-green-400 text-xs">Bonus attribué</span>}
-                                      {isWinner && event.prizes?.[index] && (
-                                        <span className="flex items-center gap-1 text-green-400 font-medium">
-                                          {(event.prizes[index].rewardType || 'points') === 'points'
-                                            ? <><Trophy className="w-3 h-3" />+{Math.round((event.prizes[index].points || 0) / (project.members?.length || 1))}/{project.members?.length || 1} mbr</>
-                                            : <><Gift className="w-3 h-3" />{event.prizes[index].label || 'Récompense'}</>
-                                          }
-                                        </span>
-                                      )}
-                                    </div>
-                                    {/* Invite friend */}
-                                    {isOwn && status === 'active' && (
-                                      <div className="mt-3 p-3 rounded-lg bg-black/5 dark:bg-white/5 border border-themed">
-                                        <div className="flex items-center gap-2 mb-2">
-                                          <input type="text" value={newProject.inviteIdentifier} onChange={(e) => setNewProject((p) => ({ ...p, inviteIdentifier: e.target.value }))} className="input-field text-xs py-1.5 px-3 flex-1" placeholder="Email ou ID (UZA-xxxx...)" onClick={(e) => e.stopPropagation()} />
-                                          <button onClick={(e) => { e.stopPropagation(); handleInviteFriend(project.id, event.id); }} className="text-xs px-3 py-1.5 rounded-lg bg-primary-500/10 text-primary-400 hover:bg-primary-500/20 border border-primary-500/30 flex items-center gap-1 transition-colors"><UserPlus className="w-3 h-3" />Inviter</button>
-                                        </div>
-                                        {/* Show pending invites */}
-                                        {projectPendingInvites.filter((inv) => inv.projectId === project.id).length > 0 && (
-                                          <div className="space-y-1">
-                                            {projectPendingInvites.filter((inv) => inv.projectId === project.id).map((inv) => (
-                                              <div key={inv.id} className="flex items-center justify-between text-xs py-1 px-2 rounded bg-amber-500/5 border border-amber-500/20">
-                                                <span className="flex items-center gap-1.5 text-amber-400">
-                                                  <Clock className="w-3 h-3" />
-                                                  {inv.invitedName} ({inv.invitedEmail}) — en attente
-                                                </span>
-                                              </div>
-                                            ))}
-                                          </div>
-                                        )}
-                                        <p className="text-[10px] text-muted mt-1">💡 Invitation possible par email ou ID UZA. L'utilisateur doit accepter l'invitation pour rejoindre l'équipe.</p>
-                                      </div>
-                                    )}
-                                    {/* Show team info for non-owner members */}
-                                    {!isOwn && project.members?.some((m) => m.uid === user?.uid) && (
-                                      <div className="mt-2">
-                                        <span className="text-xs text-green-400 flex items-center gap-1"><UserCheck className="w-3 h-3" />Vous êtes membre de cette équipe</span>
-                                      </div>
-                                    )}
-
-                                    {isAdmin && (
-                                      <div className="mt-3 p-3 rounded-lg bg-black/5 dark:bg-white/5 border border-themed space-y-2">
-                                        <p className="text-[11px] uppercase tracking-wide text-primary-300">Moderation</p>
-                                        <textarea
-                                          value={moderationNotes[project.id] ?? project.moderationNote ?? ''}
-                                          onChange={(e) => setModerationNotes((prev) => ({ ...prev, [project.id]: e.target.value }))}
-                                          className="input-field w-full h-16 resize-none text-xs"
-                                          placeholder="Note de moderation (optionnelle)"
-                                          onClick={(e) => e.stopPropagation()}
-                                        />
-                                        <div className="flex flex-wrap gap-2">
-                                          {(projectStatus === 'brouillon' || projectStatus === 'soumis' || projectStatus === 'rejete') && (
-                                            <button
-                                              onClick={(e) => { e.stopPropagation(); handleModerateProject(project, 'valide'); }}
-                                              className="text-xs px-2 py-1 rounded-md border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
-                                            >
-                                              Valider
-                                            </button>
-                                          )}
-                                          {projectStatus !== 'rejete' && (
-                                            <button
-                                              onClick={(e) => { e.stopPropagation(); handleModerateProject(project, 'rejete'); }}
-                                              className="text-xs px-2 py-1 rounded-md border border-red-500/30 text-red-400 hover:bg-red-500/10"
-                                            >
-                                              Rejeter
-                                            </button>
-                                          )}
-                                          {projectStatus === 'valide' && (
-                                            <button
-                                              onClick={(e) => { e.stopPropagation(); handleModerateProject(project, 'publie'); }}
-                                              className="text-xs px-2 py-1 rounded-md border border-green-500/30 text-green-400 hover:bg-green-500/10"
-                                            >
-                                              Publier
-                                            </button>
-                                          )}
-                                          {projectStatus === 'publie' && (
-                                            <button
-                                              onClick={(e) => { e.stopPropagation(); handleModerateProject(project, 'valide'); }}
-                                              className="text-xs px-2 py-1 rounded-md border border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
-                                            >
-                                              Depublier
-                                            </button>
-                                          )}
-                                        </div>
-                                      </div>
-                                    )}
-                                  </div>
-                                  {/* Vote */}
-                                  <div className="flex flex-col items-center gap-1 min-w-[48px]">
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        if (isOwn) { toast.error('Impossible de voter pour votre projet'); return; }
-                                        if (!canVote) { toast.error('Vote fermé'); return; }
-                                        if (!canUserVote && !hasVoted) { toast.error('Vous avez déjà voté pour un autre projet'); return; }
-                                        handleVote(project.id, event.id, project.votes);
-                                      }}
-                                      disabled={isOwn || !canVote || (!canUserVote && !hasVoted)}
-                                      className={`p-2.5 rounded-xl transition-all ${hasVoted ? 'bg-primary-500/20 text-primary-400 ring-2 ring-primary-500/30' : isOwn || !canUserVote ? 'bg-black/5 dark:bg-white/5 text-muted cursor-not-allowed' : 'bg-black/5 dark:bg-white/5 text-body hover:bg-primary-500/10 hover:text-primary-400'}`}
-                                    >
-                                      <ThumbsUp className={`w-5 h-5 ${hasVoted ? 'fill-current' : ''}`} />
-                                    </button>
-                                    <span className={`text-sm font-bold ${hasVoted ? 'text-primary-400' : 'text-body'}`}>{project.voteCount || 0}</span>
-                                    <span className="text-[9px] text-muted">vote{(project.voteCount || 0) !== 1 ? 's' : ''}</span>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-
-                      {/* Prizes */}
-                      {event.rewardsVisible !== false && event.prizes?.length > 0 && (
-                        <div className="mt-6 pt-4 border-t border-themed">
-                          <h4 className="text-sm font-semibold text-heading mb-3 flex items-center gap-2"><Award className="w-4 h-4 text-amber-400" />Prix</h4>
-                          <div className="flex flex-wrap gap-3">
-                            {event.prizes.map((prize, i) => {
-                              const winner = event.finalized && eventProjects[i];
-                              const memberCount = winner?.members?.length || 1;
-                              const rewardType = prize.rewardType || 'points';
-                              const totalPoints = Number(prize.points || 0);
-                              const ptsPerMember = rewardType === 'points' ? Math.round(totalPoints / memberCount) : 0;
-                              return (
-                                <div key={i} className={`p-3 rounded-xl border text-center min-w-[120px] ${i === 0 ? 'border-amber-500/30 bg-amber-500/5' : i === 1 ? 'border-gray-400/30 bg-gray-400/5' : 'border-orange-500/30 bg-orange-500/5'}`}>
-                                  <div className="text-2xl mb-1">{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${prize.place}`}</div>
-                                  {rewardType === 'points' ? (
-                                    <div className="flex items-center justify-center gap-1 text-amber-400 font-bold text-sm"><Zap className="w-3.5 h-3.5" />{totalPoints} pts</div>
-                                  ) : (
-                                    <div className="flex items-center justify-center gap-1 text-amber-400 font-bold text-sm"><Gift className="w-3.5 h-3.5" />{prize.label || 'Récompense'}</div>
-                                  )}
-                                  {winner && (
-                                    <>
-                                      <p className="text-xs text-heading mt-1 font-medium">{winner.teamName}</p>
-                                      {rewardType === 'points' && memberCount > 1 && <p className="text-[10px] text-muted mt-0.5">({ptsPerMember} pts/membre)</p>}
-                                    </>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                          <p className="text-xs text-muted mt-3">💡 Chaque vote = 10 pts. 1 vote/personne/événement. En cas d'égalité de votes, le projet soumis le plus tôt est prioritaire. Les prix sont répartis entre les membres de l'équipe.</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
+                </div>
               </div>
             );
           })}
@@ -1741,3 +1579,5 @@ export default function Buildathon() {
     </div>
   );
 }
+
+
