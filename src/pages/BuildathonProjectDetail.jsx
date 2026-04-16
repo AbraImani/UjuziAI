@@ -20,6 +20,7 @@ import {
   Calendar,
   ExternalLink,
   FileText,
+  Flag,
   Github,
   Heart,
   Loader2,
@@ -176,6 +177,10 @@ export default function BuildathonProjectDetail() {
   const [submittingFeedback, setSubmittingFeedback] = useState(false);
   const [updatingVote, setUpdatingVote] = useState(false);
   const [updatingLike, setUpdatingLike] = useState(false);
+  const [reportingCommentId, setReportingCommentId] = useState(null);
+  const [submittingReportId, setSubmittingReportId] = useState(null);
+  const [reportReasons, setReportReasons] = useState({});
+  const [reportDetails, setReportDetails] = useState({});
 
   useEffect(() => {
     if (!buildathonId || !projectId) {
@@ -418,6 +423,35 @@ export default function BuildathonProjectDetail() {
     }
   }
 
+  async function handleReportComment(item) {
+    if (!user?.uid || !project?.id || !item?.id) return;
+
+    const reason = reportReasons[item.id] || 'spam';
+    const details = (reportDetails[item.id] || '').trim();
+    const reportId = `${item.id}_${user.uid}`;
+
+    setSubmittingReportId(item.id);
+    try {
+      await setDoc(doc(db, 'buildathonProjects', project.id, 'feedbackReports', reportId), {
+        feedbackId: item.id,
+        projectId: project.id,
+        reportedBy: user.uid,
+        reason,
+        details,
+        status: 'open',
+        createdAt: serverTimestamp(),
+        updatedAt: null,
+      });
+
+      setReportingCommentId(null);
+      toast.success('Commentaire signale');
+    } catch (error) {
+      toast.error('Erreur lors du signalement');
+    } finally {
+      setSubmittingReportId(null);
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
@@ -617,6 +651,55 @@ export default function BuildathonProjectDetail() {
                 <p className="text-sm text-body whitespace-pre-wrap">{item.message}</p>
                 {isAdmin && item.hidden && (
                   <p className="text-[11px] text-amber-400 mt-2">Commentaire masque</p>
+                )}
+
+                {!isAdmin && user?.uid && (
+                  <div className="mt-2">
+                    <button
+                      onClick={() => setReportingCommentId((current) => current === item.id ? null : item.id)}
+                      className="text-[11px] text-red-400 hover:text-red-300 inline-flex items-center gap-1"
+                    >
+                      <Flag className="w-3 h-3" />
+                      Signaler
+                    </button>
+
+                    {reportingCommentId === item.id && (
+                      <div className="mt-2 p-2 rounded-lg border border-red-500/20 bg-red-500/5 space-y-2">
+                        <select
+                          value={reportReasons[item.id] || 'spam'}
+                          onChange={(e) => setReportReasons((prev) => ({ ...prev, [item.id]: e.target.value }))}
+                          className="input-field w-full text-xs"
+                        >
+                          <option value="spam">Spam</option>
+                          <option value="inappropriate">Inappropriate</option>
+                          <option value="harassment">Harassment</option>
+                          <option value="other">Other</option>
+                        </select>
+                        <input
+                          type="text"
+                          value={reportDetails[item.id] || ''}
+                          onChange={(e) => setReportDetails((prev) => ({ ...prev, [item.id]: e.target.value }))}
+                          className="input-field w-full text-xs"
+                          placeholder="Details optionnels"
+                        />
+                        <div className="flex justify-end gap-2">
+                          <button
+                            onClick={() => setReportingCommentId(null)}
+                            className="text-xs px-2.5 py-1.5 rounded border border-themed text-muted"
+                          >
+                            Annuler
+                          </button>
+                          <button
+                            onClick={() => handleReportComment(item)}
+                            disabled={submittingReportId === item.id}
+                            className="text-xs px-2.5 py-1.5 rounded border border-red-500/30 text-red-300 bg-red-500/10 disabled:opacity-60"
+                          >
+                            {submittingReportId === item.id ? 'Envoi...' : 'Envoyer signalement'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             ))
