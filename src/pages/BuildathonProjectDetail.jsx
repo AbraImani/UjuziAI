@@ -1,14 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
-  arrayRemove,
-  arrayUnion,
   collection,
   doc,
-  getDocs,
-  increment,
   onSnapshot,
   query,
+  runTransaction,
   serverTimestamp,
   setDoc,
   updateDoc,
@@ -130,6 +127,8 @@ export default function BuildathonProjectDetail() {
   const [feedbackList, setFeedbackList] = useState([]);
   const [newFeedback, setNewFeedback] = useState('');
   const [submittingFeedback, setSubmittingFeedback] = useState(false);
+  const [updatingVote, setUpdatingVote] = useState(false);
+  const [updatingLike, setUpdatingLike] = useState(false);
 
   useEffect(() => {
     if (!buildathonId || !projectId) {
@@ -198,8 +197,27 @@ export default function BuildathonProjectDetail() {
     return allEventProjects.some((p) => p.id !== projectId && p.votes?.includes(user.uid));
   }, [allEventProjects, projectId, user?.uid]);
 
+  useEffect(() => {
+    if (!project?.id) return;
+
+    const realCount = feedbackList.length;
+    const storedFeedbackCount = Number.isFinite(Number(project.feedbackCount)) ? Number(project.feedbackCount) : 0;
+    const storedCommentsCount = Number.isFinite(Number(project.commentsCount)) ? Number(project.commentsCount) : 0;
+
+    if (storedFeedbackCount === realCount && storedCommentsCount === realCount) {
+      return;
+    }
+
+    updateDoc(doc(db, 'buildathonProjects', project.id), {
+      feedbackCount: realCount,
+      commentsCount: realCount,
+    }).catch(() => {
+      // Best-effort consistency sync for legacy/mismatched counters.
+    });
+  }, [feedbackList.length, project?.id, project?.feedbackCount, project?.commentsCount]);
+
   async function handleVote() {
-    if (!user?.uid || !project) return;
+    if (!user?.uid || !project || updatingVote) return;
     if (!event?.votingEnabled) {
       toast.error('Le vote est désactivé pour ce buildathon');
       return;
@@ -216,45 +234,85 @@ export default function BuildathonProjectDetail() {
       return;
     }
 
+    setUpdatingVote(true);
     try {
       const ref = doc(db, 'buildathonProjects', project.id);
-      if (hasVoted) {
-        await updateDoc(ref, {
-          votes: arrayRemove(user.uid),
-          voteCount: increment(-1),
+      const result = await runTransaction(db, async (tx) => {
+        const snap = await tx.get(ref);
+        if (!snap.exists()) throw new Error('Projet introuvable');
+
+        const data = snap.data() || {};
+        const votes = Array.isArray(data.votes) ? data.votes : [];
+        const alreadyVoted = votes.includes(user.uid);
+
+        if (alreadyVoted) {
+          const nextVotes = votes.filter((uid) => uid !== user.uid);
+          tx.update(ref, {
+            votes: nextVotes,
+            voteCount: nextVotes.length,
+          });
+          return { action: 'removed' };
+        }
+
+        const nextVotes = [...votes, user.uid];
+        tx.update(ref, {
+          votes: nextVotes,
+          voteCount: nextVotes.length,
         });
+        return { action: 'added' };
+      });
+
+      if (result.action === 'removed') {
         toast.success('Vote retiré');
       } else {
-        await updateDoc(ref, {
-          votes: arrayUnion(user.uid),
-          voteCount: increment(1),
-        });
         toast.success('Vote enregistré (impacte le classement)');
       }
     } catch (error) {
       toast.error('Erreur lors du vote');
+    } finally {
+      setUpdatingVote(false);
     }
   }
 
   async function handleLike() {
-    if (!user?.uid || !project) return;
+    if (!user?.uid || !project || updatingLike) return;
+    setUpdatingLike(true);
     try {
       const ref = doc(db, 'buildathonProjects', project.id);
-      if (hasLiked) {
-        await updateDoc(ref, {
-          likeUserIds: arrayRemove(user.uid),
-          likesCount: increment(-1),
+      const result = await runTransaction(db, async (tx) => {
+        const snap = await tx.get(ref);
+        if (!snap.exists()) throw new Error('Projet introuvable');
+
+        const data = snap.data() || {};
+        const likeUserIds = Array.isArray(data.likeUserIds) ? data.likeUserIds : [];
+        const alreadyLiked = likeUserIds.includes(user.uid);
+
+        if (alreadyLiked) {
+          const nextLikeUserIds = likeUserIds.filter((uid) => uid !== user.uid);
+          tx.update(ref, {
+            likeUserIds: nextLikeUserIds,
+            likesCount: nextLikeUserIds.length,
+          });
+          return { action: 'removed' };
+        }
+
+        const nextLikeUserIds = [...likeUserIds, user.uid];
+        tx.update(ref, {
+          likeUserIds: nextLikeUserIds,
+          likesCount: nextLikeUserIds.length,
         });
+        return { action: 'added' };
+      });
+
+      if (result.action === 'removed') {
         toast.success('Like retiré');
       } else {
-        await updateDoc(ref, {
-          likeUserIds: arrayUnion(user.uid),
-          likesCount: increment(1),
-        });
         toast.success('Like enregistré (popularité uniquement)');
       }
     } catch (error) {
       toast.error('Erreur lors du like');
+    } finally {
+      setUpdatingLike(false);
     }
   }
 
@@ -313,7 +371,11 @@ export default function BuildathonProjectDetail() {
 
   const tags = getProjectTags(project);
   const stack = getProjectStack(project);
-  const feedbackCount = project.feedbackCount || project.commentsCount || 0;
+  const feedbackCount = Math.max(
+    Number(project.feedbackCount || 0),
+    Number(project.commentsCount || 0),
+    feedbackList.length
+  );
 
   return (
     <div className="max-w-6xl mx-auto animate-fade-in space-y-6">
@@ -406,7 +468,7 @@ export default function BuildathonProjectDetail() {
         <div className="flex flex-wrap gap-3">
           <button
             onClick={handleVote}
-            disabled={!event?.votingEnabled}
+            disabled={!event?.votingEnabled || updatingVote}
             className={`px-4 py-2 rounded-lg border text-sm inline-flex items-center gap-2 transition-colors ${hasVoted ? 'border-primary-500/40 bg-primary-500/10 text-primary-300' : 'border-themed text-body hover:text-heading hover:bg-black/5 dark:hover:bg-white/5'} ${!event?.votingEnabled ? 'opacity-60 cursor-not-allowed' : ''}`}
           >
             <ThumbsUp className={`w-4 h-4 ${hasVoted ? 'fill-current' : ''}`} />
@@ -415,6 +477,7 @@ export default function BuildathonProjectDetail() {
 
           <button
             onClick={handleLike}
+            disabled={updatingLike}
             className={`px-4 py-2 rounded-lg border text-sm inline-flex items-center gap-2 transition-colors ${hasLiked ? 'border-rose-500/40 bg-rose-500/10 text-rose-300' : 'border-themed text-body hover:text-heading hover:bg-black/5 dark:hover:bg-white/5'}`}
           >
             <Heart className={`w-4 h-4 ${hasLiked ? 'fill-current' : ''}`} />

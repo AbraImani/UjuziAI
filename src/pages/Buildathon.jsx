@@ -4,6 +4,7 @@ import {
   collection,
   doc,
   getDocs,
+  runTransaction,
   setDoc,
   updateDoc,
   query,
@@ -11,7 +12,6 @@ import {
   where,
   serverTimestamp,
   arrayUnion,
-  arrayRemove,
   increment,
   onSnapshot,
   deleteDoc,
@@ -680,11 +680,28 @@ export default function Buildathon() {
 
     try {
       const projRef = doc(db, 'buildathonProjects', projectId);
-      if (hasVoted) {
-        await updateDoc(projRef, { votes: arrayRemove(user.uid), voteCount: increment(-1) });
+      const result = await runTransaction(db, async (tx) => {
+        const snap = await tx.get(projRef);
+        if (!snap.exists()) throw new Error('Projet introuvable');
+
+        const data = snap.data() || {};
+        const votes = Array.isArray(data.votes) ? data.votes : [];
+        const alreadyVoted = votes.includes(user.uid);
+
+        if (alreadyVoted) {
+          const nextVotes = votes.filter((uid) => uid !== user.uid);
+          tx.update(projRef, { votes: nextVotes, voteCount: nextVotes.length });
+          return { action: 'removed' };
+        }
+
+        const nextVotes = [...votes, user.uid];
+        tx.update(projRef, { votes: nextVotes, voteCount: nextVotes.length });
+        return { action: 'added' };
+      });
+
+      if (result.action === 'removed') {
         toast.success('Vote retiré');
       } else {
-        await updateDoc(projRef, { votes: arrayUnion(user.uid), voteCount: increment(1) });
         toast.success('Vote enregistré ! (+10 pts pour ce projet)');
       }
     } catch (err) {
