@@ -431,8 +431,8 @@ export default function Buildathon() {
       votingEnabled: event.votingEnabled !== false,
       maxVotesPerUser: Number(event.maxVotesPerUser) > 0 ? Number(event.maxVotesPerUser) : 1,
       allowSelfVote: event.allowSelfVote === true,
-      voteStartDate: normalizeDateLike(event.voteStartDate) || normalizeDateLike(event.startDate) || '',
-      voteEndDate: normalizeDateLike(event.voteEndDate) || normalizeDateLike(event.endDate) || '',
+      voteStartDate: toInputDateTime(event.voteStartDate || event.startDate),
+      voteEndDate: toInputDateTime(event.voteEndDate || event.endDate),
       participationRules: event.participationRules || '',
       evaluationCriteria: event.evaluationCriteria || '',
       tieBreakRuleText: event.tieBreakRuleText || 'En cas d\'égalité, le projet soumis le plus tôt est prioritaire.',
@@ -1300,7 +1300,12 @@ export default function Buildathon() {
                 {isExpanded && (
                   <div className="border-t border-themed">
                     {/* Actions */}
-                    <div className="px-6 py-3 bg-black/5 dark:bg-white/5 flex items-center justify-between flex-wrap gap-2">
+                    <div className="px-6 py-3 bg-black/5 dark:bg-white/5 space-y-3">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <p className="text-[11px] uppercase tracking-wide text-muted">Actions participant</p>
+                        {event.finalized && <span className="text-xs text-green-400 flex items-center gap-1"><CheckCircle className="w-3.5 h-3.5" />Finalisé</span>}
+                      </div>
+
                       <div className="flex items-center gap-3 flex-wrap">
                         {canRegister && (
                           <button onClick={(e) => { e.stopPropagation(); handleRegister(event.id); }} className="btn-primary text-sm flex items-center gap-1"><UserPlus className="w-3.5 h-3.5" />S'inscrire</button>
@@ -1310,8 +1315,12 @@ export default function Buildathon() {
                           <button onClick={(e) => { e.stopPropagation(); setShowAdminProjectForm(null); setShowSubmitProject(event.id); }} className="btn-accent text-sm flex items-center gap-1"><Send className="w-3.5 h-3.5" />Soumettre un projet</button>
                         )}
                         {userHasSubmitted && <span className="text-xs text-accent-400 flex items-center gap-1"><CheckCircle className="w-3.5 h-3.5" />Projet soumis</span>}
-                        {isAdmin && (
-                          <>
+                      </div>
+
+                      {isAdmin && (
+                        <div className="pt-2 border-t border-themed">
+                          <p className="text-[11px] uppercase tracking-wide text-primary-300 mb-2">Configuration admin</p>
+                          <div className="flex items-center gap-2 flex-wrap">
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -1326,7 +1335,7 @@ export default function Buildathon() {
                               onClick={(e) => { e.stopPropagation(); handleOpenEditEvent(event); }}
                               className="flex items-center gap-1 text-sm px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/30 hover:bg-blue-500/20 transition-colors"
                             >
-                              <Pencil className="w-3.5 h-3.5" />Modifier
+                              <Pencil className="w-3.5 h-3.5" />Configurer
                             </button>
                             <button
                               onClick={(e) => { e.stopPropagation(); handleDeleteEvent(event.id); }}
@@ -1334,15 +1343,14 @@ export default function Buildathon() {
                             >
                               <Trash2 className="w-3.5 h-3.5" />Supprimer
                             </button>
-                          </>
-                        )}
-                      </div>
-                      {isAdmin && !event.finalized && (status === 'ended' || status === 'active') && (
-                        <button onClick={(e) => { e.stopPropagation(); if (confirm('Finaliser et attribuer les points ?')) handleFinalize(event.id); }} className="flex items-center gap-1 text-sm px-3 py-1.5 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/30 hover:bg-amber-500/20 transition-colors">
-                          <Award className="w-3.5 h-3.5" />Finaliser & Attribuer prix
-                        </button>
+                            {!event.finalized && (status === 'ended' || status === 'active') && (
+                              <button onClick={(e) => { e.stopPropagation(); if (confirm('Finaliser et attribuer les points ?')) handleFinalize(event.id); }} className="flex items-center gap-1 text-sm px-3 py-1.5 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/30 hover:bg-amber-500/20 transition-colors">
+                                <Award className="w-3.5 h-3.5" />Finaliser & Attribuer prix
+                              </button>
+                            )}
+                          </div>
+                        </div>
                       )}
-                      {event.finalized && <span className="text-xs text-green-400 flex items-center gap-1"><CheckCircle className="w-3.5 h-3.5" />Finalisé</span>}
                     </div>
 
                     {event.description && (
