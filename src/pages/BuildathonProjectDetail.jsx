@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
   collection,
+  deleteDoc,
   doc,
   increment,
   onSnapshot,
@@ -139,6 +140,20 @@ function normalizeFeedback(raw) {
   };
 }
 
+function normalizeFeedbackReport(raw) {
+  return {
+    ...raw,
+    feedbackId: raw.feedbackId || null,
+    projectId: raw.projectId || null,
+    reportedBy: raw.reportedBy || null,
+    reason: raw.reason || 'spam',
+    details: raw.details || '',
+    status: raw.status || 'open',
+    createdAt: normalizeDateLike(raw.createdAt),
+    updatedAt: normalizeDateLike(raw.updatedAt),
+  };
+}
+
 function getTeamLabel(project) {
   if (project?.teamName) return project.teamName;
   const members = Array.isArray(project?.members) ? project.members : [];
@@ -173,6 +188,7 @@ export default function BuildathonProjectDetail() {
   const [allEventProjects, setAllEventProjects] = useState([]);
   const [feedbackList, setFeedbackList] = useState([]);
   const [visibleFeedbackList, setVisibleFeedbackList] = useState([]);
+  const [feedbackReports, setFeedbackReports] = useState([]);
   const [newFeedback, setNewFeedback] = useState('');
   const [submittingFeedback, setSubmittingFeedback] = useState(false);
   const [updatingVote, setUpdatingVote] = useState(false);
@@ -181,6 +197,8 @@ export default function BuildathonProjectDetail() {
   const [submittingReportId, setSubmittingReportId] = useState(null);
   const [reportReasons, setReportReasons] = useState({});
   const [reportDetails, setReportDetails] = useState({});
+  const [moderatingCommentId, setModeratingCommentId] = useState(null);
+  const [expandedReportsCommentId, setExpandedReportsCommentId] = useState(null);
 
   useEffect(() => {
     if (!buildathonId || !projectId) {
@@ -228,11 +246,20 @@ export default function BuildathonProjectDetail() {
       setFeedbackList(data);
     });
 
+    const feedbackReportsRef = collection(db, 'buildathonProjects', projectId, 'feedbackReports');
+    const unsubFeedbackReports = onSnapshot(feedbackReportsRef, (snap) => {
+      const data = [];
+      snap.forEach((d) => data.push(normalizeFeedbackReport({ id: d.id, ...d.data() })));
+      data.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+      setFeedbackReports(data);
+    });
+
     return () => {
       unsubEvent();
       unsubProject();
       unsubEventProjects();
       unsubFeedback();
+      unsubFeedbackReports();
     };
   }, [buildathonId, projectId]);
 
@@ -248,6 +275,24 @@ export default function BuildathonProjectDetail() {
     if (!user?.uid) return false;
     return allEventProjects.some((p) => p.id !== projectId && p.votes?.includes(user.uid));
   }, [allEventProjects, projectId, user?.uid]);
+
+  const openReportsByFeedbackId = useMemo(() => {
+    const map = {};
+    feedbackReports
+      .filter((report) => report.status === 'open')
+      .forEach((report) => {
+        if (!report.feedbackId) return;
+        if (!map[report.feedbackId]) {
+          map[report.feedbackId] = [];
+        }
+        map[report.feedbackId].push(report);
+      });
+    return map;
+  }, [feedbackReports]);
+
+  const openReportsCount = useMemo(() => {
+    return feedbackReports.filter((report) => report.status === 'open').length;
+  }, [feedbackReports]);
 
   useEffect(() => {
     const visible = isAdmin
@@ -452,6 +497,58 @@ export default function BuildathonProjectDetail() {
     }
   }
 
+  async function resolveReportsForComment(feedbackId, resolution) {
+    if (!project?.id || !feedbackId || !user?.uid) return;
+    const openReports = feedbackReports.filter((report) => report.feedbackId === feedbackId && report.status === 'open');
+
+    await Promise.all(openReports.map((report) => (
+      setDoc(doc(db, 'buildathonProjects', project.id, 'feedbackReports', report.id), {
+        status: 'resolved',
+        resolution,
+        resolvedBy: user.uid,
+        resolvedAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }, { merge: true })
+    )));
+  }
+
+  async function handleToggleHideComment(item) {
+    if (!isAdmin || !project?.id || !item?.id || moderatingCommentId) return;
+    const nextHidden = !item.hidden;
+
+    setModeratingCommentId(item.id);
+    try {
+      await updateDoc(doc(db, 'buildathonProjects', project.id, 'feedback', item.id), {
+        hidden: nextHidden,
+        hiddenAt: nextHidden ? serverTimestamp() : null,
+        hiddenBy: nextHidden ? user?.uid || null : null,
+        moderationReason: nextHidden ? 'reported-content' : null,
+      });
+
+      await resolveReportsForComment(item.id, nextHidden ? 'hidden' : 'unhidden');
+      toast.success(nextHidden ? 'Commentaire masque' : 'Commentaire rendu visible');
+    } catch (error) {
+      toast.error('Erreur lors de la moderation');
+    } finally {
+      setModeratingCommentId(null);
+    }
+  }
+
+  async function handleDeleteComment(item) {
+    if (!isAdmin || !project?.id || !item?.id || moderatingCommentId) return;
+
+    setModeratingCommentId(item.id);
+    try {
+      await deleteDoc(doc(db, 'buildathonProjects', project.id, 'feedback', item.id));
+      await resolveReportsForComment(item.id, 'deleted');
+      toast.success('Commentaire supprime');
+    } catch (error) {
+      toast.error('Erreur lors de la suppression');
+    } finally {
+      setModeratingCommentId(null);
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
@@ -618,6 +715,11 @@ export default function BuildathonProjectDetail() {
           <FileText className="w-5 h-5 text-primary-400" />
           Discussion
         </h2>
+        {isAdmin && (
+          <p className="text-xs text-amber-300">
+            Signalements ouverts: {openReportsCount}
+          </p>
+        )}
 
         <form onSubmit={handleSubmitFeedback} className="space-y-3">
           <textarea
@@ -653,9 +755,58 @@ export default function BuildathonProjectDetail() {
                   <p className="text-[11px] text-amber-400 mt-2">Commentaire masque</p>
                 )}
 
+                {isAdmin && (openReportsByFeedbackId[item.id]?.length || 0) > 0 && (
+                  <div className="mt-2 p-2 rounded-lg border border-amber-500/20 bg-amber-500/5 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-[11px] text-amber-300">
+                        {openReportsByFeedbackId[item.id].length} signalement(s) ouvert(s)
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setExpandedReportsCommentId((current) => current === item.id ? null : item.id)}
+                        className="text-[11px] text-amber-200 hover:text-amber-100"
+                      >
+                        {expandedReportsCommentId === item.id ? 'Masquer details' : 'Voir details'}
+                      </button>
+                    </div>
+
+                    {expandedReportsCommentId === item.id && (
+                      <div className="space-y-1">
+                        {openReportsByFeedbackId[item.id].map((report) => (
+                          <div key={report.id} className="text-[11px] text-muted border border-themed rounded p-2 bg-surface">
+                            <p>Raison: {report.reason}</p>
+                            {report.details && <p>Details: {report.details}</p>}
+                            <p>Date: {formatDate(report.createdAt)}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleToggleHideComment(item)}
+                        disabled={moderatingCommentId === item.id}
+                        className="text-xs px-2.5 py-1.5 rounded border border-amber-500/30 text-amber-300 bg-amber-500/10 disabled:opacity-60"
+                      >
+                        {moderatingCommentId === item.id ? 'Traitement...' : item.hidden ? 'Reafficher' : 'Masquer'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteComment(item)}
+                        disabled={moderatingCommentId === item.id}
+                        className="text-xs px-2.5 py-1.5 rounded border border-red-500/30 text-red-300 bg-red-500/10 disabled:opacity-60"
+                      >
+                        Supprimer
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {!isAdmin && user?.uid && (
                   <div className="mt-2">
                     <button
+                      type="button"
                       onClick={() => setReportingCommentId((current) => current === item.id ? null : item.id)}
                       className="text-[11px] text-red-400 hover:text-red-300 inline-flex items-center gap-1"
                     >
@@ -684,12 +835,14 @@ export default function BuildathonProjectDetail() {
                         />
                         <div className="flex justify-end gap-2">
                           <button
+                            type="button"
                             onClick={() => setReportingCommentId(null)}
                             className="text-xs px-2.5 py-1.5 rounded border border-themed text-muted"
                           >
                             Annuler
                           </button>
                           <button
+                            type="button"
                             onClick={() => handleReportComment(item)}
                             disabled={submittingReportId === item.id}
                             className="text-xs px-2.5 py-1.5 rounded border border-red-500/30 text-red-300 bg-red-500/10 disabled:opacity-60"
