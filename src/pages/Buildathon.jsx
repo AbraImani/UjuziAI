@@ -1527,13 +1527,23 @@ export default function Buildathon() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <Link
-                        to={`/projects/${event.id}`}
-                        onClick={(e) => e.stopPropagation()}
-                        className="text-xs px-3 py-1.5 rounded-lg bg-primary-600/20 text-primary-300 border border-primary-500/30 hover:bg-primary-600/30 transition-colors"
-                      >
-                        Voir le buildathon
-                      </Link>
+                      <div className="flex items-center gap-2">
+                        <Link
+                          to={`/projects/${event.id}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-xs px-3 py-1.5 rounded-lg bg-primary-600/20 text-primary-300 border border-primary-500/30 hover:bg-primary-600/30 transition-colors"
+                        >
+                          Voir le buildathon
+                        </Link>
+                        {canRegister && (
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); handleRegister(event.id); }} 
+                            className="text-xs px-3 py-1.5 rounded-lg bg-accent-600/20 text-accent-300 border border-accent-500/30 hover:bg-accent-600/30 transition-colors flex items-center gap-1"
+                          >
+                            <UserPlus className="w-3.5 h-3.5" />S'inscrire
+                          </button>
+                        )}
+                      </div>
                       {event.rewardsVisible !== false && event.prizes?.length > 0 && (
                         <div className="hidden sm:flex items-center gap-1.5">
                           {event.prizes.slice(0, 3).map((p, i) => (
@@ -1565,7 +1575,7 @@ export default function Buildathon() {
                         )}
                         {isRegistered && <span className="text-xs text-green-400 flex items-center gap-1"><CheckCircle className="w-3.5 h-3.5" />Inscrit</span>}
                         {canSubmit && !userHasSubmitted && (
-                          <button onClick={(e) => { e.stopPropagation(); setShowAdminProjectForm(null); setShowSubmitProject(event.id); }} className="btn-accent text-sm flex items-center gap-1"><Send className="w-3.5 h-3.5" />Soumettre un projet</button>
+                          <button onClick={(e) => { e.stopPropagation(); setShowAdminProjectForm(null); setShowSubmitProject(event.id); }} className="btn-accent text-sm flex items-center gap-1"><Send className="w-3.5 h-3.5" />Soumettre</button>
                         )}
                         {userHasSubmitted && <span className="text-xs text-accent-400 flex items-center gap-1"><CheckCircle className="w-3.5 h-3.5" />Projet soumis</span>}
                       </div>
