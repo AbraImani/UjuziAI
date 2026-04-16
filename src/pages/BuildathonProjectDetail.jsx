@@ -237,13 +237,16 @@ export default function BuildathonProjectDetail() {
     setUpdatingVote(true);
     try {
       const ref = doc(db, 'buildathonProjects', project.id);
+      const voteLockRef = doc(db, 'buildathons', buildathonId, 'votes', user.uid);
       const result = await runTransaction(db, async (tx) => {
         const snap = await tx.get(ref);
         if (!snap.exists()) throw new Error('Projet introuvable');
+        const voteLockSnap = await tx.get(voteLockRef);
 
         const data = snap.data() || {};
         const votes = Array.isArray(data.votes) ? data.votes : [];
         const alreadyVoted = votes.includes(user.uid);
+        const lockedProjectId = voteLockSnap.exists() ? voteLockSnap.data()?.projectId : null;
 
         if (alreadyVoted) {
           const nextVotes = votes.filter((uid) => uid !== user.uid);
@@ -251,13 +254,24 @@ export default function BuildathonProjectDetail() {
             votes: nextVotes,
             voteCount: nextVotes.length,
           });
+          tx.delete(voteLockRef);
           return { action: 'removed' };
+        }
+
+        if (lockedProjectId && lockedProjectId !== project.id) {
+          throw new Error('Vous avez déjà voté pour un autre projet de cet événement');
         }
 
         const nextVotes = [...votes, user.uid];
         tx.update(ref, {
           votes: nextVotes,
           voteCount: nextVotes.length,
+        });
+        tx.set(voteLockRef, {
+          projectId: project.id,
+          buildathonId,
+          userId: user.uid,
+          updatedAt: serverTimestamp(),
         });
         return { action: 'added' };
       });
@@ -268,7 +282,11 @@ export default function BuildathonProjectDetail() {
         toast.success('Vote enregistré (impacte le classement)');
       }
     } catch (error) {
-      toast.error('Erreur lors du vote');
+      if (error?.message) {
+        toast.error(error.message);
+      } else {
+        toast.error('Erreur lors du vote');
+      }
     } finally {
       setUpdatingVote(false);
     }

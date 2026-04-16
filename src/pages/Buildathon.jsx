@@ -680,22 +680,36 @@ export default function Buildathon() {
 
     try {
       const projRef = doc(db, 'buildathonProjects', projectId);
+      const voteLockRef = doc(db, 'buildathons', buildathonId, 'votes', user.uid);
       const result = await runTransaction(db, async (tx) => {
         const snap = await tx.get(projRef);
         if (!snap.exists()) throw new Error('Projet introuvable');
+        const voteLockSnap = await tx.get(voteLockRef);
 
         const data = snap.data() || {};
         const votes = Array.isArray(data.votes) ? data.votes : [];
         const alreadyVoted = votes.includes(user.uid);
+        const lockedProjectId = voteLockSnap.exists() ? voteLockSnap.data()?.projectId : null;
 
         if (alreadyVoted) {
           const nextVotes = votes.filter((uid) => uid !== user.uid);
           tx.update(projRef, { votes: nextVotes, voteCount: nextVotes.length });
+          tx.delete(voteLockRef);
           return { action: 'removed' };
+        }
+
+        if (lockedProjectId && lockedProjectId !== projectId) {
+          throw new Error('Vous ne pouvez voter que pour un seul projet par événement');
         }
 
         const nextVotes = [...votes, user.uid];
         tx.update(projRef, { votes: nextVotes, voteCount: nextVotes.length });
+        tx.set(voteLockRef, {
+          projectId,
+          buildathonId,
+          userId: user.uid,
+          updatedAt: serverTimestamp(),
+        });
         return { action: 'added' };
       });
 
