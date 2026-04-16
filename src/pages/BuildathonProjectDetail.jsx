@@ -131,6 +131,10 @@ function normalizeFeedback(raw) {
     message: raw.message || '',
     authorName: raw.authorName || 'Participant',
     createdAt: normalizeDateLike(raw.createdAt),
+    hidden: raw.hidden === true,
+    hiddenAt: normalizeDateLike(raw.hiddenAt),
+    hiddenBy: raw.hiddenBy || null,
+    moderationReason: raw.moderationReason || null,
   };
 }
 
@@ -167,6 +171,7 @@ export default function BuildathonProjectDetail() {
   const [project, setProject] = useState(null);
   const [allEventProjects, setAllEventProjects] = useState([]);
   const [feedbackList, setFeedbackList] = useState([]);
+  const [visibleFeedbackList, setVisibleFeedbackList] = useState([]);
   const [newFeedback, setNewFeedback] = useState('');
   const [submittingFeedback, setSubmittingFeedback] = useState(false);
   const [updatingVote, setUpdatingVote] = useState(false);
@@ -240,9 +245,16 @@ export default function BuildathonProjectDetail() {
   }, [allEventProjects, projectId, user?.uid]);
 
   useEffect(() => {
+    const visible = isAdmin
+      ? feedbackList
+      : feedbackList.filter((item) => !item.hidden);
+    setVisibleFeedbackList(visible);
+  }, [feedbackList, isAdmin]);
+
+  useEffect(() => {
     if (!project?.id) return;
 
-    const realCount = feedbackList.length;
+    const realCount = feedbackList.filter((item) => !item.hidden).length;
     const storedFeedbackCount = Number.isFinite(Number(project.feedbackCount)) ? Number(project.feedbackCount) : 0;
     const storedCommentsCount = Number.isFinite(Number(project.commentsCount)) ? Number(project.commentsCount) : 0;
 
@@ -256,7 +268,7 @@ export default function BuildathonProjectDetail() {
     }).catch(() => {
       // Best-effort consistency sync for legacy/mismatched counters.
     });
-  }, [feedbackList.length, project?.id, project?.feedbackCount, project?.commentsCount]);
+  }, [feedbackList, project?.id, project?.feedbackCount, project?.commentsCount]);
 
   async function handleVote() {
     if (!user?.uid || !project || updatingVote) return;
@@ -450,7 +462,7 @@ export default function BuildathonProjectDetail() {
   const feedbackCount = Math.max(
     Number(project.feedbackCount || 0),
     Number(project.commentsCount || 0),
-    feedbackList.length
+    visibleFeedbackList.length
   );
 
   return (
@@ -570,7 +582,7 @@ export default function BuildathonProjectDetail() {
       <div className="glass-card p-6 space-y-4">
         <h2 className="text-lg font-semibold text-heading inline-flex items-center gap-2">
           <FileText className="w-5 h-5 text-primary-400" />
-          Feedback / Commentaires
+          Discussion
         </h2>
 
         <form onSubmit={handleSubmitFeedback} className="space-y-3">
@@ -593,16 +605,19 @@ export default function BuildathonProjectDetail() {
         </form>
 
         <div className="space-y-3">
-          {feedbackList.length === 0 ? (
-            <p className="text-sm text-muted">Aucun feedback pour le moment.</p>
+          {visibleFeedbackList.length === 0 ? (
+            <p className="text-sm text-muted">Aucun commentaire pour le moment.</p>
           ) : (
-            feedbackList.map((item) => (
+            visibleFeedbackList.map((item) => (
               <div key={item.id} className="p-3 rounded-lg border border-themed bg-black/5 dark:bg-white/5">
                 <div className="flex items-center justify-between gap-3 mb-1">
                   <p className="text-sm font-medium text-heading">{item.authorName}</p>
                   <p className="text-[11px] text-muted">{formatDate(item.createdAt)}</p>
                 </div>
                 <p className="text-sm text-body whitespace-pre-wrap">{item.message}</p>
+                {isAdmin && item.hidden && (
+                  <p className="text-[11px] text-amber-400 mt-2">Commentaire masque</p>
+                )}
               </div>
             ))
           )}
