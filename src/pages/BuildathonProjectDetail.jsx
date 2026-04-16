@@ -185,6 +185,7 @@ export default function BuildathonProjectDetail() {
   const { user, userProfile, isAdmin } = useAuth();
 
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [event, setEvent] = useState(null);
   const [project, setProject] = useState(null);
   const [allEventProjects, setAllEventProjects] = useState([]);
@@ -208,54 +209,86 @@ export default function BuildathonProjectDetail() {
       setLoading(false);
       return;
     }
+    setLoadError('');
 
     const eventRef = doc(db, 'buildathons', buildathonId);
-    const unsubEvent = onSnapshot(eventRef, (snap) => {
-      if (!snap.exists()) {
-        setEvent(null);
-        return;
+    const unsubEvent = onSnapshot(
+      eventRef,
+      (snap) => {
+        if (!snap.exists()) {
+          setEvent(null);
+          return;
+        }
+        setEvent(normalizeEvent({ id: snap.id, ...snap.data() }));
+      },
+      () => {
+        setLoadError('Impossible de charger les informations du buildathon.');
       }
-      setEvent(normalizeEvent({ id: snap.id, ...snap.data() }));
-    });
+    );
 
     const projectRef = doc(db, 'buildathonProjects', projectId);
-    const unsubProject = onSnapshot(projectRef, (snap) => {
-      if (!snap.exists()) {
-        setProject(null);
+    const unsubProject = onSnapshot(
+      projectRef,
+      (snap) => {
+        if (!snap.exists()) {
+          setProject(null);
+          setLoading(false);
+          return;
+        }
+        const data = normalizeProject({ id: snap.id, ...snap.data() });
+        if (data.buildathonId && data.buildathonId !== buildathonId) {
+          setProject(null);
+        } else {
+          setProject(data);
+        }
         setLoading(false);
-        return;
+      },
+      () => {
+        setLoadError('Accès refusé ou projet indisponible.');
+        setLoading(false);
       }
-      const data = normalizeProject({ id: snap.id, ...snap.data() });
-      if (data.buildathonId && data.buildathonId !== buildathonId) {
-        setProject(null);
-      } else {
-        setProject(data);
-      }
-      setLoading(false);
-    });
+    );
 
     const eventProjectsRef = query(collection(db, 'buildathonProjects'), where('buildathonId', '==', buildathonId));
-    const unsubEventProjects = onSnapshot(eventProjectsRef, (snap) => {
-      const data = [];
-      snap.forEach((d) => data.push(normalizeProject({ id: d.id, ...d.data() })));
-      setAllEventProjects(data);
-    });
+    const unsubEventProjects = onSnapshot(
+      eventProjectsRef,
+      (snap) => {
+        const data = [];
+        snap.forEach((d) => data.push(normalizeProject({ id: d.id, ...d.data() })));
+        setAllEventProjects(data);
+      },
+      () => {
+        // Best-effort list, individual project page remains usable.
+      }
+    );
 
     const feedbackRef = collection(db, 'buildathonProjects', projectId, 'feedback');
-    const unsubFeedback = onSnapshot(feedbackRef, (snap) => {
-      const data = [];
-      snap.forEach((d) => data.push(normalizeFeedback({ id: d.id, ...d.data() })));
-      data.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
-      setFeedbackList(data);
-    });
+    const unsubFeedback = onSnapshot(
+      feedbackRef,
+      (snap) => {
+        const data = [];
+        snap.forEach((d) => data.push(normalizeFeedback({ id: d.id, ...d.data() })));
+        data.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+        setFeedbackList(data);
+      },
+      () => {
+        // Keep page usable even if comments stream fails.
+      }
+    );
 
     const feedbackReportsRef = collection(db, 'buildathonProjects', projectId, 'feedbackReports');
-    const unsubFeedbackReports = onSnapshot(feedbackReportsRef, (snap) => {
-      const data = [];
-      snap.forEach((d) => data.push(normalizeFeedbackReport({ id: d.id, ...d.data() })));
-      data.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
-      setFeedbackReports(data);
-    });
+    const unsubFeedbackReports = onSnapshot(
+      feedbackReportsRef,
+      (snap) => {
+        const data = [];
+        snap.forEach((d) => data.push(normalizeFeedbackReport({ id: d.id, ...d.data() })));
+        data.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+        setFeedbackReports(data);
+      },
+      () => {
+        // Reports are admin support data; ignore stream failures silently.
+      }
+    );
 
     return () => {
       unsubEvent();
@@ -582,6 +615,21 @@ export default function BuildathonProjectDetail() {
     );
   }
 
+  if (loadError) {
+    return (
+      <div className="max-w-4xl mx-auto py-10">
+        <div className="glass-card p-8 text-center">
+          <h1 className="text-2xl font-bold text-heading mb-2">Chargement impossible</h1>
+          <p className="text-body mb-6">{loadError}</p>
+          <Link to={`/projects/${buildathonId}`} className="btn-primary inline-flex items-center gap-2">
+            <ArrowLeft className="w-4 h-4" />
+            Retour au buildathon
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   if (!project) {
     return (
       <div className="max-w-4xl mx-auto py-10">
@@ -615,6 +663,10 @@ export default function BuildathonProjectDetail() {
 
   const tags = getProjectTags(project);
   const stack = getProjectStack(project);
+  const projectStatus = getCanonicalProjectStatus(project);
+  const visibilityLabel = projectStatus === 'publie'
+    ? 'Public'
+    : (projectStatus === 'rejete' ? 'Non public (rejete)' : 'Non public');
   const isPubliclyShareable = getCanonicalProjectStatus(project) === 'publie';
   const shareUrl = typeof window !== 'undefined'
     ? `${window.location.origin}/projects/${buildathonId}/project/${project.id}`
@@ -646,7 +698,12 @@ export default function BuildathonProjectDetail() {
                 {getTeamLabel(project)}
               </p>
             </div>
-            <span className="text-xs px-3 py-1 rounded-full border border-themed bg-surface text-muted self-start">{project.statusLabel}</span>
+            <div className="flex items-center gap-2 self-start flex-wrap">
+              <span className="text-xs px-3 py-1 rounded-full border border-themed bg-surface text-muted">{project.statusLabel}</span>
+              <span className={`text-xs px-3 py-1 rounded-full border ${visibilityLabel === 'Public' ? 'border-green-500/30 text-green-400 bg-green-500/10' : 'border-amber-500/30 text-amber-400 bg-amber-500/10'}`}>
+                {visibilityLabel}
+              </span>
+            </div>
           </div>
 
           <p className="text-body">{project.description || 'Aucune description fournie.'}</p>
@@ -716,6 +773,7 @@ export default function BuildathonProjectDetail() {
       <div className="glass-card p-6 space-y-5">
         <h2 className="text-lg font-semibold text-heading">Actions séparées</h2>
         <p className="text-xs text-muted">Vote = impacte le classement, Like = popularité uniquement, Feedback = discussion uniquement.</p>
+        <p className="text-xs text-muted">Départage classement: {event?.tieBreakRuleText || 'En cas d\'égalité, le projet soumis le plus tôt est prioritaire.'}</p>
 
         <div className="flex flex-wrap gap-3">
           <button
