@@ -1082,6 +1082,62 @@ export default function Buildathon() {
     return { submittedProjects, participantsCount, totalVotes, popularityScore };
   }
 
+  function getSafeCountFromPair(primary, secondary) {
+    const primaryCount = Number(primary);
+    const secondaryCount = Number(secondary);
+    const safePrimary = Number.isFinite(primaryCount) ? primaryCount : 0;
+    const safeSecondary = Number.isFinite(secondaryCount) ? secondaryCount : 0;
+    return Math.max(safePrimary, safeSecondary);
+  }
+
+  function getBuildathonSupervisionMetrics(event, eventProjects = []) {
+    const participantsCount = Array.isArray(event?.participants) ? event.participants.length : 0;
+    const submittedProjects = eventProjects.length;
+
+    let publishedProjects = 0;
+    let rejectedProjects = 0;
+    let totalVotes = 0;
+    let totalLikes = 0;
+    let totalFeedback = 0;
+
+    const uniqueTeamNames = new Set();
+
+    eventProjects.forEach((project) => {
+      const status = getCanonicalProjectStatus(project);
+      if (status === 'publie') publishedProjects += 1;
+      if (status === 'rejete') rejectedProjects += 1;
+
+      const voteCount = Number.isFinite(Number(project?.voteCount))
+        ? Number(project.voteCount)
+        : (Array.isArray(project?.votes) ? project.votes.length : 0);
+      const likesCount = Number.isFinite(Number(project?.likesCount))
+        ? Number(project.likesCount)
+        : (Array.isArray(project?.likeUserIds) ? project.likeUserIds.length : 0);
+
+      totalVotes += voteCount;
+      totalLikes += likesCount;
+      totalFeedback += getSafeCountFromPair(project?.feedbackCount, project?.commentsCount);
+
+      const teamName = (project?.teamName || '').trim();
+      if (teamName) {
+        uniqueTeamNames.add(teamName.toLowerCase());
+      }
+    });
+
+    return {
+      submittedProjects,
+      publishedProjects,
+      rejectedProjects,
+      totalVotes,
+      totalLikes,
+      totalFeedback,
+      participantsCount,
+      teamsCount: uniqueTeamNames.size > 0 ? uniqueTeamNames.size : submittedProjects,
+      votingEnabled: event?.votingEnabled !== false,
+      submissionOpen: event?.submissionOpen !== false,
+    };
+  }
+
   function getPopularityBucket(event) {
     const { popularityScore } = getEventPopularityMetrics(event.id, event.participants);
     if (popularityScore >= 20) return 'high';
@@ -1362,6 +1418,7 @@ export default function Buildathon() {
               ? allEventProjects
               : allEventProjects.filter((p) => isProjectVisibleForParticipant(p, event, user?.uid));
             const metrics = getEventPopularityMetrics(event.id, event.participants);
+            const adminSupervisionMetrics = getBuildathonSupervisionMetrics(event, allEventProjects);
             const isExpanded = expandedEvent === event.id;
             const isRegistered = event.participants?.includes(user?.uid);
             const userHasSubmitted = allEventProjects.some((p) => p.submittedBy === user?.uid);
@@ -1475,6 +1532,50 @@ export default function Buildathon() {
                                 <Award className="w-3.5 h-3.5" />Finaliser & Attribuer prix
                               </button>
                             )}
+                          </div>
+
+                          <div className="mt-3 p-3 rounded-lg border border-themed bg-black/5 dark:bg-white/5">
+                            <p className="text-[11px] uppercase tracking-wide text-primary-300 mb-2">Supervision admin</p>
+                            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2 text-xs">
+                              <div className="rounded-md border border-themed bg-surface px-2.5 py-2">
+                                <p className="text-muted">Projets soumis</p>
+                                <p className="text-heading font-semibold">{adminSupervisionMetrics.submittedProjects}</p>
+                              </div>
+                              <div className="rounded-md border border-themed bg-surface px-2.5 py-2">
+                                <p className="text-muted">Projets publiés</p>
+                                <p className="text-green-400 font-semibold">{adminSupervisionMetrics.publishedProjects}</p>
+                              </div>
+                              <div className="rounded-md border border-themed bg-surface px-2.5 py-2">
+                                <p className="text-muted">Projets rejetés</p>
+                                <p className="text-red-400 font-semibold">{adminSupervisionMetrics.rejectedProjects}</p>
+                              </div>
+                              <div className="rounded-md border border-themed bg-surface px-2.5 py-2">
+                                <p className="text-muted">Votes totaux</p>
+                                <p className="text-heading font-semibold">{adminSupervisionMetrics.totalVotes}</p>
+                              </div>
+                              <div className="rounded-md border border-themed bg-surface px-2.5 py-2">
+                                <p className="text-muted">Likes totaux</p>
+                                <p className="text-heading font-semibold">{adminSupervisionMetrics.totalLikes}</p>
+                              </div>
+                              <div className="rounded-md border border-themed bg-surface px-2.5 py-2">
+                                <p className="text-muted">Commentaires / feedback</p>
+                                <p className="text-heading font-semibold">{adminSupervisionMetrics.totalFeedback}</p>
+                              </div>
+                              <div className="rounded-md border border-themed bg-surface px-2.5 py-2">
+                                <p className="text-muted">Participants</p>
+                                <p className="text-heading font-semibold">{adminSupervisionMetrics.participantsCount}</p>
+                              </div>
+                              <div className="rounded-md border border-themed bg-surface px-2.5 py-2">
+                                <p className="text-muted">Équipes</p>
+                                <p className="text-heading font-semibold">{adminSupervisionMetrics.teamsCount}</p>
+                              </div>
+                              <div className="rounded-md border border-themed bg-surface px-2.5 py-2">
+                                <p className="text-muted">État opérationnel</p>
+                                <p className="text-heading font-semibold">
+                                  Vote: {adminSupervisionMetrics.votingEnabled ? 'activé' : 'désactivé'} • Soumission: {adminSupervisionMetrics.submissionOpen ? 'ouverte' : 'fermée'}
+                                </p>
+                              </div>
+                            </div>
                           </div>
                         </div>
                       )}
