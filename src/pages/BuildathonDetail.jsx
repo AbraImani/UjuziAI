@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { collection, doc, onSnapshot, query, where } from 'firebase/firestore';
+import { collection, doc, onSnapshot, query, where, updateDoc, arrayUnion } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { ArrowLeft, Calendar, ExternalLink, FileText, Loader2, Settings, ThumbsUp, Trophy, Users } from 'lucide-react';
+import { ArrowLeft, Calendar, ExternalLink, FileText, Loader2, Settings, ThumbsUp, Trophy, Users, UserPlus, Send } from 'lucide-react';
 
 const TAB_LIST = [
   { id: 'overview', label: 'Aperçu' },
@@ -190,6 +190,16 @@ export default function BuildathonDetail() {
   const [event, setEvent] = useState(null);
   const [projects, setProjects] = useState([]);
   const [activeTab, setActiveTab] = useState('overview');
+  const [showSubmitForm, setShowSubmitForm] = useState(false);
+  const [submitFormData, setSubmitFormData] = useState({
+    title: '',
+    description: '',
+    category: '',
+    teamName: '',
+    repoUrl: '',
+    demoUrl: '',
+  });
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (!buildathonId) {
@@ -227,6 +237,46 @@ export default function BuildathonDetail() {
       unsubProjects();
     };
   }, [buildathonId]);
+
+  const handleRegister = async () => {
+    try {
+      await updateDoc(doc(db, 'buildathons', buildathonId), {
+        participants: arrayUnion(user.uid),
+      });
+    } catch (error) {
+      console.error('Erreur lors de l\'inscription:', error);
+    }
+  };
+
+  const handleSubmitProject = async (e) => {
+    e.preventDefault();
+    if (!submitFormData.title || !submitFormData.teamName || !submitFormData.repoUrl || !submitFormData.demoUrl) {
+      alert('Veuillez remplir tous les champs obligatoires');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const response = await fetch('https://us-central1-demo-ujuziai.cloudfunctions.net/createBuildathonProject', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          buildathonId,
+          ...submitFormData,
+        }),
+      });
+      
+      if (!response.ok) throw new Error('Erreur lors de la soumission');
+      
+      setShowSubmitForm(false);
+      setSubmitFormData({ title: '', description: '', category: '', teamName: '', repoUrl: '', demoUrl: '' });
+    } catch (error) {
+      console.error('Erreur:', error);
+      alert('Erreur lors de la soumission du projet');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const visibleTabs = useMemo(() => {
     return TAB_LIST.filter((tab) => !tab.adminOnly || isAdmin);
@@ -286,8 +336,99 @@ export default function BuildathonDetail() {
               </span>
               <span className="badge bg-surface border border-themed text-body text-xs">{status}</span>
             </div>
+            {/* Registration & Submission Buttons */}
+            <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-themed mt-3">
+              {!event.participants.includes(user?.uid) && (
+                <button
+                  onClick={handleRegister}
+                  className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg bg-accent-600/20 text-accent-300 border border-accent-500/30 hover:bg-accent-600/30 transition-colors"
+                >
+                  <UserPlus className="w-3.5 h-3.5" />
+                  S'inscrire
+                </button>
+              )}
+              {event.participants.includes(user?.uid) && (
+                <span className="text-xs text-green-400 flex items-center gap-1">✓ Inscrit</span>
+              )}
+              {event.participants.includes(user?.uid) && !projects.some((p) => p.submittedBy === user?.uid) && (
+                <button
+                  onClick={() => setShowSubmitForm(!showSubmitForm)}
+                  className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg bg-primary-600/20 text-primary-300 border border-primary-500/30 hover:bg-primary-600/30 transition-colors"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  Soumettre un projet
+                </button>
+              )}
+              {projects.some((p) => p.submittedBy === user?.uid) && (
+                <span className="text-xs text-primary-400 flex items-center gap-1">✓ Projet soumis</span>
+              )}
+            </div>
           </div>
         </div>
+
+        {/* Submit Form */}
+        {showSubmitForm && event.participants.includes(user?.uid) && (
+          <div className="glass-card p-6 border border-primary-500/30">
+            <h2 className="text-lg font-semibold text-heading mb-4">Soumettre un projet</h2>
+            <form onSubmit={handleSubmitProject} className="space-y-3">
+              <input
+                type="text"
+                placeholder="Titre du projet"
+                required
+                value={submitFormData.title}
+                onChange={(e) => setSubmitFormData({ ...submitFormData, title: e.target.value })}
+                className="w-full input-field"
+              />
+              <input
+                type="text"
+                placeholder="Nom de l'équipe"
+                required
+                value={submitFormData.teamName}
+                onChange={(e) => setSubmitFormData({ ...submitFormData, teamName: e.target.value })}
+                className="w-full input-field"
+              />
+              <textarea
+                placeholder="Description du projet"
+                value={submitFormData.description}
+                onChange={(e) => setSubmitFormData({ ...submitFormData, description: e.target.value })}
+                className="w-full input-field h-24 resize-none"
+              />
+              <input
+                type="url"
+                placeholder="Lien GitHub"
+                required
+                value={submitFormData.repoUrl}
+                onChange={(e) => setSubmitFormData({ ...submitFormData, repoUrl: e.target.value })}
+                className="w-full input-field"
+              />
+              <input
+                type="url"
+                placeholder="Lien démo / vidéo"
+                required
+                value={submitFormData.demoUrl}
+                onChange={(e) => setSubmitFormData({ ...submitFormData, demoUrl: e.target.value })}
+                className="w-full input-field"
+              />
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="btn-primary text-sm flex items-center gap-1"
+                >
+                  {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                  {submitting ? 'Envoi...' : 'Soumettre'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowSubmitForm(false)}
+                  className="btn-secondary text-sm"
+                >
+                  Annuler
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
       </div>
 
       <div className="glass-card p-3 mb-6">
