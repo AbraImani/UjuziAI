@@ -29,6 +29,7 @@ import {
   MessageSquare,
   Share2,
   Send,
+  Trash2,
   ThumbsUp,
   Users,
 } from 'lucide-react';
@@ -201,6 +202,9 @@ export default function BuildathonProjectDetail() {
   const [moderatingCommentId, setModeratingCommentId] = useState(null);
   const [expandedReportsCommentId, setExpandedReportsCommentId] = useState(null);
   const [copyingShareLink, setCopyingShareLink] = useState(false);
+  const [isEditingProject, setIsEditingProject] = useState(false);
+  const [editForm, setEditForm] = useState(null);
+  const [savingProject, setSavingProject] = useState(false);
 
   useEffect(() => {
     if (!buildathonId || !projectId) {
@@ -334,6 +338,19 @@ export default function BuildathonProjectDetail() {
       : feedbackList.filter((item) => !item.hidden);
     setVisibleFeedbackList(visible);
   }, [feedbackList, isAdmin]);
+
+  useEffect(() => {
+    if (!project?.id) return;
+    setEditForm({
+      title: project.title || '',
+      description: project.description || '',
+      category: project.category || 'other',
+      teamName: project.teamName || '',
+      repoUrl: project.repoUrl || '',
+      demoUrl: project.demoUrl || '',
+    });
+    setIsEditingProject(false);
+  }, [project?.id]);
 
   useEffect(() => {
     if (!project?.id) return;
@@ -587,6 +604,19 @@ export default function BuildathonProjectDetail() {
     }
   }
 
+  async function handleDeleteProject() {
+    if (!isAdmin || !project?.id) return;
+    if (!window.confirm('Supprimer ce projet ? Cette action est irreversible.')) return;
+
+    try {
+      await deleteDoc(doc(db, 'buildathonProjects', project.id));
+      toast.success('Projet supprimé');
+      window.location.assign(`/projects/${buildathonId}`);
+    } catch (error) {
+      toast.error('Erreur lors de la suppression du projet');
+    }
+  }
+
   async function handleCopyShareLink(shareUrl) {
     if (!shareUrl || copyingShareLink) return;
     setCopyingShareLink(true);
@@ -606,6 +636,43 @@ export default function BuildathonProjectDetail() {
       toast.error('Impossible de copier le lien');
     } finally {
       setCopyingShareLink(false);
+    }
+  }
+
+  async function handleSaveProjectEdits() {
+    if (!project?.id || !editForm || savingProject) return;
+    if (!canEditProject) {
+      toast.error('La modification est fermée après la date limite');
+      return;
+    }
+
+    const nextTitle = editForm.title.trim();
+    const nextTeamName = editForm.teamName.trim();
+    const nextRepoUrl = editForm.repoUrl.trim();
+    const nextDemoUrl = editForm.demoUrl.trim();
+
+    if (!nextTitle || !nextTeamName || !nextRepoUrl || !nextDemoUrl) {
+      toast.error('Titre, équipe, GitHub et démo sont obligatoires');
+      return;
+    }
+
+    setSavingProject(true);
+    try {
+      await updateDoc(doc(db, 'buildathonProjects', project.id), {
+        title: nextTitle,
+        description: editForm.description.trim(),
+        category: editForm.category || 'other',
+        teamName: nextTeamName,
+        repoUrl: nextRepoUrl,
+        demoUrl: nextDemoUrl,
+        updatedAt: serverTimestamp(),
+      });
+      toast.success('Projet mis à jour');
+      setIsEditingProject(false);
+    } catch (error) {
+      toast.error('Erreur lors de la mise à jour du projet');
+    } finally {
+      setSavingProject(false);
     }
   }
 
@@ -666,10 +733,19 @@ export default function BuildathonProjectDetail() {
   const tags = getProjectTags(project);
   const stack = getProjectStack(project);
   const projectStatus = getCanonicalProjectStatus(project);
+  const projectDeadlineValue = event?.submissionEndDate || event?.endDate || null;
+  const projectDeadlineMs = projectDeadlineValue ? new Date(projectDeadlineValue).getTime() : null;
+  const canEditProject = Boolean(
+    isAdmin || (
+      isProjectOwnerOrMember(project, user?.uid) && (
+        !Number.isFinite(projectDeadlineMs) || Date.now() <= projectDeadlineMs
+      )
+    )
+  );
+  const canShareProject = projectStatus !== 'brouillon' && projectStatus !== 'rejete';
   const visibilityLabel = projectStatus === 'publie'
     ? 'Public'
     : (projectStatus === 'rejete' ? 'Non public (rejete)' : 'Non public');
-  const isPubliclyShareable = getCanonicalProjectStatus(project) === 'publie';
   const shareUrl = typeof window !== 'undefined'
     ? `${window.location.origin}/projects/${buildathonId}/project/${project.id}`
     : '';
@@ -775,6 +851,7 @@ export default function BuildathonProjectDetail() {
       <div className="glass-card p-6 space-y-5">
         <h2 className="text-lg font-semibold text-heading">Actions séparées</h2>
         <p className="text-xs text-muted">Vote = impacte le classement, Like = popularité uniquement, Feedback = discussion uniquement.</p>
+        <p className="text-xs text-muted">1 vote = 10 points au classement.</p>
         <p className="text-xs text-muted">Départage classement: {event?.tieBreakRuleText || 'En cas d\'égalité, le projet soumis le plus tôt est prioritaire.'}</p>
 
         <div className="flex flex-wrap gap-3">
@@ -800,6 +877,17 @@ export default function BuildathonProjectDetail() {
             <MessageSquare className="w-4 h-4" />
             Feedback ({feedbackCount})
           </span>
+
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={handleDeleteProject}
+              className="px-4 py-2 rounded-lg border border-red-500/30 bg-red-500/10 text-red-300 text-sm inline-flex items-center gap-2 hover:bg-red-500/20 transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
+              Supprimer le projet
+            </button>
+          )}
         </div>
 
         <div className="pt-3 border-t border-themed space-y-2">
@@ -808,12 +896,12 @@ export default function BuildathonProjectDetail() {
               <Share2 className="w-3.5 h-3.5" />
               Partage du projet
             </p>
-            {!isPubliclyShareable && (
-              <p className="text-[11px] text-amber-400">Lien partageable activé uniquement pour les projets publiés.</p>
+            {!canShareProject && (
+              <p className="text-[11px] text-amber-400">Ce projet ne peut pas encore être partagé.</p>
             )}
           </div>
 
-          {isPubliclyShareable ? (
+          {canShareProject ? (
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
@@ -850,10 +938,119 @@ export default function BuildathonProjectDetail() {
               </a>
             </div>
           ) : (
-            <p className="text-xs text-muted">Publiez ce projet pour activer le partage public et obtenir des votes.</p>
+            <p className="text-xs text-muted">Le partage sera réactivé dès qu'un projet soumissionné devient partageable.</p>
           )}
         </div>
       </div>
+
+      {canEditProject && editForm && (
+        <div className="glass-card p-6 space-y-4">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <h2 className="text-lg font-semibold text-heading">Modifier le projet</h2>
+            <p className="text-xs text-muted">
+              Modifiable jusqu'au {formatDate(projectDeadlineValue || event?.endDate)}
+            </p>
+          </div>
+
+          {!isEditingProject ? (
+            <button
+              type="button"
+              onClick={() => setIsEditingProject(true)}
+              className="btn-secondary inline-flex items-center gap-2 text-sm"
+            >
+              Modifier le projet
+            </button>
+          ) : (
+            <div className="space-y-3">
+              <div className="grid md:grid-cols-2 gap-3">
+                <input
+                  type="text"
+                  value={editForm.title}
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, title: e.target.value }))}
+                  className="input-field w-full"
+                  placeholder="Titre du projet"
+                />
+                <input
+                  type="text"
+                  value={editForm.teamName}
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, teamName: e.target.value }))}
+                  className="input-field w-full"
+                  placeholder="Nom de l'équipe"
+                />
+              </div>
+              <textarea
+                value={editForm.description}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, description: e.target.value }))}
+                className="input-field w-full h-28 resize-none"
+                placeholder="Description du projet"
+              />
+              <div className="grid md:grid-cols-3 gap-3">
+                <select
+                  value={editForm.category}
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, category: e.target.value }))}
+                  className="input-field w-full"
+                >
+                  <option value="ai-ml">IA / ML</option>
+                  <option value="web">Web</option>
+                  <option value="mobile">Mobile</option>
+                  <option value="cloud">Cloud</option>
+                  <option value="data">Data</option>
+                  <option value="other">Autre</option>
+                </select>
+                <input
+                  type="url"
+                  value={editForm.repoUrl}
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, repoUrl: e.target.value }))}
+                  className="input-field w-full"
+                  placeholder="Lien GitHub"
+                />
+                <input
+                  type="url"
+                  value={editForm.demoUrl}
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, demoUrl: e.target.value }))}
+                  className="input-field w-full"
+                  placeholder="Lien démo / vidéo"
+                />
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={handleSaveProjectEdits}
+                  disabled={savingProject}
+                  className="btn-primary inline-flex items-center gap-2 disabled:opacity-60"
+                >
+                  {savingProject ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                  {savingProject ? 'Enregistrement...' : 'Enregistrer les modifications'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditForm({
+                      title: project.title || '',
+                      description: project.description || '',
+                      category: project.category || 'other',
+                      teamName: project.teamName || '',
+                      repoUrl: project.repoUrl || '',
+                      demoUrl: project.demoUrl || '',
+                    });
+                    setIsEditingProject(false);
+                  }}
+                  className="btn-secondary"
+                >
+                  Annuler
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {!canEditProject && isProjectOwnerOrMember(project, user?.uid) && (
+        <div className="glass-card p-4 border border-amber-500/20 bg-amber-500/5 text-sm text-amber-200">
+          La modification de ce projet est fermée après la date limite du buildathon.
+        </div>
+      )}
 
       <div className="glass-card p-6 space-y-4">
         <h2 className="text-lg font-semibold text-heading inline-flex items-center gap-2">
