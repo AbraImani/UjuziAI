@@ -733,7 +733,7 @@ export default function BuildathonProjectDetail() {
   const tags = getProjectTags(project);
   const stack = getProjectStack(project);
   const projectStatus = getCanonicalProjectStatus(project);
-  const projectDeadlineValue = event?.submissionEndDate || event?.endDate || null;
+  const projectDeadlineValue = event?.voteEndDate || event?.endDate || event?.submissionEndDate || null;
   const projectDeadlineMs = projectDeadlineValue ? new Date(projectDeadlineValue).getTime() : null;
   const canEditProject = Boolean(
     isAdmin || (

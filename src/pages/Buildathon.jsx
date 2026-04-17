@@ -69,9 +69,13 @@ const PROJECT_CATEGORIES = [
 
 function getEventStatus(b) {
   const now = new Date();
-  if (b.status === 'completed') return 'completed';
-  if (b.startDate && new Date(b.startDate) > now) return 'upcoming';
-  if (b.endDate && new Date(b.endDate) < now) return 'ended';
+  const startDate = b.startDate ? new Date(b.startDate) : null;
+  const submissionEndDate = b.submissionEndDate ? new Date(b.submissionEndDate) : null;
+  const voteEndDate = b.voteEndDate ? new Date(b.voteEndDate) : null;
+
+  if (startDate && startDate > now) return 'upcoming';
+  if (voteEndDate && voteEndDate < now) return 'completed';
+  if (submissionEndDate && submissionEndDate < now) return 'ended';
   return 'active';
 }
 

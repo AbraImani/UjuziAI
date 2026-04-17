@@ -84,9 +84,13 @@ function getPhaseCountdown(startValue, endValue, nowMs) {
 
 function getEventStatus(event) {
   const now = new Date();
-  if (event?.status === 'completed') return 'Terminé';
-  if (event?.startDate && new Date(event.startDate) > now) return 'À venir';
-  if (event?.endDate && new Date(event.endDate) < now) return 'Vote ouvert';
+  const startDate = event?.startDate ? new Date(event.startDate) : null;
+  const submissionEndDate = event?.submissionEndDate ? new Date(event.submissionEndDate) : null;
+  const voteEndDate = event?.voteEndDate ? new Date(event.voteEndDate) : null;
+
+  if (startDate && startDate > now) return 'À venir';
+  if (voteEndDate && voteEndDate < now) return 'Terminé';
+  if (submissionEndDate && submissionEndDate < now) return 'Vote ouvert';
   return 'En cours';
 }
 
@@ -352,8 +356,8 @@ export default function BuildathonDetail() {
 
   const sortedProjects = useMemo(() => sortProjectsForRanking(visibleProjects), [visibleProjects]);
   const submissionCountdown = useMemo(
-    () => getPhaseCountdown(event?.submissionStartDate, event?.submissionEndDate, nowMs),
-    [event?.submissionStartDate, event?.submissionEndDate, nowMs]
+    () => getPhaseCountdown(event?.submissionStartDate, event?.voteEndDate || event?.endDate || event?.submissionEndDate, nowMs),
+    [event?.submissionStartDate, event?.submissionEndDate, event?.voteEndDate, event?.endDate, nowMs]
   );
   const voteCountdown = useMemo(
     () => getPhaseCountdown(event?.voteStartDate, event?.voteEndDate, nowMs),
