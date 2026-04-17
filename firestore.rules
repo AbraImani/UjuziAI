@@ -50,7 +50,6 @@ service cloud.firestore {
           exists(/databases/$(database)/documents/buildathons/$(projectData.buildathonId)) &&
           (
             (
-              getBuildathon(projectData.buildathonId).data.projectVisibility == 'all-submitted' &&
               !projectIsRejected(projectData) &&
               !projectIsDraft(projectData)
             ) ||

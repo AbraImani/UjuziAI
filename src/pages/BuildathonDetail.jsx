@@ -40,6 +40,48 @@ function formatEventDate(value) {
   });
 }
 
+function formatDurationMs(ms) {
+  if (!Number.isFinite(ms) || ms <= 0) return '0s';
+  const totalSeconds = Math.floor(ms / 1000);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (days > 0) return `${days}j ${hours}h ${minutes}m`;
+  if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
+  if (minutes > 0) return `${minutes}m ${seconds}s`;
+  return `${seconds}s`;
+}
+
+function getPhaseCountdown(startValue, endValue, nowMs) {
+  const startMs = startValue ? new Date(startValue).getTime() : null;
+  const endMs = endValue ? new Date(endValue).getTime() : null;
+
+  if (!Number.isFinite(startMs) && !Number.isFinite(endMs)) {
+    return { label: 'Date non définie', state: 'unknown' };
+  }
+
+  if (Number.isFinite(startMs) && nowMs < startMs) {
+    return {
+      label: `Commence dans ${formatDurationMs(startMs - nowMs)}`,
+      state: 'upcoming',
+    };
+  }
+
+  if (Number.isFinite(endMs)) {
+    if (nowMs <= endMs) {
+      return {
+        label: `Se termine dans ${formatDurationMs(endMs - nowMs)}`,
+        state: 'running',
+      };
+    }
+    return { label: 'Terminé', state: 'ended' };
+  }
+
+  return { label: 'En cours', state: 'running' };
+}
+
 function getEventStatus(event) {
   const now = new Date();
   if (event?.status === 'completed') return 'Terminé';
@@ -96,10 +138,8 @@ function isProjectVisibleForParticipant(project, event, uid) {
 
   if (status === 'rejete') return false;
 
-  if ((event?.projectVisibility || 'published-only') === 'all-submitted') {
-    return status !== 'brouillon';
-  }
-  return status === 'publie';
+  // User view should include all submitted/validated/published projects.
+  return status !== 'brouillon';
 }
 
 function toTimestampMs(value) {
@@ -203,6 +243,12 @@ export default function BuildathonDetail() {
     demoUrl: '',
   });
   const [submitting, setSubmitting] = useState(false);
+  const [nowMs, setNowMs] = useState(Date.now());
+
+  useEffect(() => {
+    const timerId = setInterval(() => setNowMs(Date.now()), 1000);
+    return () => clearInterval(timerId);
+  }, []);
 
   useEffect(() => {
     if (!buildathonId) {
@@ -305,6 +351,14 @@ export default function BuildathonDetail() {
   }, [projects, event, user?.uid, isAdmin]);
 
   const sortedProjects = useMemo(() => sortProjectsForRanking(visibleProjects), [visibleProjects]);
+  const submissionCountdown = useMemo(
+    () => getPhaseCountdown(event?.submissionStartDate, event?.submissionEndDate, nowMs),
+    [event?.submissionStartDate, event?.submissionEndDate, nowMs]
+  );
+  const voteCountdown = useMemo(
+    () => getPhaseCountdown(event?.voteStartDate, event?.voteEndDate, nowMs),
+    [event?.voteStartDate, event?.voteEndDate, nowMs]
+  );
 
   if (loading) {
     return (
@@ -353,6 +407,16 @@ export default function BuildathonDetail() {
                 Vote {event.votingEnabled ? 'activé' : 'désactivé'}
               </span>
               <span className="badge bg-surface border border-themed text-body text-xs">{status}</span>
+            </div>
+            <div className="grid sm:grid-cols-2 gap-3 pt-2">
+              <div className="p-3 rounded-lg bg-black/5 dark:bg-white/5 border border-themed">
+                <p className="text-[11px] text-muted">Timer soumission</p>
+                <p className="text-sm font-medium text-heading">{submissionCountdown.label}</p>
+              </div>
+              <div className="p-3 rounded-lg bg-black/5 dark:bg-white/5 border border-themed">
+                <p className="text-[11px] text-muted">Timer vote</p>
+                <p className="text-sm font-medium text-heading">{voteCountdown.label}</p>
+              </div>
             </div>
             <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-themed mt-3">
               {!event.participants.includes(user?.uid) && (
@@ -475,7 +539,7 @@ export default function BuildathonDetail() {
         {activeTab === 'projects' && (
           <div className="space-y-3">
             <h2 className="text-lg font-semibold text-heading">Projets</h2>
-            {projects.length === 0 ? (
+            {sortedProjects.length === 0 ? (
               <p className="text-body">Aucun projet pour le moment.</p>
             ) : (
               <div className="grid md:grid-cols-2 gap-4">
@@ -648,7 +712,27 @@ export default function BuildathonDetail() {
         {activeTab === 'discussions' && (
           <div className="space-y-3">
             <h2 className="text-lg font-semibold text-heading">Discussions</h2>
-            <p className="text-body">Section en préparation. Les échanges liés à ce buildathon seront affichés ici.</p>
+            {sortedProjects.length === 0 ? (
+              <p className="text-body">Aucun projet disponible pour discussion pour le moment.</p>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-xs text-muted">Chaque projet possède sa discussion dédiée (feedback/commentaires).</p>
+                {sortedProjects.map((p) => (
+                  <div key={p.id} className="p-3 rounded-lg bg-black/5 dark:bg-white/5 border border-themed flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-heading truncate">{p.title || 'Projet sans titre'}</p>
+                      <p className="text-xs text-muted">{getProjectTeamLabel(p)} • {p.feedbackCount || p.commentsCount || 0} commentaire(s)</p>
+                    </div>
+                    <Link
+                      to={`/projects/${event.id}/project/${p.id}`}
+                      className="text-xs px-3 py-1.5 rounded-lg bg-primary-600/20 text-primary-300 border border-primary-500/30 hover:bg-primary-600/30 transition-colors"
+                    >
+                      Ouvrir la discussion
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

@@ -99,10 +99,8 @@ function isProjectVisibleForParticipant(project, event, uid) {
 
   if (status === 'rejete') return false;
 
-  if ((event?.projectVisibility || 'published-only') === 'all-submitted') {
-    return status !== 'brouillon';
-  }
-  return status === 'publie';
+  // User view should include all submitted/validated/published projects.
+  return status !== 'brouillon';
 }
 
 function normalizeProject(raw) {
@@ -393,6 +391,7 @@ export default function BuildathonProjectDetail() {
           tx.update(ref, {
             votes: nextVotes,
             voteCount: nextVotes.length,
+            updatedAt: serverTimestamp(),
           });
           tx.delete(voteLockRef);
           return { action: 'removed' };
@@ -406,6 +405,7 @@ export default function BuildathonProjectDetail() {
         tx.update(ref, {
           votes: nextVotes,
           voteCount: nextVotes.length,
+          updatedAt: serverTimestamp(),
         });
         tx.set(voteLockRef, {
           projectId: project.id,
@@ -450,6 +450,7 @@ export default function BuildathonProjectDetail() {
           tx.update(ref, {
             likeUserIds: nextLikeUserIds,
             likesCount: nextLikeUserIds.length,
+            updatedAt: serverTimestamp(),
           });
           return { action: 'removed' };
         }
@@ -458,6 +459,7 @@ export default function BuildathonProjectDetail() {
         tx.update(ref, {
           likeUserIds: nextLikeUserIds,
           likesCount: nextLikeUserIds.length,
+          updatedAt: serverTimestamp(),
         });
         return { action: 'added' };
       });
