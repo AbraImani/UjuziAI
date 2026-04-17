@@ -742,7 +742,7 @@ export default function BuildathonProjectDetail() {
       )
     )
   );
-  const canShareProject = projectStatus !== 'brouillon' && projectStatus !== 'rejete';
+  const canShareProject = isAdmin || isProjectOwnerOrMember(project, user?.uid) || projectStatus === 'publie';
   const visibilityLabel = projectStatus === 'publie'
     ? 'Public'
     : (projectStatus === 'rejete' ? 'Non public (rejete)' : 'Non public');
@@ -897,7 +897,7 @@ export default function BuildathonProjectDetail() {
               Partage du projet
             </p>
             {!canShareProject && (
-              <p className="text-[11px] text-amber-400">Ce projet ne peut pas encore être partagé.</p>
+              <p className="text-[11px] text-amber-400">Seul l'auteur du projet ou l'admin peut le partager pour le moment.</p>
             )}
           </div>
 
@@ -938,7 +938,7 @@ export default function BuildathonProjectDetail() {
               </a>
             </div>
           ) : (
-            <p className="text-xs text-muted">Le partage sera réactivé dès qu'un projet soumissionné devient partageable.</p>
+            <p className="text-xs text-muted">Le partage est réservé à l'auteur du projet ou à l'admin pour obtenir des votes via le lien de partage.</p>
           )}
         </div>
       </div>

@@ -1554,6 +1554,16 @@ export default function Buildathon() {
                     >
                       Voir le buildathon
                     </Link>
+                    {isAdmin && (
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); handleOpenEditEvent(event); }}
+                        className="btn-secondary text-sm inline-flex items-center gap-1"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                        Modifier l'événement
+                      </button>
+                    )}
                     {canRegister && (
                       <button
                         onClick={(e) => { e.stopPropagation(); handleRegister(event.id); }}
