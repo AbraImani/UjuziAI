@@ -40,6 +40,15 @@ function formatEventDate(value) {
   });
 }
 
+function getEffectiveEventEndDate(event) {
+  const candidateDates = [event?.voteEndDate, event?.submissionEndDate, event?.endDate]
+    .map((value) => (value ? new Date(value) : null))
+    .filter((date) => date && !Number.isNaN(date.getTime()));
+
+  if (candidateDates.length === 0) return null;
+  return candidateDates.reduce((latest, current) => (current > latest ? current : latest));
+}
+
 function formatDurationMs(ms) {
   if (!Number.isFinite(ms) || ms <= 0) return '0s';
   const totalSeconds = Math.floor(ms / 1000);
@@ -85,12 +94,10 @@ function getPhaseCountdown(startValue, endValue, nowMs) {
 function getEventStatus(event) {
   const now = new Date();
   const startDate = event?.startDate ? new Date(event.startDate) : null;
-  const submissionEndDate = event?.submissionEndDate ? new Date(event.submissionEndDate) : null;
-  const voteEndDate = event?.voteEndDate ? new Date(event.voteEndDate) : null;
+  const voteEndDate = getEffectiveEventEndDate(event);
 
   if (startDate && startDate > now) return 'À venir';
   if (voteEndDate && voteEndDate < now) return 'Terminé';
-  if (submissionEndDate && submissionEndDate < now) return 'Vote ouvert';
   return 'En cours';
 }
 
@@ -356,8 +363,8 @@ export default function BuildathonDetail() {
 
   const sortedProjects = useMemo(() => sortProjectsForRanking(visibleProjects), [visibleProjects]);
   const submissionCountdown = useMemo(
-    () => getPhaseCountdown(event?.submissionStartDate, event?.voteEndDate || event?.endDate || event?.submissionEndDate, nowMs),
-    [event?.submissionStartDate, event?.submissionEndDate, event?.voteEndDate, event?.endDate, nowMs]
+    () => getPhaseCountdown(event?.submissionStartDate, getEffectiveEventEndDate(event), nowMs),
+    [event, nowMs]
   );
   const voteCountdown = useMemo(
     () => getPhaseCountdown(event?.voteStartDate, event?.voteEndDate, nowMs),
@@ -402,8 +409,8 @@ export default function BuildathonDetail() {
             <h1 className="text-2xl font-bold text-heading">{event.title}</h1>
             <p className="text-body line-clamp-3">{event.description || 'Aucune description disponible.'}</p>
             <div className="flex flex-wrap items-center gap-4 text-xs text-muted">
-              <span className="inline-flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{formatEventDate(event.startDate)} → {formatEventDate(event.endDate)}</span>
-              <span className="inline-flex items-center gap-1"><Clock3 className="w-3.5 h-3.5" />{formatEventDate(event.submissionStartDate)} → {formatEventDate(event.submissionEndDate)}</span>
+              <span className="inline-flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{formatEventDate(event.startDate)} → {formatEventDate(getEffectiveEventEndDate(event))}</span>
+              <span className="inline-flex items-center gap-1"><Clock3 className="w-3.5 h-3.5" />{formatEventDate(event.submissionStartDate)} → {formatEventDate(getEffectiveEventEndDate(event))}</span>
               <span className="inline-flex items-center gap-1"><Users className="w-3.5 h-3.5" />{event.participants.length} participant{event.participants.length > 1 ? 's' : ''}</span>
               <span className="inline-flex items-center gap-1"><FileText className="w-3.5 h-3.5" />{projects.length} projet{projects.length > 1 ? 's' : ''}</span>
               <span className={`inline-flex items-center gap-1 ${event.votingEnabled ? 'text-green-400' : 'text-red-400'}`}>
@@ -522,11 +529,11 @@ export default function BuildathonDetail() {
             <div className="grid md:grid-cols-2 gap-4">
               <div className="p-4 rounded-lg bg-black/5 dark:bg-white/5 border border-themed">
                 <p className="text-xs text-muted mb-1">Buildathon</p>
-                <p className="text-sm font-medium text-heading">{formatEventDate(event.startDate)} → {formatEventDate(event.endDate)}</p>
+                <p className="text-sm font-medium text-heading">{formatEventDate(event.startDate)} → {formatEventDate(getEffectiveEventEndDate(event))}</p>
               </div>
               <div className="p-4 rounded-lg bg-black/5 dark:bg-white/5 border border-themed">
                 <p className="text-xs text-muted mb-1">Soumission</p>
-                <p className="text-sm font-medium text-heading">{formatEventDate(event.submissionStartDate)} → {formatEventDate(event.submissionEndDate)}</p>
+                <p className="text-sm font-medium text-heading">{formatEventDate(event.submissionStartDate)} → {formatEventDate(getEffectiveEventEndDate(event))}</p>
               </div>
               <div className="p-4 rounded-lg bg-black/5 dark:bg-white/5 border border-themed">
                 <p className="text-xs text-muted mb-1">Vote</p>

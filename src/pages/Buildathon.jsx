@@ -70,12 +70,10 @@ const PROJECT_CATEGORIES = [
 function getEventStatus(b) {
   const now = new Date();
   const startDate = b.startDate ? new Date(b.startDate) : null;
-  const submissionEndDate = b.submissionEndDate ? new Date(b.submissionEndDate) : null;
-  const voteEndDate = b.voteEndDate ? new Date(b.voteEndDate) : null;
+  const voteEndDate = getEffectiveEventEndDate(b);
 
   if (startDate && startDate > now) return 'upcoming';
   if (voteEndDate && voteEndDate < now) return 'completed';
-  if (submissionEndDate && submissionEndDate < now) return 'ended';
   return 'active';
 }
 
@@ -112,6 +110,15 @@ function formatEventDate(value) {
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return 'Date non définie';
   return d.toLocaleString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+function getEffectiveEventEndDate(event) {
+  const candidateDates = [event?.voteEndDate, event?.submissionEndDate, event?.endDate]
+    .map((value) => (value ? new Date(value) : null))
+    .filter((date) => date && !Number.isNaN(date.getTime()));
+
+  if (candidateDates.length === 0) return null;
+  return candidateDates.reduce((latest, current) => (current > latest ? current : latest));
 }
 
 function normalizePrizeInput(prize, idx) {
@@ -1525,7 +1532,7 @@ export default function Buildathon() {
                         </div>
                         <div className="rounded-lg border border-themed bg-black/5 dark:bg-white/5 px-3 py-2">
                           <p className="text-muted mb-1">Fin</p>
-                          <p className="text-heading font-medium">{formatEventDate(event.endDate)}</p>
+                          <p className="text-heading font-medium">{formatEventDate(getEffectiveEventEndDate(event))}</p>
                         </div>
                         <div className="rounded-lg border border-themed bg-black/5 dark:bg-white/5 px-3 py-2">
                           <p className="text-muted mb-1">Participants</p>
