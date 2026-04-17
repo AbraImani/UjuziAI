@@ -48,13 +48,7 @@ service cloud.firestore {
         (
           projectData.buildathonId != null &&
           exists(/databases/$(database)/documents/buildathons/$(projectData.buildathonId)) &&
-          (
-            (
-              !projectIsRejected(projectData) &&
-              !projectIsDraft(projectData)
-            ) ||
-            projectIsPublished(projectData)
-          )
+          isAuthenticated()
         );
     }
 
