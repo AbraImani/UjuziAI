@@ -49,6 +49,34 @@ function getEffectiveEventEndDate(event) {
   return candidateDates.reduce((latest, current) => (current > latest ? current : latest));
 }
 
+function toValidUrl(rawValue) {
+  if (!rawValue || typeof rawValue !== 'string') return null;
+  try {
+    return new URL(rawValue.trim());
+  } catch {
+    return null;
+  }
+}
+
+function isValidGitHubRepoUrl(rawValue) {
+  const parsedUrl = toValidUrl(rawValue);
+  if (!parsedUrl) return false;
+
+  const hostname = parsedUrl.hostname.toLowerCase();
+  if (parsedUrl.protocol !== 'https:' || (hostname !== 'github.com' && hostname !== 'www.github.com')) {
+    return false;
+  }
+
+  const pathParts = parsedUrl.pathname.split('/').filter(Boolean);
+  return pathParts.length >= 2;
+}
+
+function isValidDemoUrl(rawValue) {
+  const parsedUrl = toValidUrl(rawValue);
+  if (!parsedUrl) return false;
+  return parsedUrl.protocol === 'https:';
+}
+
 function formatDurationMs(ms) {
   if (!Number.isFinite(ms) || ms <= 0) return '0s';
   const totalSeconds = Math.floor(ms / 1000);
@@ -204,10 +232,11 @@ function sortProjectsForRanking(projectList = []) {
   });
 }
 
-function getProjectTeamLabel(project) {
+function getProjectTeamLabel(project, allowMemberNames = false) {
   if (project?.teamName) return project.teamName;
   const members = Array.isArray(project?.members) ? project.members : [];
   if (members.length === 0) return 'Équipe non définie';
+  if (!allowMemberNames) return 'Équipe participante';
   return members.map((member) => member.name).filter(Boolean).join(', ') || 'Équipe non définie';
 }
 
@@ -312,6 +341,16 @@ export default function BuildathonDetail() {
     e.preventDefault();
     if (!submitFormData.title || !submitFormData.teamName || !submitFormData.repoUrl || !submitFormData.demoUrl) {
       alert('Veuillez remplir tous les champs obligatoires');
+      return;
+    }
+
+    if (!isValidGitHubRepoUrl(submitFormData.repoUrl)) {
+      alert('Le lien GitHub doit être un dépôt valide (https://github.com/owner/repo).');
+      return;
+    }
+
+    if (!isValidDemoUrl(submitFormData.demoUrl)) {
+      alert('Le lien de démo doit être une URL HTTPS valide.');
       return;
     }
 
@@ -562,7 +601,7 @@ export default function BuildathonDetail() {
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <p className="font-semibold text-heading truncate">{p.title}</p>
-                          <p className="text-xs text-muted">{getProjectTeamLabel(p)}</p>
+                          <p className="text-xs text-muted">{getProjectTeamLabel(p, isAdmin)}</p>
                         </div>
                         <div className="text-right">
                           <span className="block text-xs text-muted whitespace-nowrap">{p.voteCount || 0} vote{(p.voteCount || 0) > 1 ? 's' : ''}</span>
@@ -732,7 +771,7 @@ export default function BuildathonDetail() {
                   <div key={p.id} className="p-3 rounded-lg bg-black/5 dark:bg-white/5 border border-themed flex items-center justify-between gap-3">
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-heading truncate">{p.title || 'Projet sans titre'}</p>
-                      <p className="text-xs text-muted">{getProjectTeamLabel(p)} • {p.feedbackCount || p.commentsCount || 0} commentaire(s)</p>
+                      <p className="text-xs text-muted">{getProjectTeamLabel(p, isAdmin)} • {p.feedbackCount || p.commentsCount || 0} commentaire(s)</p>
                     </div>
                     <Link
                       to={`/projects/${event.id}/project/${p.id}`}

@@ -112,6 +112,34 @@ function formatEventDate(value) {
   return d.toLocaleString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
+function toValidUrl(rawValue) {
+  if (!rawValue || typeof rawValue !== 'string') return null;
+  try {
+    return new URL(rawValue.trim());
+  } catch {
+    return null;
+  }
+}
+
+function isValidGitHubRepoUrl(rawValue) {
+  const parsedUrl = toValidUrl(rawValue);
+  if (!parsedUrl) return false;
+
+  const hostname = parsedUrl.hostname.toLowerCase();
+  if (parsedUrl.protocol !== 'https:' || (hostname !== 'github.com' && hostname !== 'www.github.com')) {
+    return false;
+  }
+
+  const pathParts = parsedUrl.pathname.split('/').filter(Boolean);
+  return pathParts.length >= 2;
+}
+
+function isValidDemoUrl(rawValue) {
+  const parsedUrl = toValidUrl(rawValue);
+  if (!parsedUrl) return false;
+  return parsedUrl.protocol === 'https:';
+}
+
 function getEffectiveEventEndDate(event) {
   const candidateDates = [event?.voteEndDate, event?.submissionEndDate, event?.endDate]
     .map((value) => (value ? new Date(value) : null))
@@ -265,6 +293,7 @@ function normalizeBuildathonEvent(event) {
     projectVisibility: event.projectVisibility || 'published-only',
     submissionOpen: event.submissionOpen !== false,
     publicationStatus: event.publicationStatus || 'published',
+    finalizationAwards: Array.isArray(event.finalizationAwards) ? event.finalizationAwards : [],
   };
 }
 
@@ -486,7 +515,6 @@ export default function Buildathon() {
         submissionOpen: newEvent.submissionOpen !== false,
         publicationStatus: newEvent.publicationStatus || 'published',
         participants: [],
-        status: 'active',
         createdBy: user.uid,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -635,6 +663,14 @@ export default function Buildathon() {
       toast.error('Complétez utilisateur, titre, équipe, GitHub et démo');
       return;
     }
+    if (!isValidGitHubRepoUrl(adminProject.repoUrl)) {
+      toast.error('Le lien GitHub doit être un dépôt valide (https://github.com/owner/repo)');
+      return;
+    }
+    if (!isValidDemoUrl(adminProject.demoUrl)) {
+      toast.error('Le lien démo doit être une URL HTTPS valide');
+      return;
+    }
     try {
       const targetUser = await resolveUserByIdentifier(adminProject.userIdentifier);
       if (!targetUser?.uid) {
@@ -649,8 +685,8 @@ export default function Buildathon() {
         description: adminProject.description,
         category: adminProject.category,
         teamName: adminProject.teamName,
-        repoUrl: adminProject.repoUrl,
-        demoUrl: adminProject.demoUrl,
+        repoUrl: adminProject.repoUrl.trim(),
+        demoUrl: adminProject.demoUrl.trim(),
         members: [{ uid: targetUser.uid, name: targetUser.name, email: targetUser.email }],
         votes: [],
         voteCount: 0,
@@ -683,6 +719,7 @@ export default function Buildathon() {
   }
 
   async function handleGrantProjectBonus(eventId, projectId, rankIndex) {
+    if (!isAdmin || !user?.uid) return;
     const event = events.find((e) => e.id === eventId);
     const project = projects.find((p) => p.id === projectId);
     if (!event || !project || project.manualPrizeGrantedAt) return;
@@ -699,6 +736,7 @@ export default function Buildathon() {
     if (pointsPerMember <= 0) return;
 
     try {
+      const grantedEntries = [];
       for (const member of project.members || []) {
         if (!member.uid) continue;
         const userRef = doc(db, 'users', member.uid);
@@ -709,15 +747,75 @@ export default function Buildathon() {
           reason: `${event.type === 'hackathon' ? 'Hackathon' : 'Buildathon'} "${event.title}" - Attribution manuelle place ${rankIndex + 1} (${totalPoints} pts à ${memberCount} membre${memberCount > 1 ? 's' : ''})`,
           grantedBy: user.uid,
           grantedAt: serverTimestamp(),
+          source: 'buildathon-manual-bonus',
+          buildathonId: eventId,
+          projectId,
         });
+        grantedEntries.push({ uid: member.uid, points: pointsPerMember });
       }
 
       await updateDoc(doc(db, 'buildathonProjects', projectId), {
         manualPrizeGrantedAt: serverTimestamp(),
         manualPrizeGrantedBy: user.uid,
         manualPrizeGrantedPoints: totalPoints,
+        manualPrizeLogEntries: grantedEntries,
+        manualPrizeRevokedAt: null,
+        manualPrizeRevokedBy: null,
       });
       toast.success(`Bonus attribué: +${totalPoints} pts`);
+    } catch (err) {
+      toast.error('Erreur: ' + err.message);
+    }
+  }
+
+  async function handleRevokeProjectBonus(eventId, projectId, rankIndex) {
+    if (!isAdmin || !user?.uid) return;
+    const event = events.find((e) => e.id === eventId);
+    const project = projects.find((p) => p.id === projectId);
+    if (!event || !project || !project.manualPrizeGrantedAt) return;
+
+    const savedEntries = Array.isArray(project.manualPrizeLogEntries) ? project.manualPrizeLogEntries : [];
+    let entriesToRevoke = savedEntries.filter((entry) => entry?.uid && Number(entry?.points) > 0);
+
+    if (entriesToRevoke.length === 0) {
+      const sortedPrizes = [...(event.prizes || [])].sort((a, b) => a.place - b.place);
+      const prize = sortedPrizes[rankIndex];
+      const totalPoints = Number(prize?.points || 0);
+      const memberCount = project.members?.length || 1;
+      const pointsPerMember = Math.round(totalPoints / memberCount);
+      if (pointsPerMember <= 0) {
+        toast.error('Impossible de calculer les points à retirer');
+        return;
+      }
+      entriesToRevoke = (project.members || [])
+        .filter((member) => member?.uid)
+        .map((member) => ({ uid: member.uid, points: pointsPerMember }));
+    }
+
+    try {
+      for (const entry of entriesToRevoke) {
+        await updateDoc(doc(db, 'users', entry.uid), { bonusPoints: increment(-Math.abs(Number(entry.points || 0))) });
+        const logRef = doc(collection(db, 'users', entry.uid, 'bonusLogs'));
+        await setDoc(logRef, {
+          points: -Math.abs(Number(entry.points || 0)),
+          reason: `${event.type === 'hackathon' ? 'Hackathon' : 'Buildathon'} "${event.title}" - Annulation bonus manuel`,
+          grantedBy: user.uid,
+          grantedAt: serverTimestamp(),
+          source: 'buildathon-manual-bonus-revoke',
+          buildathonId: eventId,
+          projectId,
+        });
+      }
+
+      await updateDoc(doc(db, 'buildathonProjects', projectId), {
+        manualPrizeGrantedAt: null,
+        manualPrizeGrantedBy: null,
+        manualPrizeGrantedPoints: 0,
+        manualPrizeLogEntries: [],
+        manualPrizeRevokedAt: serverTimestamp(),
+        manualPrizeRevokedBy: user.uid,
+      });
+      toast.success('Bonus manuel annulé');
     } catch (err) {
       toast.error('Erreur: ' + err.message);
     }
@@ -824,6 +922,14 @@ export default function Buildathon() {
       toast.error('Le lien vidéo démo est obligatoire');
       return;
     }
+    if (!isValidGitHubRepoUrl(newProject.repoUrl)) {
+      toast.error('Le lien GitHub doit être un dépôt valide (https://github.com/owner/repo)');
+      return;
+    }
+    if (!isValidDemoUrl(newProject.demoUrl)) {
+      toast.error('Le lien vidéo démo doit être une URL HTTPS valide');
+      return;
+    }
     try {
       const id = `project-${Date.now().toString(36)}-${user.uid.slice(0, 6)}`;
       await setDoc(doc(db, 'buildathonProjects', id), {
@@ -832,8 +938,8 @@ export default function Buildathon() {
         description: newProject.description,
         category: newProject.category,
         teamName: newProject.teamName,
-        repoUrl: newProject.repoUrl,
-        demoUrl: newProject.demoUrl,
+        repoUrl: newProject.repoUrl.trim(),
+        demoUrl: newProject.demoUrl.trim(),
         members: [{ uid: user.uid, name: userProfile?.displayName || user.email, email: user.email }],
         votes: [],
         voteCount: 0,
@@ -892,7 +998,11 @@ export default function Buildathon() {
 
         if (alreadyVoted) {
           const nextVotes = votes.filter((uid) => uid !== user.uid);
-          tx.update(projRef, { votes: nextVotes, voteCount: nextVotes.length });
+          tx.update(projRef, {
+            votes: nextVotes,
+            voteCount: nextVotes.length,
+            updatedAt: serverTimestamp(),
+          });
           tx.delete(voteLockRef);
           return { action: 'removed' };
         }
@@ -902,7 +1012,11 @@ export default function Buildathon() {
         }
 
         const nextVotes = [...votes, user.uid];
-        tx.update(projRef, { votes: nextVotes, voteCount: nextVotes.length });
+        tx.update(projRef, {
+          votes: nextVotes,
+          voteCount: nextVotes.length,
+          updatedAt: serverTimestamp(),
+        });
         tx.set(voteLockRef, {
           projectId,
           buildathonId,
@@ -922,14 +1036,29 @@ export default function Buildathon() {
     }
   }
 
-  // ---- Admin: Finalize Event (points divided among team members) ----
-  async function handleFinalize(eventId, autoMode = false) {
+  // ---- Admin: Finalize Event (manual confirmation only) ----
+  async function handleFinalize(eventId) {
+    if (!isAdmin || !user?.uid) return;
     const event = events.find((e) => e.id === eventId);
     if (!event || event.finalized) return;
+
+    const status = getEventStatus(event);
+    if (status !== 'ended' && status !== 'completed') {
+      toast.error('Attribution impossible: attendez la fin du challenge');
+      return;
+    }
+
+    if (!confirm('Confirmer l\'attribution finale des points ?')) return;
+
     const eventProjects = sortProjectsForRanking(projects.filter((p) => p.buildathonId === eventId));
-    if (eventProjects.length === 0) { if (!autoMode) toast.error('Aucun projet soumis'); return; }
+    if (eventProjects.length === 0) {
+      toast.error('Aucun projet soumis');
+      return;
+    }
+
     const prizes = (event.prizes || []).sort((a, b) => a.place - b.place);
     try {
+      const finalizationAwards = [];
       for (let i = 0; i < Math.min(prizes.length, eventProjects.length); i++) {
         const project = eventProjects[i];
         const prize = prizes[i];
@@ -946,17 +1075,105 @@ export default function Buildathon() {
             await setDoc(logRef, {
               points: pointsPerMember,
               reason: `${event.type === 'hackathon' ? 'Hackathon' : 'Buildathon'} "${event.title}" - Place ${prize.place} (${totalPoints} pts à ${memberCount} membre${memberCount > 1 ? 's' : ''})`,
-              grantedBy: autoMode ? 'system' : user.uid,
+              grantedBy: user.uid,
               grantedAt: serverTimestamp(),
+              source: 'buildathon-finalize',
+              buildathonId: eventId,
+              projectId: project.id,
+              place: prize.place,
+            });
+            finalizationAwards.push({
+              uid: member.uid,
+              projectId: project.id,
+              place: prize.place,
+              points: pointsPerMember,
             });
           }
         }
       }
-      await updateDoc(doc(db, 'buildathons', eventId), { status: 'completed', finalized: true, finalizedAt: serverTimestamp(), finalizedBy: autoMode ? 'system' : user.uid });
-      if (!autoMode) toast.success('Événement finalisé ! Points bonus répartis entre les membres.');
+
+      await updateDoc(doc(db, 'buildathons', eventId), {
+        status: 'completed',
+        finalized: true,
+        finalizedAt: serverTimestamp(),
+        finalizedBy: user.uid,
+        finalizationAwards,
+        finalizationRevokedAt: null,
+        finalizationRevokedBy: null,
+      });
+      toast.success('Attribution finale effectuée');
     } catch (err) {
-      if (!autoMode) toast.error('Erreur: ' + err.message);
+      toast.error('Erreur: ' + err.message);
       console.error('Finalize error:', err);
+    }
+  }
+
+  async function handleRevokeFinalization(eventId) {
+    if (!isAdmin || !user?.uid) return;
+    const event = events.find((e) => e.id === eventId);
+    if (!event || !event.finalized) return;
+    if (!confirm('Annuler les points attribués pour cet événement ?')) return;
+
+    let awardsToRevoke = Array.isArray(event.finalizationAwards)
+      ? event.finalizationAwards.filter((award) => award?.uid && Number(award?.points) > 0)
+      : [];
+
+    if (awardsToRevoke.length === 0) {
+      const eventProjects = sortProjectsForRanking(projects.filter((p) => p.buildathonId === eventId));
+      const prizes = (event.prizes || []).sort((a, b) => a.place - b.place);
+      awardsToRevoke = [];
+
+      for (let i = 0; i < Math.min(prizes.length, eventProjects.length); i++) {
+        const project = eventProjects[i];
+        const prize = prizes[i];
+        if ((prize.rewardType || 'points') !== 'points') continue;
+        const memberCount = project.members?.length || 1;
+        const totalPoints = Number(prize.points || 0);
+        const pointsPerMember = Math.round(totalPoints / memberCount);
+        if (pointsPerMember <= 0) continue;
+
+        for (const member of project.members || []) {
+          if (!member.uid) continue;
+          awardsToRevoke.push({
+            uid: member.uid,
+            projectId: project.id,
+            place: prize.place,
+            points: pointsPerMember,
+          });
+        }
+      }
+    }
+
+    try {
+      for (const award of awardsToRevoke) {
+        await updateDoc(doc(db, 'users', award.uid), {
+          bonusPoints: increment(-Math.abs(Number(award.points || 0))),
+        });
+        const logRef = doc(collection(db, 'users', award.uid, 'bonusLogs'));
+        await setDoc(logRef, {
+          points: -Math.abs(Number(award.points || 0)),
+          reason: `${event.type === 'hackathon' ? 'Hackathon' : 'Buildathon'} "${event.title}" - Annulation attribution finale`,
+          grantedBy: user.uid,
+          grantedAt: serverTimestamp(),
+          source: 'buildathon-finalize-revoke',
+          buildathonId: eventId,
+          projectId: award.projectId || null,
+          place: award.place || null,
+        });
+      }
+
+      await updateDoc(doc(db, 'buildathons', eventId), {
+        status: 'ended',
+        finalized: false,
+        finalizedAt: null,
+        finalizedBy: null,
+        finalizationRevokedAt: serverTimestamp(),
+        finalizationRevokedBy: user.uid,
+      });
+
+      toast.success('Attribution annulée, points retirés');
+    } catch (err) {
+      toast.error('Erreur: ' + err.message);
     }
   }
 
@@ -1053,21 +1270,6 @@ export default function Buildathon() {
     );
     return () => unsubSent();
   }, [user?.uid]);
-
-  // ---- Auto-finalize: when an event has ended, automatically finalize & distribute points ----
-  useEffect(() => {
-    if (!events.length || !projects.length || loading) return;
-    events.forEach((event) => {
-      const status = getEventStatus(event);
-      if (status === 'ended' && !event.finalized) {
-        const eventProjects = projects.filter((p) => p.buildathonId === event.id);
-        if (eventProjects.length > 0) {
-          handleFinalize(event.id, true);
-        }
-      }
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [events, projects, loading]);
 
   function getSafeDate(value) {
     if (!value) return null;
@@ -1573,6 +1775,26 @@ export default function Buildathon() {
                       >
                         <Pencil className="w-3.5 h-3.5" />
                         Modifier l'événement
+                      </button>
+                    )}
+                    {isAdmin && !event.finalized && status === 'ended' && (
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); handleFinalize(event.id); }}
+                        className="btn-secondary text-sm inline-flex items-center gap-1"
+                      >
+                        <Trophy className="w-3.5 h-3.5" />
+                        Confirmer attribution points
+                      </button>
+                    )}
+                    {isAdmin && event.finalized && (
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); handleRevokeFinalization(event.id); }}
+                        className="btn-secondary text-sm inline-flex items-center gap-1"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Annuler les points attribués
                       </button>
                     )}
                     {canRegister && (

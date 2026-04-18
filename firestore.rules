@@ -118,6 +118,16 @@ service cloud.firestore {
         request.resource.data.feedbackCount == request.resource.data.commentsCount;
     }
 
+    function isValidGithubRepoUrl(url) {
+      return url is string &&
+        url.matches('^https://(www\\.)?github\\.com/[^/]+/[^/]+/?([^\\s]*)$');
+    }
+
+    function isValidDemoUrl(url) {
+      return url is string &&
+        url.matches('^https://[^\\s]+$');
+    }
+
     // ============================================
     // USERS COLLECTION
     // ============================================
@@ -267,6 +277,8 @@ service cloud.firestore {
         isAuthenticated() &&
         request.resource.data.submittedBy == request.auth.uid &&
         request.resource.data.buildathonId is string &&
+        isValidGithubRepoUrl(request.resource.data.repoUrl) &&
+        isValidDemoUrl(request.resource.data.demoUrl) &&
         request.resource.data.votes is list &&
         request.resource.data.likeUserIds is list &&
         request.resource.data.projectStatus in ['brouillon', 'soumis', 'draft', 'submitted', 'pending'] &&
@@ -288,6 +300,8 @@ service cloud.firestore {
         // Owner can update editable project fields only.
         isAuthenticated() &&
         resource.data.submittedBy == request.auth.uid &&
+        isValidGithubRepoUrl(request.resource.data.repoUrl) &&
+        isValidDemoUrl(request.resource.data.demoUrl) &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'title',
           'description',

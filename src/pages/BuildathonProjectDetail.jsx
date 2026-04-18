@@ -155,10 +155,39 @@ function normalizeFeedbackReport(raw) {
   };
 }
 
-function getTeamLabel(project) {
+function toValidUrl(rawValue) {
+  if (!rawValue || typeof rawValue !== 'string') return null;
+  try {
+    return new URL(rawValue.trim());
+  } catch {
+    return null;
+  }
+}
+
+function isValidGitHubRepoUrl(rawValue) {
+  const parsedUrl = toValidUrl(rawValue);
+  if (!parsedUrl) return false;
+
+  const hostname = parsedUrl.hostname.toLowerCase();
+  if (parsedUrl.protocol !== 'https:' || (hostname !== 'github.com' && hostname !== 'www.github.com')) {
+    return false;
+  }
+
+  const pathParts = parsedUrl.pathname.split('/').filter(Boolean);
+  return pathParts.length >= 2;
+}
+
+function isValidDemoUrl(rawValue) {
+  const parsedUrl = toValidUrl(rawValue);
+  if (!parsedUrl) return false;
+  return parsedUrl.protocol === 'https:';
+}
+
+function getTeamLabel(project, allowMemberNames = false) {
   if (project?.teamName) return project.teamName;
   const members = Array.isArray(project?.members) ? project.members : [];
   if (members.length === 0) return 'Équipe non définie';
+  if (!allowMemberNames) return 'Équipe participante';
   const names = members.map((m) => m.name).filter(Boolean);
   return names.length > 0 ? names.join(', ') : 'Équipe non définie';
 }
@@ -656,6 +685,16 @@ export default function BuildathonProjectDetail() {
       return;
     }
 
+    if (!isValidGitHubRepoUrl(nextRepoUrl)) {
+      toast.error('Le lien GitHub doit être un dépôt valide (https://github.com/owner/repo)');
+      return;
+    }
+
+    if (!isValidDemoUrl(nextDemoUrl)) {
+      toast.error('Le lien démo doit être une URL HTTPS valide');
+      return;
+    }
+
     setSavingProject(true);
     try {
       await updateDoc(doc(db, 'buildathonProjects', project.id), {
@@ -773,7 +812,7 @@ export default function BuildathonProjectDetail() {
               <h1 className="text-2xl font-bold text-heading">{project.title}</h1>
               <p className="text-sm text-muted mt-1 inline-flex items-center gap-2">
                 <Users className="w-4 h-4" />
-                {getTeamLabel(project)}
+                {getTeamLabel(project, isAdmin)}
               </p>
             </div>
             <div className="flex items-center gap-2 self-start flex-wrap">
