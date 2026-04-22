@@ -27,6 +27,12 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/buildathons/$(buildathonId));
     }
 
+    function isAcceptedJudge(buildathonId) {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/buildathons/$(buildathonId)/judges/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/buildathons/$(buildathonId)/judges/$(request.auth.uid)).data.active == true;
+    }
+
     function projectIsRejected(projectData) {
       return projectData.projectStatus in ['rejete', 'rejected'] ||
         projectData.moderationStatus == 'rejected';
@@ -42,13 +48,39 @@ service cloud.firestore {
         projectData.isPublic == true;
     }
 
+    function projectIsSubmittedOrApproved(projectData) {
+      return projectData.projectStatus in [
+          'soumis', 'submitted', 'pending',
+          'valide', 'validated', 'approved',
+          'publie', 'published'
+        ] ||
+        projectData.moderationStatus == 'approved' ||
+        projectIsPublished(projectData);
+    }
+
+    function getProjectVisibility(buildathonData) {
+      return buildathonData.projectVisibility in ['all-submitted', 'allsubmitted', 'all']
+        ? 'all-submitted'
+        : 'published-only';
+    }
+
     function canReadProject(projectData) {
+      let buildathonDoc = getBuildathon(projectData.buildathonId);
+      let buildathonData = buildathonDoc.data;
+
       return isAdmin() ||
+        (projectData.buildathonId is string && isAcceptedJudge(projectData.buildathonId)) ||
         projectData.submittedBy == request.auth.uid ||
         (
-          projectData.buildathonId != null &&
-          exists(/databases/$(database)/documents/buildathons/$(projectData.buildathonId)) &&
-          isAuthenticated()
+          isAuthenticated() &&
+          projectData.buildathonId is string &&
+          buildathonData != null &&
+          !projectIsDraft(projectData) &&
+          !projectIsRejected(projectData) &&
+          (
+            (getProjectVisibility(buildathonData) == 'all-submitted' && projectIsSubmittedOrApproved(projectData)) ||
+            (getProjectVisibility(buildathonData) == 'published-only' && projectIsPublished(projectData))
+          )
         );
     }
 
@@ -62,6 +94,15 @@ service cloud.firestore {
 
     function feedbackCounterKeysOnlyChanged() {
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['feedbackCount', 'commentsCount']);
+    }
+
+    function judgeAggregateKeysOnlyChanged() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+        'judgeScoreTotal',
+        'judgeScoreAverage',
+        'judgeScoreCount',
+        'updatedAt'
+      ]);
     }
 
     function isSafeVoteToggle() {
@@ -83,6 +124,42 @@ service cloud.firestore {
             !newVotes.hasAny([request.auth.uid]) &&
             oldVotes.hasAll(newVotes) &&
             oldVotes.size() == newVotes.size() + 1
+          )
+        );
+    }
+
+    function isVoteLockConsistent() {
+      let projectBuildathonId = resource.data.buildathonId;
+      let lockPath = /databases/$(database)/documents/buildathons/$(projectBuildathonId)/votes/$(request.auth.uid);
+      let oldVotes = resource.data.votes;
+      let newVotes = request.resource.data.votes;
+      let isAddingVote = !oldVotes.hasAny([request.auth.uid]) && newVotes.hasAny([request.auth.uid]);
+      let isRemovingVote = oldVotes.hasAny([request.auth.uid]) && !newVotes.hasAny([request.auth.uid]);
+      let lockBefore = get(lockPath).data;
+      let lockAfter = getAfter(lockPath).data;
+
+      return projectBuildathonId is string &&
+        (
+          (
+            isAddingVote &&
+            (
+              (lockBefore != null && lockBefore.projectId == resource.id) ||
+              (
+                lockAfter != null &&
+                lockAfter.projectId == resource.id &&
+                lockAfter.userId == request.auth.uid &&
+                lockAfter.buildathonId == projectBuildathonId
+              )
+            )
+          ) ||
+          (
+            isRemovingVote &&
+            (
+              lockBefore == null ||
+              lockBefore.projectId == resource.id ||
+              lockAfter == null ||
+              lockAfter.projectId == resource.id
+            )
           )
         );
     }
@@ -118,6 +195,15 @@ service cloud.firestore {
         request.resource.data.feedbackCount == request.resource.data.commentsCount;
     }
 
+    function isSafeJudgeAggregateSync() {
+      return (request.resource.data.judgeScoreTotal is int || request.resource.data.judgeScoreTotal is float) &&
+        (request.resource.data.judgeScoreAverage is int || request.resource.data.judgeScoreAverage is float) &&
+        request.resource.data.judgeScoreCount is int &&
+        request.resource.data.judgeScoreTotal >= 0 &&
+        request.resource.data.judgeScoreAverage >= 0 &&
+        request.resource.data.judgeScoreCount >= 0;
+    }
+
     function isValidGithubRepoUrl(url) {
       return url is string &&
         url.matches('^https://(www\\.)?github\\.com/[^/]+/[^/]+/?([^\\s]*)$');
@@ -138,10 +224,12 @@ service cloud.firestore {
       // Users can create their own profile on signup
       allow create: if isOwner(userId);
       
-      // Users can update their own profile; admins can update any
-      // Any authenticated user can update bonusPoints (for auto point distribution)
-      allow update: if isOwner(userId) || isAdmin() || 
-        (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['bonusPoints']));
+      // Users can update their own profile; admins can update any.
+      // Non-admin users cannot self-elevate role or self-manage bonus points.
+      allow update: if isAdmin() || (
+        isOwner(userId) &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'bonusPoints'])
+      );
       
       // Only admins can delete users
       allow delete: if isAdmin();
@@ -165,7 +253,7 @@ service cloud.firestore {
       // BONUS LOGS SUBCOLLECTION
       match /bonusLogs/{logId} {
         allow read: if isOwner(userId) || isAdmin();
-        allow create: if isAuthenticated();
+        allow create: if isAdmin();
         allow update, delete: if isAdmin();
       }
     }
@@ -228,7 +316,13 @@ service cloud.firestore {
     match /teamProjects/{projectId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated();
-      allow update: if isAuthenticated();
+      allow update: if isAdmin() || (
+        isAuthenticated() &&
+        (
+          resource.data.ownerId == request.auth.uid ||
+          (resource.data.members is list && resource.data.members.hasAny([request.auth.uid]))
+        )
+      );
       allow delete: if isAuthenticated() && 
         (resource.data.ownerId == request.auth.uid || isAdmin());
     }
@@ -258,11 +352,48 @@ service cloud.firestore {
         allow create, update: if isAdmin() || (
           isAuthenticated() &&
           request.auth.uid == userId &&
+          request.resource.data.diff({}).affectedKeys().hasOnly(['projectId', 'buildathonId', 'userId', 'updatedAt']) &&
           request.resource.data.userId == request.auth.uid &&
           request.resource.data.buildathonId == buildathonId &&
           request.resource.data.projectId is string
         );
         allow delete: if isAdmin() || (isAuthenticated() && request.auth.uid == userId);
+      }
+
+      // Judge invitation lifecycle per buildathon.
+      match /judgeInvitations/{inviteeUid} {
+        allow read: if isAdmin() || (isAuthenticated() && request.auth.uid == inviteeUid);
+
+        allow create: if isAdmin() &&
+          request.resource.data.inviteeUid == inviteeUid &&
+          request.resource.data.buildathonId == buildathonId &&
+          request.resource.data.status == 'pending';
+
+        allow update: if isAdmin() || (
+          isAuthenticated() &&
+          request.auth.uid == inviteeUid &&
+          resource.data.inviteeUid == request.auth.uid &&
+          resource.data.buildathonId == buildathonId &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt', 'respondedAt']) &&
+          request.resource.data.status in ['accepted', 'declined']
+        );
+
+        allow delete: if isAdmin();
+      }
+
+      // Active judges assigned to buildathon.
+      match /judges/{judgeUid} {
+        allow read: if isAdmin() || (isAuthenticated() && request.auth.uid == judgeUid);
+
+        allow create, update: if isAdmin() || (
+          isAuthenticated() &&
+          request.auth.uid == judgeUid &&
+          request.resource.data.userId == request.auth.uid &&
+          request.resource.data.buildathonId == buildathonId &&
+          request.resource.data.active == true
+        );
+
+        allow delete: if isAdmin();
       }
     }
 
@@ -290,11 +421,18 @@ service cloud.firestore {
         isAuthenticated() &&
         (
           // Vote toggle restricted to current user + counter consistency.
-          (voteKeysOnlyChanged() && isSafeVoteToggle()) ||
+          (voteKeysOnlyChanged() && isSafeVoteToggle() && isVoteLockConsistent()) ||
           // Like toggle restricted to current user + counter consistency.
           (likeKeysOnlyChanged() && isSafeLikeToggle()) ||
           // Counter sync only (legacy compatibility) with paired value.
-          (feedbackCounterKeysOnlyChanged() && isSafeFeedbackCounterSync())
+          (feedbackCounterKeysOnlyChanged() && isSafeFeedbackCounterSync()) ||
+          // Judge aggregate sync from judge scoring flow.
+          (
+            judgeAggregateKeysOnlyChanged() &&
+            isSafeJudgeAggregateSync() &&
+            resource.data.buildathonId is string &&
+            isAcceptedJudge(resource.data.buildathonId)
+          )
         )
       ) || (
         // Owner can update editable project fields only.
@@ -319,7 +457,9 @@ service cloud.firestore {
       allow delete: if isAdmin() || (isAuthenticated() && resource.data.submittedBy == request.auth.uid);
 
       match /feedback/{feedbackId} {
-        allow read: if isAuthenticated() && canReadProject(get(/databases/$(database)/documents/buildathonProjects/$(projectId)).data);
+        allow read: if isAuthenticated() &&
+          canReadProject(get(/databases/$(database)/documents/buildathonProjects/$(projectId)).data) &&
+          (resource.data.hidden != true || isAdmin());
 
         allow create: if isAuthenticated() &&
           request.resource.data.userId == request.auth.uid &&
@@ -351,6 +491,21 @@ service cloud.firestore {
           request.resource.data.status == 'open';
 
         allow update: if isAdmin();
+        allow delete: if isAdmin();
+      }
+
+      // Judge scoring per project (one doc per judge id).
+      match /judgeScores/{judgeId} {
+        allow read: if isAdmin() || (isAuthenticated() && request.auth.uid == judgeId);
+
+        allow create, update: if isAuthenticated() &&
+          request.auth.uid == judgeId &&
+          get(/databases/$(database)/documents/buildathonProjects/$(projectId)).data.buildathonId is string &&
+          isAcceptedJudge(get(/databases/$(database)/documents/buildathonProjects/$(projectId)).data.buildathonId) &&
+          request.resource.data.judgeId == request.auth.uid &&
+          request.resource.data.projectId == projectId &&
+          request.resource.data.buildathonId == get(/databases/$(database)/documents/buildathonProjects/$(projectId)).data.buildathonId;
+
         allow delete: if isAdmin();
       }
     }

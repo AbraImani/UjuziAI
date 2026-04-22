@@ -190,6 +190,10 @@ const DEFAULT_BUILDATHON_CONFIG = {
   projectVisibility: 'published-only',
   submissionOpen: true,
   publicationStatus: 'published',
+  juryModeEnabled: false,
+  juryResultsPublished: false,
+  rankingMode: 'public',
+  judgeCriteria: [],
 };
 
 const DEFAULT_BUILDATHON_PROJECT_META = {
@@ -269,8 +273,6 @@ function isProjectVisibleForParticipant(project, event, uid) {
 }
 
 function normalizeBuildathonEvent(event) {
-  const maxVotesRaw = Number(event.maxVotesPerUser);
-  const maxVotesPerUser = Number.isFinite(maxVotesRaw) && maxVotesRaw > 0 ? Math.floor(maxVotesRaw) : 1;
   const safeVoteStartDate = normalizeDateLike(event.voteStartDate) || normalizeDateLike(event.startDate);
   const safeVoteEndDate = normalizeDateLike(event.voteEndDate) || normalizeDateLike(event.endDate);
 
@@ -280,7 +282,7 @@ function normalizeBuildathonEvent(event) {
     fullDescription: event.fullDescription || event.description || '',
     coverImageUrl: event.coverImageUrl || '',
     votingEnabled: event.votingEnabled !== false,
-    maxVotesPerUser,
+    maxVotesPerUser: 1,
     allowSelfVote: event.allowSelfVote === true,
     submissionStartDate: normalizeDateLike(event.submissionStartDate) || normalizeDateLike(event.startDate),
     submissionEndDate: normalizeDateLike(event.submissionEndDate) || normalizeDateLike(event.endDate),
@@ -293,6 +295,10 @@ function normalizeBuildathonEvent(event) {
     projectVisibility: event.projectVisibility || 'published-only',
     submissionOpen: event.submissionOpen !== false,
     publicationStatus: event.publicationStatus || 'published',
+    juryModeEnabled: event.juryModeEnabled === true,
+    juryResultsPublished: event.juryResultsPublished === true,
+    rankingMode: event.rankingMode || 'public',
+    judgeCriteria: Array.isArray(event.judgeCriteria) ? event.judgeCriteria : [],
     finalizationAwards: Array.isArray(event.finalizationAwards) ? event.finalizationAwards : [],
   };
 }
@@ -367,8 +373,25 @@ function compareProjectsForRanking(a, b) {
   return String(a?.id || '').localeCompare(String(b?.id || ''));
 }
 
+function compareProjectsForJudgeRanking(a, b) {
+  const judgeDiff = Number(b?.judgeScoreAverage || 0) - Number(a?.judgeScoreAverage || 0);
+  if (judgeDiff !== 0) return judgeDiff;
+
+  const timeDiff = getProjectSubmissionTimestamp(a) - getProjectSubmissionTimestamp(b);
+  if (timeDiff !== 0) return timeDiff;
+
+  return String(a?.id || '').localeCompare(String(b?.id || ''));
+}
+
 function sortProjectsForRanking(projectList = []) {
   return [...projectList].sort(compareProjectsForRanking);
+}
+
+function sortProjectsForEventRanking(event, projectList = []) {
+  const rankingMode = event?.juryModeEnabled === true || event?.rankingMode === 'jury' ? 'jury' : 'public';
+  return rankingMode === 'jury'
+    ? [...projectList].sort(compareProjectsForJudgeRanking)
+    : [...projectList].sort(compareProjectsForRanking);
 }
 
 export default function Buildathon() {
@@ -503,7 +526,7 @@ export default function Buildathon() {
         maxTeamSize: Number(newEvent.maxTeamSize) || 4,
         prizes: normalizedPrizes,
         votingEnabled: newEvent.votingEnabled !== false,
-        maxVotesPerUser: Number(newEvent.maxVotesPerUser) > 0 ? Number(newEvent.maxVotesPerUser) : 1,
+        maxVotesPerUser: 1,
         allowSelfVote: newEvent.allowSelfVote === true,
         voteStartDate: normalizeDateLike(newEvent.voteStartDate) || normalizeDateLike(newEvent.startDate),
         voteEndDate: normalizeDateLike(newEvent.voteEndDate) || normalizeDateLike(newEvent.endDate),
@@ -514,6 +537,10 @@ export default function Buildathon() {
         projectVisibility: newEvent.projectVisibility || 'published-only',
         submissionOpen: newEvent.submissionOpen !== false,
         publicationStatus: newEvent.publicationStatus || 'published',
+        juryModeEnabled: newEvent.juryModeEnabled === true,
+        juryResultsPublished: newEvent.juryResultsPublished === true,
+        rankingMode: newEvent.juryModeEnabled ? 'jury' : 'public',
+        judgeCriteria: Array.isArray(newEvent.judgeCriteria) ? newEvent.judgeCriteria : [],
         participants: [],
         createdBy: user.uid,
         createdAt: serverTimestamp(),
@@ -548,7 +575,7 @@ export default function Buildathon() {
       workDuration: event.workDuration || '',
       maxTeamSize: Number(event.maxTeamSize) || 4,
       votingEnabled: event.votingEnabled !== false,
-      maxVotesPerUser: Number(event.maxVotesPerUser) > 0 ? Number(event.maxVotesPerUser) : 1,
+      maxVotesPerUser: 1,
       allowSelfVote: event.allowSelfVote === true,
       voteStartDate: toInputDateTime(event.voteStartDate || event.startDate),
       voteEndDate: toInputDateTime(event.voteEndDate || event.endDate),
@@ -559,6 +586,9 @@ export default function Buildathon() {
       projectVisibility: event.projectVisibility || 'published-only',
       submissionOpen: event.submissionOpen !== false,
       publicationStatus: event.publicationStatus || 'published',
+      juryModeEnabled: event.juryModeEnabled === true,
+      juryResultsPublished: event.juryResultsPublished === true,
+      judgeCriteria: Array.isArray(event.judgeCriteria) ? event.judgeCriteria : [],
       prizes: (event.prizes && event.prizes.length > 0)
         ? [...event.prizes]
             .sort((a, b) => a.place - b.place)
@@ -600,7 +630,7 @@ export default function Buildathon() {
         maxTeamSize: Number(editEvent.maxTeamSize) || 4,
         prizes: normalizedPrizes,
         votingEnabled: editEvent.votingEnabled !== false,
-        maxVotesPerUser: Number(editEvent.maxVotesPerUser) > 0 ? Number(editEvent.maxVotesPerUser) : 1,
+        maxVotesPerUser: 1,
         allowSelfVote: editEvent.allowSelfVote === true,
         voteStartDate: normalizeDateLike(editEvent.voteStartDate) || normalizeDateLike(editEvent.startDate),
         voteEndDate: normalizeDateLike(editEvent.voteEndDate) || normalizeDateLike(editEvent.endDate),
@@ -611,6 +641,10 @@ export default function Buildathon() {
         projectVisibility: editEvent.projectVisibility || 'published-only',
         submissionOpen: editEvent.submissionOpen !== false,
         publicationStatus: editEvent.publicationStatus || 'published',
+        juryModeEnabled: editEvent.juryModeEnabled === true,
+        juryResultsPublished: editEvent.juryResultsPublished === true,
+        rankingMode: editEvent.juryModeEnabled ? 'jury' : 'public',
+        judgeCriteria: Array.isArray(editEvent.judgeCriteria) ? editEvent.judgeCriteria : [],
         updatedAt: serverTimestamp(),
         updatedBy: user.uid,
       });
@@ -1050,7 +1084,7 @@ export default function Buildathon() {
 
     if (!confirm('Confirmer l\'attribution finale des points ?')) return;
 
-    const eventProjects = sortProjectsForRanking(projects.filter((p) => p.buildathonId === eventId));
+    const eventProjects = sortProjectsForEventRanking(event, projects.filter((p) => p.buildathonId === eventId));
     if (eventProjects.length === 0) {
       toast.error('Aucun projet soumis');
       return;
@@ -1119,7 +1153,7 @@ export default function Buildathon() {
       : [];
 
     if (awardsToRevoke.length === 0) {
-      const eventProjects = sortProjectsForRanking(projects.filter((p) => p.buildathonId === eventId));
+      const eventProjects = sortProjectsForEventRanking(event, projects.filter((p) => p.buildathonId === eventId));
       const prizes = (event.prizes || []).sort((a, b) => a.place - b.place);
       awardsToRevoke = [];
 
@@ -1687,13 +1721,13 @@ export default function Buildathon() {
           {filteredEvents.map((event) => {
             const status = getEventStatus(event);
             const statusInfo = STATUS_CONFIG[status];
-            const allEventProjects = sortProjectsForRanking(projects.filter((p) => p.buildathonId === event.id));
+            const allEventProjects = sortProjectsForEventRanking(event, projects.filter((p) => p.buildathonId === event.id));
             const eventProjects = isAdmin
               ? allEventProjects
               : allEventProjects.filter((p) => isProjectVisibleForParticipant(p, event, user?.uid));
             const metrics = getEventPopularityMetrics(event.id, event.participants);
             const adminSupervisionMetrics = getBuildathonSupervisionMetrics(event, allEventProjects);
-            const adminRankingProjects = sortProjectsForRanking(allEventProjects);
+            const adminRankingProjects = sortProjectsForEventRanking(event, allEventProjects);
             const integrityWarningsByProject = allEventProjects
               .map((project) => ({
                 projectId: project.id,

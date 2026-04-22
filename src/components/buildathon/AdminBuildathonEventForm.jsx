@@ -222,10 +222,12 @@ export default function AdminBuildathonEventForm({
             <input
               type="number"
               min="1"
-              value={value.maxVotesPerUser}
-              onChange={(e) => setField('maxVotesPerUser', e.target.value)}
+              value={1}
+              disabled
+              readOnly
               className="input-field w-full"
             />
+            <p className="text-[11px] text-muted mt-1">Temporairement fixé à 1 pour garantir l'intégrité du vote par événement.</p>
           </div>
 
           <div>

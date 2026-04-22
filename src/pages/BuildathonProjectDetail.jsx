@@ -4,7 +4,6 @@ import {
   collection,
   deleteDoc,
   doc,
-  increment,
   onSnapshot,
   query,
   runTransaction,
@@ -63,8 +62,9 @@ function normalizeEvent(raw) {
     ...raw,
     votingEnabled: raw.votingEnabled !== false,
     participants: Array.isArray(raw.participants) ? raw.participants : [],
-    maxVotesPerUser: Number(raw.maxVotesPerUser) > 0 ? Number(raw.maxVotesPerUser) : 1,
+    maxVotesPerUser: 1,
     projectVisibility: raw.projectVisibility || 'published-only',
+    juryModeEnabled: raw.juryModeEnabled === true,
   };
 }
 
@@ -94,14 +94,25 @@ function isProjectOwnerOrMember(project, uid) {
   return Array.isArray(project?.members) && project.members.some((member) => member?.uid === uid);
 }
 
+function getCanonicalProjectVisibility(event = {}) {
+  const raw = String(event?.projectVisibility || '')
+    .toLowerCase()
+    .replace(/[_\s]+/g, '-')
+    .trim();
+  if (raw === 'all-submitted' || raw === 'allsubmitted' || raw === 'all') return 'all-submitted';
+  return 'published-only';
+}
+
 function isProjectVisibleForParticipant(project, event, uid) {
   const status = getCanonicalProjectStatus(project);
   if (isProjectOwnerOrMember(project, uid)) return true;
 
   if (status === 'rejete') return false;
-
-  // User view should include all submitted/validated/published projects.
-  return status !== 'brouillon';
+  const projectVisibility = getCanonicalProjectVisibility(event);
+  if (projectVisibility === 'all-submitted') {
+    return status === 'soumis' || status === 'valide' || status === 'publie';
+  }
+  return status === 'publie';
 }
 
 function normalizeProject(raw) {
@@ -299,7 +310,7 @@ export default function BuildathonProjectDetail() {
       (snap) => {
         const data = [];
         snap.forEach((d) => data.push(normalizeFeedback({ id: d.id, ...d.data() })));
-        data.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+        data.sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0));
         setFeedbackList(data);
       },
       () => {
@@ -465,7 +476,9 @@ export default function BuildathonProjectDetail() {
       if (result.action === 'removed') {
         toast.success('Vote retiré');
       } else {
-        toast.success('Vote enregistré (impacte le classement)');
+        toast.success(event?.juryModeEnabled
+          ? 'Vote enregistré (+10 points UjuziAI global)'
+          : 'Vote enregistré (impacte le classement Buildathon public)');
       }
     } catch (error) {
       if (error?.message) {
@@ -530,17 +543,33 @@ export default function BuildathonProjectDetail() {
     setSubmittingFeedback(true);
     try {
       const feedbackRef = doc(collection(db, 'buildathonProjects', project.id, 'feedback'));
-      await setDoc(feedbackRef, {
-        userId: user.uid,
-        authorName: userProfile?.displayName || user.displayName || user.email || 'Participant',
-        authorEmail: user.email || null,
-        message,
-        createdAt: serverTimestamp(),
-      });
+      const projectRef = doc(db, 'buildathonProjects', project.id);
 
-      await updateDoc(doc(db, 'buildathonProjects', project.id), {
-        feedbackCount: increment(1),
-        commentsCount: increment(1),
+      await runTransaction(db, async (tx) => {
+        const projectSnap = await tx.get(projectRef);
+        if (!projectSnap.exists()) throw new Error('Projet introuvable');
+
+        const projectData = projectSnap.data() || {};
+        const currentFeedback = Number.isFinite(Number(projectData.feedbackCount))
+          ? Number(projectData.feedbackCount)
+          : 0;
+        const currentComments = Number.isFinite(Number(projectData.commentsCount))
+          ? Number(projectData.commentsCount)
+          : 0;
+        const nextCount = Math.max(currentFeedback, currentComments) + 1;
+
+        tx.set(feedbackRef, {
+          userId: user.uid,
+          authorName: userProfile?.displayName || user.displayName || user.email || 'Participant',
+          authorEmail: user.email || null,
+          message,
+          createdAt: serverTimestamp(),
+        });
+
+        tx.update(projectRef, {
+          feedbackCount: nextCount,
+          commentsCount: nextCount,
+        });
       });
 
       setNewFeedback('');
@@ -823,7 +852,7 @@ export default function BuildathonProjectDetail() {
             </div>
           </div>
 
-          <p className="text-body">{project.description || 'Aucune description fournie.'}</p>
+          <p className="text-body whitespace-pre-wrap break-words">{project.description || 'Aucune description fournie.'}</p>
 
           <div className="flex flex-wrap gap-2">
             {tags.map((tag) => (
@@ -889,8 +918,13 @@ export default function BuildathonProjectDetail() {
 
       <div className="glass-card p-6 space-y-5">
         <h2 className="text-lg font-semibold text-heading">Actions séparées</h2>
-        <p className="text-xs text-muted">Vote = impacte le classement, Like = popularité uniquement, Feedback = discussion uniquement.</p>
-        <p className="text-xs text-muted">1 vote = 10 points au classement.</p>
+        <p className="text-xs text-muted">
+          Vote = {event?.juryModeEnabled ? 'score global UjuziAI uniquement' : 'impacte le classement Buildathon'};
+          {' '}Like = score global UjuziAI uniquement; Feedback = discussion uniquement.
+        </p>
+        <p className="text-xs text-muted">
+          1 vote = 10 points (global UjuziAI). {event?.juryModeEnabled ? 'Le classement Buildathon est basé sur les juges.' : 'Le classement Buildathon public utilise les votes.'}
+        </p>
         <p className="text-xs text-muted">Départage classement: {event?.tieBreakRuleText || 'En cas d\'égalité, le projet soumis le plus tôt est prioritaire.'}</p>
 
         <div className="flex flex-wrap gap-3">

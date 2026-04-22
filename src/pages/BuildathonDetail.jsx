@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { addDoc, arrayUnion, collection, doc, onSnapshot, query, serverTimestamp, updateDoc, where } from 'firebase/firestore';
+import { addDoc, arrayUnion, collection, collectionGroup, doc, getDoc, getDocs, limit, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { ArrowLeft, Calendar, Clock3, ExternalLink, FileText, Loader2, Settings, ThumbsUp, Trophy, Users, UserPlus, Send } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock3, Crown, ExternalLink, Eye, FileText, Heart, Loader2, Medal, MessageSquare, Settings, ThumbsUp, Trophy, Users, UserPlus, Send, Star, UserCircle2 } from 'lucide-react';
+import { normalizeJudgeCriteria } from '../lib/judging';
 
 const TAB_LIST = [
   { id: 'overview', label: 'Aperçu' },
@@ -147,6 +148,10 @@ function normalizeBuildathonEvent(raw) {
     prizes: Array.isArray(raw.prizes) ? raw.prizes : [],
     projectVisibility: raw.projectVisibility || 'published-only',
     publicationStatus: raw.publicationStatus || 'published',
+    juryModeEnabled: raw.juryModeEnabled === true,
+    juryResultsPublished: raw.juryResultsPublished === true,
+    rankingMode: raw.rankingMode || 'public',
+    judgeCriteria: normalizeJudgeCriteria(raw.judgeCriteria),
   };
 }
 
@@ -165,6 +170,16 @@ function getCanonicalProjectStatus(project = {}) {
   return 'soumis';
 }
 
+function getCanonicalProjectVisibility(event = {}) {
+  const raw = String(event?.projectVisibility || '')
+    .toLowerCase()
+    .replace(/[_\s]+/g, '-')
+    .trim();
+
+  if (raw === 'all-submitted' || raw === 'allsubmitted' || raw === 'all') return 'all-submitted';
+  return 'published-only';
+}
+
 function isProjectOwnerOrMember(project, uid) {
   if (!uid) return false;
   if (project?.submittedBy === uid) return true;
@@ -176,9 +191,35 @@ function isProjectVisibleForParticipant(project, event, uid) {
   if (isProjectOwnerOrMember(project, uid)) return true;
 
   if (status === 'rejete') return false;
+  const projectVisibility = getCanonicalProjectVisibility(event);
 
-  // User view should include all submitted/validated/published projects.
-  return status !== 'brouillon';
+  if (projectVisibility === 'all-submitted') {
+    return status === 'soumis' || status === 'valide' || status === 'publie';
+  }
+
+  return status === 'publie';
+}
+
+function getProjectVisual(project = {}) {
+  const candidate = [
+    project.thumbnailUrl,
+    project.coverImageUrl,
+    project.imageUrl,
+    project.logoUrl,
+    project.avatarUrl,
+  ].find((value) => typeof value === 'string' && value.trim());
+
+  return candidate ? candidate.trim() : null;
+}
+
+function getInitialsLabel(input) {
+  const value = String(input || '').trim();
+  if (!value) return 'PR';
+  return value
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join('') || 'PR';
 }
 
 function toTimestampMs(value) {
@@ -220,6 +261,18 @@ function getProjectSubmissionTimestamp(project) {
   return Number.MAX_SAFE_INTEGER;
 }
 
+function sortProjectsForJudgeRanking(projectList = []) {
+  return [...projectList].sort((a, b) => {
+    const scoreDiff = Number(b?.judgeScoreAverage || 0) - Number(a?.judgeScoreAverage || 0);
+    if (scoreDiff !== 0) return scoreDiff;
+
+    const timeDiff = getProjectSubmissionTimestamp(a) - getProjectSubmissionTimestamp(b);
+    if (timeDiff !== 0) return timeDiff;
+
+    return String(a?.id || '').localeCompare(String(b?.id || ''));
+  });
+}
+
 function sortProjectsForRanking(projectList = []) {
   return [...projectList].sort((a, b) => {
     const voteDiff = (b?.voteCount || 0) - (a?.voteCount || 0);
@@ -257,6 +310,57 @@ function getProjectTags(project) {
   return [];
 }
 
+function getProjectCategoryLabel(project) {
+  const raw = String(project?.category || '').trim().toLowerCase();
+  if (!raw) return 'Autre';
+
+  const labels = {
+    'ai-ml': 'IA / ML',
+    ai: 'IA / ML',
+    ml: 'IA / ML',
+    'ia-ml': 'IA / ML',
+    'ia/ml': 'IA / ML',
+    web: 'Web',
+    mobile: 'Mobile',
+    cloud: 'Cloud',
+    data: 'Data',
+    backend: 'Backend',
+    frontend: 'Frontend',
+    other: 'Autre',
+    autre: 'Autre',
+  };
+
+  if (labels[raw]) return labels[raw];
+  return raw.slice(0, 1).toUpperCase() + raw.slice(1);
+}
+
+function getRankingAccent(rank) {
+  if (rank === 1) {
+    return {
+      container: 'border-amber-400/50 bg-gradient-to-br from-amber-500/20 via-amber-400/10 to-transparent',
+      badge: 'border-amber-400/50 bg-amber-500/20 text-amber-200',
+      score: 'text-amber-300',
+    };
+  }
+  if (rank === 2) {
+    return {
+      container: 'border-slate-300/40 bg-gradient-to-br from-slate-400/15 via-slate-200/5 to-transparent',
+      badge: 'border-slate-300/40 bg-slate-300/15 text-slate-100',
+      score: 'text-slate-200',
+    };
+  }
+  return {
+    container: 'border-orange-400/40 bg-gradient-to-br from-orange-500/15 via-orange-300/10 to-transparent',
+    badge: 'border-orange-400/40 bg-orange-500/20 text-orange-200',
+    score: 'text-orange-200',
+  };
+}
+
+function formatNumber(value) {
+  const safeValue = Number.isFinite(Number(value)) ? Number(value) : 0;
+  return new Intl.NumberFormat('fr-FR').format(safeValue);
+}
+
 function getProjectStatusLabel(project) {
   const status = getCanonicalProjectStatus(project);
   if (status === 'publie') return 'publie';
@@ -284,6 +388,15 @@ export default function BuildathonDetail() {
   });
   const [submitting, setSubmitting] = useState(false);
   const [nowMs, setNowMs] = useState(Date.now());
+  const [judgeScoresByProject, setJudgeScoresByProject] = useState({});
+  const [judgeInvitations, setJudgeInvitations] = useState([]);
+  const [activeJudges, setActiveJudges] = useState([]);
+  const [judgeIdentifier, setJudgeIdentifier] = useState('');
+  const [invitingJudge, setInvitingJudge] = useState(false);
+  const [juryConfigSaving, setJuryConfigSaving] = useState(false);
+  const [juryModeEnabled, setJuryModeEnabled] = useState(false);
+  const [juryResultsPublished, setJuryResultsPublished] = useState(false);
+  const [judgeCriteriaDraft, setJudgeCriteriaDraft] = useState('');
 
   useEffect(() => {
     const timerId = setInterval(() => setNowMs(Date.now()), 1000);
@@ -321,11 +434,81 @@ export default function BuildathonDetail() {
       setProjects(data);
     });
 
+    let unsubJudgeScores = () => {};
+    if (isAdmin) {
+      const judgeScoresRef = query(collectionGroup(db, 'judgeScores'), where('buildathonId', '==', buildathonId));
+      unsubJudgeScores = onSnapshot(judgeScoresRef, (snap) => {
+        const grouped = {};
+        snap.forEach((d) => {
+          const score = d.data() || {};
+          if (!score.projectId) return;
+          if (!grouped[score.projectId]) {
+            grouped[score.projectId] = [];
+          }
+          grouped[score.projectId].push(score);
+        });
+
+        const aggregate = {};
+        Object.keys(grouped).forEach((projectId) => {
+          const scores = grouped[projectId]
+            .map((item) => Number(item.totalScore))
+            .filter((value) => Number.isFinite(value));
+          const judgeScoreCount = scores.length;
+          const judgeScoreTotal = scores.reduce((sum, value) => sum + value, 0);
+          const judgeScoreAverage = judgeScoreCount > 0 ? judgeScoreTotal / judgeScoreCount : 0;
+          aggregate[projectId] = {
+            judgeScoreCount,
+            judgeScoreTotal,
+            judgeScoreAverage,
+          };
+        });
+        setJudgeScoresByProject(aggregate);
+      }, () => {
+        setJudgeScoresByProject({});
+      });
+    } else {
+      setJudgeScoresByProject({});
+    }
+
+    let unsubJudgeInvitations = () => {};
+    let unsubJudges = () => {};
+    if (isAdmin) {
+      const judgeInvitationsRef = collection(db, 'buildathons', buildathonId, 'judgeInvitations');
+      unsubJudgeInvitations = onSnapshot(judgeInvitationsRef, (snap) => {
+        const data = [];
+        snap.forEach((d) => data.push({ id: d.id, ...d.data() }));
+        data.sort((a, b) => String(a?.inviteeLabel || '').localeCompare(String(b?.inviteeLabel || '')));
+        setJudgeInvitations(data);
+      }, () => setJudgeInvitations([]));
+
+      const judgesRef = collection(db, 'buildathons', buildathonId, 'judges');
+      unsubJudges = onSnapshot(judgesRef, (snap) => {
+        const data = [];
+        snap.forEach((d) => data.push({ id: d.id, ...d.data() }));
+        data.sort((a, b) => String(a?.displayName || a?.email || '').localeCompare(String(b?.displayName || b?.email || '')));
+        setActiveJudges(data);
+      }, () => setActiveJudges([]));
+    } else {
+      setJudgeInvitations([]);
+      setActiveJudges([]);
+    }
+
     return () => {
       unsubEvent();
       unsubProjects();
+      unsubJudgeScores();
+      unsubJudgeInvitations();
+      unsubJudges();
     };
-  }, [buildathonId]);
+  }, [buildathonId, isAdmin]);
+
+  useEffect(() => {
+    setJuryModeEnabled(event?.juryModeEnabled === true);
+    setJuryResultsPublished(event?.juryResultsPublished === true);
+    const criteria = normalizeJudgeCriteria(event?.judgeCriteria);
+    const asText = criteria.map((criterion) => criterion.label).join('\n');
+    setJudgeCriteriaDraft(asText);
+  }, [event?.id, event?.juryModeEnabled, event?.juryResultsPublished, event?.judgeCriteria]);
 
   const handleRegister = async () => {
     try {
@@ -391,6 +574,86 @@ export default function BuildathonDetail() {
     }
   };
 
+  const resolveUserByIdentifier = async (identifier) => {
+    const raw = String(identifier || '').trim();
+    if (!raw) return null;
+
+    if (raw.includes('@')) {
+      const byEmailSnap = await getDocs(query(collection(db, 'users'), where('email', '==', raw), limit(1)));
+      if (!byEmailSnap.empty) {
+        const docSnap = byEmailSnap.docs[0];
+        return { id: docSnap.id, ...docSnap.data() };
+      }
+    }
+
+    const byIdSnap = await getDoc(doc(db, 'users', raw));
+    if (byIdSnap.exists()) {
+      return { id: byIdSnap.id, ...byIdSnap.data() };
+    }
+
+    return null;
+  };
+
+  const handleInviteJudge = async () => {
+    if (!isAdmin || !event?.id || !judgeIdentifier.trim()) return;
+
+    setInvitingJudge(true);
+    try {
+      const targetUser = await resolveUserByIdentifier(judgeIdentifier);
+      if (!targetUser?.id) {
+        alert('Utilisateur introuvable (email ou uid)');
+        return;
+      }
+
+      const invitationRef = doc(db, 'buildathons', event.id, 'judgeInvitations', targetUser.id);
+      await setDoc(invitationRef, {
+        buildathonId: event.id,
+        buildathonTitle: event.title || 'Buildathon',
+        inviteeUid: targetUser.id,
+        inviteeLabel: targetUser.displayName || targetUser.email || targetUser.id,
+        inviteeEmail: targetUser.email || null,
+        invitedBy: user?.uid || null,
+        status: 'pending',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+
+      setJudgeIdentifier('');
+    } catch (error) {
+      alert('Erreur lors de l\'invitation du juge');
+    } finally {
+      setInvitingJudge(false);
+    }
+  };
+
+  const handleSaveJuryConfig = async () => {
+    if (!isAdmin || !event?.id) return;
+
+    const criterionLines = String(judgeCriteriaDraft || '')
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean);
+
+    const criteria = normalizeJudgeCriteria(
+      criterionLines.map((label, index) => ({ key: `criterion_${index + 1}`, label, max: 100 }))
+    );
+
+    setJuryConfigSaving(true);
+    try {
+      await updateDoc(doc(db, 'buildathons', event.id), {
+        juryModeEnabled,
+        juryResultsPublished,
+        rankingMode: juryModeEnabled ? 'jury' : 'public',
+        judgeCriteria: criteria,
+        updatedAt: serverTimestamp(),
+      });
+    } catch (error) {
+      alert('Erreur lors de la sauvegarde de la configuration jury');
+    } finally {
+      setJuryConfigSaving(false);
+    }
+  };
+
   const visibleTabs = useMemo(() => {
     return TAB_LIST.filter((tab) => !tab.adminOnly || isAdmin);
   }, [isAdmin]);
@@ -401,6 +664,55 @@ export default function BuildathonDetail() {
   }, [projects, event, user?.uid, isAdmin]);
 
   const sortedProjects = useMemo(() => sortProjectsForRanking(visibleProjects), [visibleProjects]);
+  const rankingMode = event?.juryModeEnabled === true || event?.rankingMode === 'jury' ? 'jury' : 'public';
+  const canRevealJuryRanking = rankingMode !== 'jury' || juryResultsPublished || isAdmin;
+  const rankingProjects = useMemo(() => {
+    const withJudgeMetrics = visibleProjects.map((project) => {
+      const score = judgeScoresByProject[project.id] || {};
+      return {
+        ...project,
+        judgeScoreAverage: Number.isFinite(Number(score.judgeScoreAverage))
+          ? Number(score.judgeScoreAverage)
+          : Number(project.judgeScoreAverage || 0),
+        judgeScoreTotal: Number.isFinite(Number(score.judgeScoreTotal))
+          ? Number(score.judgeScoreTotal)
+          : Number(project.judgeScoreTotal || 0),
+        judgeScoreCount: Number.isFinite(Number(score.judgeScoreCount))
+          ? Number(score.judgeScoreCount)
+          : Number(project.judgeScoreCount || 0),
+      };
+    });
+
+    if (rankingMode === 'jury') {
+      return sortProjectsForJudgeRanking(withJudgeMetrics);
+    }
+
+    return sortProjectsForRanking(withJudgeMetrics);
+  }, [visibleProjects, judgeScoresByProject, rankingMode]);
+  const rankingStats = useMemo(() => {
+    const totalProjects = rankingProjects.length;
+    const totalVotes = rankingProjects.reduce((sum, project) => sum + (Number(project?.voteCount) || 0), 0);
+    const currentUserPosition = rankingProjects.findIndex((project) => isProjectOwnerOrMember(project, user?.uid));
+    const currentUserProject = currentUserPosition >= 0 ? rankingProjects[currentUserPosition] : null;
+    const totalJudgeEvaluations = rankingProjects.reduce((sum, project) => sum + (Number(project?.judgeScoreCount) || 0), 0);
+
+    return {
+      totalProjects,
+      totalVotes,
+      totalJudgeEvaluations,
+      currentUserPosition: currentUserPosition >= 0 ? currentUserPosition + 1 : null,
+      currentUserProject,
+    };
+  }, [rankingProjects, user?.uid]);
+
+  const displayRankingStats = useMemo(() => {
+    if (canRevealJuryRanking) return rankingStats;
+    return {
+      ...rankingStats,
+      currentUserPosition: null,
+      currentUserProject: null,
+    };
+  }, [canRevealJuryRanking, rankingStats]);
   const submissionCountdown = useMemo(
     () => getPhaseCountdown(event?.submissionStartDate, getEffectiveEventEndDate(event), nowMs),
     [event, nowMs]
@@ -412,8 +724,17 @@ export default function BuildathonDetail() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-16">
-        <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
+      <div className="max-w-6xl mx-auto py-10 space-y-4">
+        <div className="glass-card p-8 text-center space-y-3">
+          <Loader2 className="w-8 h-8 animate-spin text-primary-500 mx-auto" />
+          <p className="text-heading font-medium">Chargement du classement Buildathon...</p>
+          <p className="text-xs text-muted">Préparation des projets, scores et positions.</p>
+        </div>
+        <div className="grid md:grid-cols-3 gap-3">
+          <div className="h-28 rounded-xl border border-themed bg-black/5 dark:bg-white/5 animate-pulse" />
+          <div className="h-28 rounded-xl border border-themed bg-black/5 dark:bg-white/5 animate-pulse" />
+          <div className="h-28 rounded-xl border border-themed bg-black/5 dark:bg-white/5 animate-pulse" />
+        </div>
       </div>
     );
   }
@@ -653,23 +974,280 @@ export default function BuildathonDetail() {
         )}
 
         {activeTab === 'ranking' && (
-          <div className="space-y-3">
-            <h2 className="text-lg font-semibold text-heading inline-flex items-center gap-2">
-              <Trophy className="w-5 h-5 text-amber-400" />
-              Classement
-            </h2>
-            <p className="text-xs text-muted">Tri: votes décroissants. {event.tieBreakRuleText}</p>
-            {sortedProjects.length === 0 ? (
-              <p className="text-body">Aucun projet classable pour le moment.</p>
-            ) : (
-              <div className="space-y-2">
-                {sortedProjects.map((p, idx) => (
-                  <div key={p.id} className="p-3 rounded-lg bg-black/5 dark:bg-white/5 border border-themed flex items-center justify-between gap-3">
-                    <p className="text-sm text-heading"><span className="font-bold mr-2">#{idx + 1}</span>{p.title}</p>
-                    <span className="text-xs text-muted">{p.voteCount || 0} votes</span>
-                  </div>
-                ))}
+          <div className="space-y-6">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-lg font-semibold text-heading inline-flex items-center gap-2">
+                <Trophy className="w-5 h-5 text-amber-400" />
+                Classement Buildathon
+              </h2>
+              <span className="text-[11px] px-3 py-1.5 rounded-full border border-primary-500/30 bg-primary-600/10 text-primary-200">
+                {rankingMode === 'jury' ? 'Classement Buildathon basé sur les notes des juges' : 'Classement basé sur les votes du public'}
+              </span>
+            </div>
+            <div className="grid sm:grid-cols-2 gap-3 text-xs">
+              <div className="rounded-xl border border-themed bg-black/5 dark:bg-white/5 p-3">
+                <p className="text-muted">Score principal</p>
+                <p className="text-heading font-semibold mt-1 inline-flex items-center gap-1.5">
+                  <ThumbsUp className="w-3.5 h-3.5 text-primary-300" />
+                  {rankingMode === 'jury' ? 'Moyenne des notes des juges' : 'Votes du public'}
+                </p>
               </div>
+              <div className="rounded-xl border border-themed bg-black/5 dark:bg-white/5 p-3">
+                <p className="text-muted">Règle d'égalité</p>
+                <p className="text-heading font-semibold mt-1">En cas d’égalité, le projet soumis en premier est prioritaire</p>
+              </div>
+            </div>
+
+            <div className="grid sm:grid-cols-3 gap-3 text-xs">
+              <div className="rounded-xl border border-themed bg-black/5 dark:bg-white/5 p-3">
+                <p className="text-muted">Projets classés</p>
+                <p className="text-heading font-semibold text-lg mt-1">{formatNumber(displayRankingStats.totalProjects)}</p>
+              </div>
+              <div className="rounded-xl border border-themed bg-black/5 dark:bg-white/5 p-3">
+                <p className="text-muted">{rankingMode === 'jury' ? 'Évaluations juges' : 'Total votes publics'}</p>
+                <p className="text-heading font-semibold text-lg mt-1">
+                  {rankingMode === 'jury'
+                    ? (canRevealJuryRanking ? formatNumber(displayRankingStats.totalJudgeEvaluations) : 'Non publié')
+                    : formatNumber(displayRankingStats.totalVotes)}
+                </p>
+              </div>
+              <div className="rounded-xl border border-themed bg-black/5 dark:bg-white/5 p-3">
+                <p className="text-muted">Ma position</p>
+                {displayRankingStats.currentUserPosition ? (
+                  <p className="text-heading font-semibold text-lg mt-1 inline-flex items-center gap-2">
+                    <UserCircle2 className="w-4 h-4 text-primary-300" />
+                    #{displayRankingStats.currentUserPosition}
+                  </p>
+                ) : (
+                  <p className="text-muted mt-1">
+                    {canRevealJuryRanking
+                      ? 'Vous n’avez pas encore de projet classé.'
+                      : 'Position masquée jusqu’à la publication des résultats jury.'}
+                  </p>
+                )}
+                {displayRankingStats.currentUserProject?.title && (
+                  <p className="text-[11px] text-muted mt-1 truncate">{displayRankingStats.currentUserProject.title}</p>
+                )}
+              </div>
+            </div>
+
+            {rankingMode === 'jury' && !canRevealJuryRanking ? (
+              <div className="rounded-2xl border border-dashed border-themed bg-black/5 dark:bg-white/5 p-8 text-center space-y-2">
+                <p className="text-heading font-semibold">Résultats jury en préparation</p>
+                <p className="text-sm text-muted">Les notes des juges sont en cours de consolidation. Le classement sera publié par l'administration.</p>
+              </div>
+            ) : rankingProjects.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-themed bg-black/5 dark:bg-white/5 p-8 text-center space-y-2">
+                <p className="text-heading font-semibold">Aucun projet classé pour le moment</p>
+                <p className="text-sm text-muted">Le classement apparaîtra dès que des projets éligibles seront disponibles.</p>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('projects')}
+                  className="inline-flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg border border-primary-500/30 bg-primary-600/20 text-primary-200"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  Voir les projets
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="grid md:grid-cols-12 gap-3">
+                  {rankingProjects.slice(0, 3).map((project, index) => {
+                    const rank = index + 1;
+                    const visual = getProjectVisual(project);
+                    const voteCount = Number(project.voteCount || 0);
+                    const likesCount = Number(project.likesCount || 0);
+                    const feedbackCount = Number(project.feedbackCount || project.commentsCount || 0);
+                    const judgeAverage = Number(project.judgeScoreAverage || 0);
+                    const accent = getRankingAccent(rank);
+                    const colSpan = rank === 1 ? 'md:col-span-6' : 'md:col-span-3';
+                    const imageSize = rank === 1 ? 'w-20 h-20' : 'w-14 h-14';
+                    const titleSize = rank === 1 ? 'text-base' : 'text-sm';
+                    const compactGap = rank === 1 ? 'gap-4' : 'gap-3';
+
+                    return (
+                      <article key={project.id} className={`${colSpan}`}>
+                        <Link
+                          to={`/projects/${event.id}/project/${project.id}`}
+                          className={`group block rounded-2xl border p-4 h-full transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl ${accent.container}`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border ${accent.badge}`}>
+                              {rank === 1 ? <Crown className="w-3.5 h-3.5" /> : <Medal className="w-3.5 h-3.5" />}
+                              #{rank}
+                            </span>
+                            <span className="text-xs text-muted">{formatEventDate(project.submittedAt)}</span>
+                          </div>
+
+                          <div className={`flex items-center ${compactGap} mt-3`}>
+                            {visual ? (
+                              <img src={visual} alt={`Miniature ${project.title || 'projet'}`} className={`${imageSize} rounded-xl object-cover border border-themed`} />
+                            ) : (
+                              <div className={`${imageSize} rounded-xl border border-themed bg-surface flex items-center justify-center text-xs font-semibold text-body`}>
+                                {getInitialsLabel(project.teamName || project.title)}
+                              </div>
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <p className={`${titleSize} font-semibold text-heading truncate`}>{project.title || 'Projet sans titre'}</p>
+                              <p className="text-xs text-muted truncate">{getProjectTeamLabel(project, isAdmin)}</p>
+                              <span className="inline-flex mt-2 text-[10px] px-2 py-0.5 rounded-full border border-themed bg-surface text-muted">
+                                {getProjectCategoryLabel(project)}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-2 text-xs mt-4">
+                            <div className="p-2 rounded-lg border border-themed bg-black/10 dark:bg-white/10">
+                              <p className="text-muted">{rankingMode === 'jury' ? 'Score Jury' : 'Votes'}</p>
+                              <p className={`font-semibold ${accent.score}`}>
+                                {rankingMode === 'jury' ? judgeAverage.toFixed(2) : formatNumber(voteCount)}
+                              </p>
+                            </div>
+                            <div className="p-2 rounded-lg border border-themed bg-black/10 dark:bg-white/10">
+                              <p className="text-muted">Likes</p>
+                              <p className="text-heading font-semibold">{formatNumber(likesCount)}</p>
+                            </div>
+                            <div className="p-2 rounded-lg border border-themed bg-black/10 dark:bg-white/10">
+                              <p className="text-muted">Feedbacks</p>
+                              <p className="text-heading font-semibold">{formatNumber(feedbackCount)}</p>
+                            </div>
+                          </div>
+
+                          <div className="mt-4 inline-flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg border border-primary-500/40 bg-primary-600/20 text-primary-200 group-hover:bg-primary-600/30">
+                            <Eye className="w-3.5 h-3.5" />
+                            Voir le projet
+                          </div>
+                        </Link>
+                      </article>
+                    );
+                  })}
+                </div>
+
+                <div className="lg:hidden space-y-3">
+                  {rankingProjects.map((project, index) => {
+                    const rank = index + 1;
+                    const visual = getProjectVisual(project);
+                    const voteCount = Number(project.voteCount || 0);
+                    const likesCount = Number(project.likesCount || 0);
+                    const feedbackCount = Number(project.feedbackCount || project.commentsCount || 0);
+                    const judgeAverage = Number(project.judgeScoreAverage || 0);
+                    return (
+                      <Link
+                        key={project.id}
+                        to={`/projects/${event.id}/project/${project.id}`}
+                        className="block rounded-2xl border border-themed p-3.5 bg-black/5 dark:bg-white/5 space-y-3 active:scale-[0.99] transition-transform"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm font-semibold text-heading min-w-[30px]">#{rank}</span>
+                          {visual ? (
+                            <img src={visual} alt={`Miniature ${project.title || 'projet'}`} className="w-12 h-12 rounded-xl object-cover border border-themed" />
+                          ) : (
+                            <div className="w-12 h-12 rounded-xl border border-themed bg-surface flex items-center justify-center text-[11px] font-semibold text-body">
+                              {getInitialsLabel(project.teamName || project.title)}
+                            </div>
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-semibold text-heading truncate">{project.title || 'Projet sans titre'}</p>
+                            <p className="text-xs text-muted truncate">{getProjectTeamLabel(project, isAdmin)}</p>
+                            <span className="inline-flex mt-1 text-[10px] px-2 py-0.5 rounded-full border border-themed bg-surface text-muted">
+                              {getProjectCategoryLabel(project)}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-2 text-xs">
+                          <div className="rounded-lg border border-themed p-2 bg-black/10 dark:bg-white/10">
+                            <p className="text-muted inline-flex items-center gap-1"><ThumbsUp className="w-3 h-3" />{rankingMode === 'jury' ? 'Score Jury' : 'Votes'}</p>
+                            <p className="text-heading font-semibold">{rankingMode === 'jury' ? judgeAverage.toFixed(2) : formatNumber(voteCount)}</p>
+                          </div>
+                          <div className="rounded-lg border border-themed p-2 bg-black/10 dark:bg-white/10">
+                            <p className="text-muted inline-flex items-center gap-1"><Heart className="w-3 h-3" />Likes</p>
+                            <p className="text-heading font-semibold">{formatNumber(likesCount)}</p>
+                          </div>
+                          <div className="rounded-lg border border-themed p-2 bg-black/10 dark:bg-white/10">
+                            <p className="text-muted inline-flex items-center gap-1"><MessageSquare className="w-3 h-3" />Feedbacks</p>
+                            <p className="text-heading font-semibold">{formatNumber(feedbackCount)}</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[11px] text-muted">Soumis: {formatEventDate(project.submittedAt)}</span>
+                          <span className="inline-flex items-center gap-1.5 text-xs px-3.5 py-2 rounded-lg border border-primary-500/30 bg-primary-600/20 text-primary-200">
+                            <Eye className="w-3.5 h-3.5" />
+                            Voir le projet
+                          </span>
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+
+                <div className="hidden lg:block overflow-x-auto rounded-xl border border-themed">
+                  <table className="w-full text-sm">
+                    <thead className="bg-black/5 dark:bg-white/5 text-xs text-muted uppercase tracking-wide">
+                      <tr>
+                        <th className="px-3 py-3 text-left">Rang</th>
+                        <th className="px-3 py-3 text-left">Projet</th>
+                        <th className="px-3 py-3 text-left">Équipe / Auteur</th>
+                        <th className="px-3 py-3 text-left">Photo</th>
+                        <th className="px-3 py-3 text-left">{rankingMode === 'jury' ? 'Score Jury' : 'Votes (Public)'}</th>
+                        <th className="px-3 py-3 text-left">Likes</th>
+                        <th className="px-3 py-3 text-left">Feedbacks</th>
+                        <th className="px-3 py-3 text-left">Soumission</th>
+                        <th className="px-3 py-3 text-left">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rankingProjects.map((project, index) => {
+                        const rank = index + 1;
+                        const visual = getProjectVisual(project);
+                        const voteCount = Number(project.voteCount || 0);
+                        const likesCount = Number(project.likesCount || 0);
+                        const feedbackCount = Number(project.feedbackCount || project.commentsCount || 0);
+                        const judgeAverage = Number(project.judgeScoreAverage || 0);
+
+                        return (
+                          <tr key={project.id} className="border-t border-themed">
+                            <td className="px-3 py-3 text-heading font-semibold">
+                              <span className="inline-flex items-center gap-1">
+                                #{rank}
+                                {rank <= 3 && <Star className="w-3.5 h-3.5 text-amber-400" />}
+                              </span>
+                            </td>
+                            <td className="px-3 py-3 text-heading font-medium">{project.title || 'Projet sans titre'}</td>
+                            <td className="px-3 py-3 text-body">
+                              <p className="font-medium text-heading">{getProjectTeamLabel(project, isAdmin)}</p>
+                              <p className="text-[11px] text-muted">{getProjectCategoryLabel(project)}</p>
+                            </td>
+                            <td className="px-3 py-3">
+                              {visual ? (
+                                <img src={visual} alt={`Miniature ${project.title || 'projet'}`} className="w-11 h-11 rounded-lg object-cover border border-themed" />
+                              ) : (
+                                <div className="w-11 h-11 rounded-lg border border-themed bg-surface flex items-center justify-center text-[10px] font-semibold text-body">
+                                  {getInitialsLabel(project.teamName || project.title)}
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-3 py-3 text-body font-medium">{rankingMode === 'jury' ? judgeAverage.toFixed(2) : formatNumber(voteCount)}</td>
+                            <td className="px-3 py-3 text-body">{formatNumber(likesCount)}</td>
+                            <td className="px-3 py-3 text-body">{formatNumber(feedbackCount)}</td>
+                            <td className="px-3 py-3 text-body">{formatEventDate(project.submittedAt)}</td>
+                            <td className="px-3 py-3">
+                              <Link
+                                to={`/projects/${event.id}/project/${project.id}`}
+                                className="inline-flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg border border-primary-500/30 bg-primary-600/20 text-primary-200 hover:bg-primary-600/30 transition-colors"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                                Voir le projet
+                              </Link>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
           </div>
         )}
@@ -807,25 +1385,137 @@ export default function BuildathonDetail() {
         )}
 
         {activeTab === 'management' && isAdmin && (
-          <div className="space-y-3">
+          <div className="space-y-4">
             <h2 className="text-lg font-semibold text-heading inline-flex items-center gap-2">
               <Settings className="w-5 h-5 text-primary-400" />
               Gestion
             </h2>
-            <p className="text-body">Espace admin prêt. Les outils de gestion détaillés seront ajoutés aux prochaines étapes.</p>
+            <p className="text-body">Administration jury Buildathon: activation, critères, invitations et suivi des évaluations.</p>
+
+            <div className="rounded-xl border border-themed bg-black/5 dark:bg-white/5 p-4 space-y-3">
+              <h3 className="text-sm font-semibold text-heading">Configuration du mode jury</h3>
+              <div className="grid md:grid-cols-2 gap-3 text-sm">
+                <label className="inline-flex items-center gap-2 text-body">
+                  <input
+                    type="checkbox"
+                    checked={juryModeEnabled}
+                    onChange={(e) => setJuryModeEnabled(e.target.checked)}
+                  />
+                  Activer le mode jury (classement Buildathon basé sur les notes des juges)
+                </label>
+                <label className="inline-flex items-center gap-2 text-body">
+                  <input
+                    type="checkbox"
+                    checked={juryResultsPublished}
+                    onChange={(e) => setJuryResultsPublished(e.target.checked)}
+                  />
+                  Publier les résultats jury
+                </label>
+              </div>
+              <div>
+                <label className="text-xs text-muted">Critères jury (une ligne = un critère, max 100 par critère)</label>
+                <textarea
+                  value={judgeCriteriaDraft}
+                  onChange={(e) => setJudgeCriteriaDraft(e.target.value)}
+                  className="input-field w-full h-32 mt-1 resize-none"
+                  placeholder={'Innovation\nImpact\nQualité technique\nClarté du projet\nDesign / UX\nDéploiement sur Cloud Run'}
+                />
+              </div>
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={handleSaveJuryConfig}
+                  disabled={juryConfigSaving}
+                  className="px-4 py-2 rounded-lg border border-primary-500/30 bg-primary-600/20 text-primary-200 text-sm disabled:opacity-60"
+                >
+                  {juryConfigSaving ? 'Sauvegarde...' : 'Enregistrer la configuration jury'}
+                </button>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-themed bg-black/5 dark:bg-white/5 p-4 space-y-3">
+              <h3 className="text-sm font-semibold text-heading">Inviter un juge</h3>
+              <div className="flex gap-2 flex-wrap">
+                <input
+                  type="text"
+                  value={judgeIdentifier}
+                  onChange={(e) => setJudgeIdentifier(e.target.value)}
+                  className="input-field flex-1 min-w-[220px]"
+                  placeholder="Email ou UID utilisateur"
+                />
+                <button
+                  type="button"
+                  onClick={handleInviteJudge}
+                  disabled={invitingJudge || !judgeIdentifier.trim()}
+                  className="px-4 py-2 rounded-lg border border-primary-500/30 bg-primary-600/20 text-primary-200 text-sm disabled:opacity-60"
+                >
+                  {invitingJudge ? 'Invitation...' : 'Inviter'}
+                </button>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-3 text-xs">
+                <div className="rounded-lg border border-themed p-3 bg-black/10 dark:bg-white/10">
+                  <p className="text-muted mb-2">Invitations juges</p>
+                  {judgeInvitations.length === 0 ? (
+                    <p className="text-muted">Aucune invitation envoyée.</p>
+                  ) : (
+                    <div className="space-y-1">
+                      {judgeInvitations.map((invitation) => (
+                        <p key={invitation.id} className="text-body">
+                          {invitation.inviteeLabel || invitation.inviteeEmail || invitation.inviteeUid} - {invitation.status || 'pending'}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="rounded-lg border border-themed p-3 bg-black/10 dark:bg-white/10">
+                  <p className="text-muted mb-2">Juges actifs</p>
+                  {activeJudges.length === 0 ? (
+                    <p className="text-muted">Aucun juge actif.</p>
+                  ) : (
+                    <div className="space-y-1">
+                      {activeJudges.map((judge) => (
+                        <p key={judge.id} className="text-body">
+                          {judge.displayName || judge.email || judge.userId || judge.id}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
             <div className="grid sm:grid-cols-3 gap-3">
               <div className="p-3 rounded-lg bg-black/5 dark:bg-white/5 border border-themed">
                 <p className="text-xs text-muted">Projets</p>
                 <p className="text-sm font-medium text-heading">{projects.length}</p>
               </div>
               <div className="p-3 rounded-lg bg-black/5 dark:bg-white/5 border border-themed">
-                <p className="text-xs text-muted">Vote activé</p>
-                <p className="text-sm font-medium text-heading">{event.votingEnabled ? 'Oui' : 'Non'}</p>
+                <p className="text-xs text-muted">Mode classement Buildathon</p>
+                <p className="text-sm font-medium text-heading">{rankingMode === 'jury' ? 'Jury' : 'Public'}</p>
               </div>
               <div className="p-3 rounded-lg bg-black/5 dark:bg-white/5 border border-themed">
-                <p className="text-xs text-muted">Publication</p>
-                <p className="text-sm font-medium text-heading">{event.publicationStatus || 'published'}</p>
+                <p className="text-xs text-muted">Résultats jury</p>
+                <p className="text-sm font-medium text-heading">{juryResultsPublished ? 'Publiés' : 'Brouillon'}</p>
               </div>
+            </div>
+
+            <div className="rounded-xl border border-themed bg-black/5 dark:bg-white/5 p-4 space-y-2">
+              <h3 className="text-sm font-semibold text-heading">Notes par projet</h3>
+              {rankingProjects.length === 0 ? (
+                <p className="text-xs text-muted">Aucun projet à afficher.</p>
+              ) : (
+                <div className="space-y-1">
+                  {rankingProjects.map((project, index) => (
+                    <div key={project.id} className="flex items-center justify-between gap-3 text-xs border-b border-themed/40 py-1.5 last:border-b-0">
+                      <p className="text-body truncate">#{index + 1} {project.title || 'Projet sans titre'}</p>
+                      <p className="text-muted whitespace-nowrap">
+                        Jury: {Number(project.judgeScoreAverage || 0).toFixed(2)} ({Number(project.judgeScoreCount || 0)} note(s))
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}

@@ -108,7 +108,7 @@ buildathons/{buildathonId}
 ├── allowSelfVote: boolean
 ├── voteStartDate: string | null
 ├── voteEndDate: string | null
-├── projectVisibility: 'published-only' | 'all'
+├── projectVisibility: 'published-only' | 'all-submitted'
 └── submissionOpen: boolean
 ```
 
@@ -131,7 +131,7 @@ buildathonProjects/{projectId}
 ├── commentsCount: number
 ├── feedbackCount: number
 ├── likeUserIds: string[]
-├── projectStatus: 'brouillon' | 'soumis' | 'validé' | 'rejeté' | 'publié'
+├── projectStatus: 'brouillon' | 'soumis' | 'valide' | 'rejete' | 'publie'
 ├── moderationStatus: 'pending' | 'approved' | 'rejected'
 ├── moderationNote: string
 ├── isPublished: boolean
