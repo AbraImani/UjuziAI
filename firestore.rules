@@ -361,6 +361,26 @@ service cloud.firestore {
       }
 
       // Judge invitation lifecycle per buildathon.
+      match /invitations/{inviteeUid} {
+        allow read: if isAdmin() || (isAuthenticated() && request.auth.uid == inviteeUid);
+
+        allow create: if isAdmin() &&
+          request.resource.data.inviteeUid == inviteeUid &&
+          request.resource.data.buildathonId == buildathonId &&
+          request.resource.data.status == 'pending';
+
+        allow update: if isAdmin() || (
+          isAuthenticated() &&
+          request.auth.uid == inviteeUid &&
+          resource.data.inviteeUid == request.auth.uid &&
+          resource.data.buildathonId == buildathonId &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt', 'respondedAt']) &&
+          request.resource.data.status in ['accepted', 'declined']
+        );
+
+        allow delete: if isAdmin();
+      }
+
       match /judgeInvitations/{inviteeUid} {
         allow read: if isAdmin() || (isAuthenticated() && request.auth.uid == inviteeUid);
 

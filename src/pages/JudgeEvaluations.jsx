@@ -24,7 +24,7 @@ export default function JudgeEvaluations() {
     }
 
     const invitationsQuery = query(
-      collectionGroup(db, 'judgeInvitations'),
+      collectionGroup(db, 'invitations'),
       where('inviteeUid', '==', user.uid)
     );
 
@@ -106,12 +106,16 @@ export default function JudgeEvaluations() {
 
     const { doc, serverTimestamp, setDoc } = await import('firebase/firestore');
 
-    const invitationRef = doc(db, 'buildathons', invitation.buildathonId, 'judgeInvitations', user.uid);
-    await setDoc(invitationRef, {
+    const invitationData = {
       status,
       updatedAt: serverTimestamp(),
       respondedAt: serverTimestamp(),
-    }, { merge: true });
+    };
+
+    await Promise.all([
+      setDoc(doc(db, 'buildathons', invitation.buildathonId, 'invitations', user.uid), invitationData, { merge: true }),
+      setDoc(doc(db, 'buildathons', invitation.buildathonId, 'judgeInvitations', user.uid), invitationData, { merge: true }),
+    ]);
 
     if (status === 'accepted') {
       const judgeRef = doc(db, 'buildathons', invitation.buildathonId, 'judges', user.uid);

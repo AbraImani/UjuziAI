@@ -188,6 +188,7 @@ const DEFAULT_BUILDATHON_CONFIG = {
   tieBreakRuleText: 'En cas d\'égalité, le projet soumis le plus tôt est prioritaire.',
   rewardsVisible: true,
   projectVisibility: 'published-only',
+  mode: 'public',
   submissionOpen: true,
   publicationStatus: 'published',
   juryModeEnabled: false,
@@ -195,6 +196,13 @@ const DEFAULT_BUILDATHON_CONFIG = {
   rankingMode: 'public',
   judgeCriteria: [],
 };
+
+function normalizeBuildathonMode(raw) {
+  if (raw?.mode === 'jury') return 'jury';
+  if (raw?.juryModeEnabled === true) return 'jury';
+  if (raw?.rankingMode === 'jury') return 'jury';
+  return 'public';
+}
 
 const DEFAULT_BUILDATHON_PROJECT_META = {
   projectStatus: 'soumis',
@@ -537,9 +545,10 @@ export default function Buildathon() {
         projectVisibility: newEvent.projectVisibility || 'published-only',
         submissionOpen: newEvent.submissionOpen !== false,
         publicationStatus: newEvent.publicationStatus || 'published',
-        juryModeEnabled: newEvent.juryModeEnabled === true,
+        mode: normalizeBuildathonMode(newEvent),
+        juryModeEnabled: normalizeBuildathonMode(newEvent) === 'jury',
         juryResultsPublished: newEvent.juryResultsPublished === true,
-        rankingMode: newEvent.juryModeEnabled ? 'jury' : 'public',
+        rankingMode: normalizeBuildathonMode(newEvent),
         judgeCriteria: Array.isArray(newEvent.judgeCriteria) ? newEvent.judgeCriteria : [],
         participants: [],
         createdBy: user.uid,
@@ -586,7 +595,8 @@ export default function Buildathon() {
       projectVisibility: event.projectVisibility || 'published-only',
       submissionOpen: event.submissionOpen !== false,
       publicationStatus: event.publicationStatus || 'published',
-      juryModeEnabled: event.juryModeEnabled === true,
+      mode: normalizeBuildathonMode(event),
+      juryModeEnabled: normalizeBuildathonMode(event) === 'jury',
       juryResultsPublished: event.juryResultsPublished === true,
       judgeCriteria: Array.isArray(event.judgeCriteria) ? event.judgeCriteria : [],
       prizes: (event.prizes && event.prizes.length > 0)
@@ -641,9 +651,10 @@ export default function Buildathon() {
         projectVisibility: editEvent.projectVisibility || 'published-only',
         submissionOpen: editEvent.submissionOpen !== false,
         publicationStatus: editEvent.publicationStatus || 'published',
-        juryModeEnabled: editEvent.juryModeEnabled === true,
+        mode: normalizeBuildathonMode(editEvent),
+        juryModeEnabled: normalizeBuildathonMode(editEvent) === 'jury',
         juryResultsPublished: editEvent.juryResultsPublished === true,
-        rankingMode: editEvent.juryModeEnabled ? 'jury' : 'public',
+        rankingMode: normalizeBuildathonMode(editEvent),
         judgeCriteria: Array.isArray(editEvent.judgeCriteria) ? editEvent.judgeCriteria : [],
         updatedAt: serverTimestamp(),
         updatedBy: user.uid,

@@ -199,6 +199,34 @@ export default function AdminBuildathonEventForm({
 
       <Section icon={Settings2} title="Paramètres de Vote">
         <div className="grid sm:grid-cols-2 gap-3">
+          <div className="sm:col-span-2">
+            <p className="block text-sm font-medium text-body mb-2">Mode de classement</p>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { value: 'public', label: 'Public', description: 'Votes et likes visibles au public' },
+                { value: 'jury', label: 'Jury', description: 'Classement piloté par les juges' },
+              ].map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setField('mode', option.value)}
+                  className={`rounded-xl border-2 p-3 text-left transition-all ${
+                    (value.mode || 'public') === option.value
+                      ? 'border-primary-500 bg-primary-500/10 text-heading'
+                      : 'border-themed text-body hover:border-primary-500/50'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-semibold">{option.label}</span>
+                    <span className={`h-3 w-3 rounded-full ${(value.mode || 'public') === option.value ? 'bg-primary-500' : 'bg-white/20'}`} />
+                  </div>
+                  <p className="mt-1 text-xs text-muted">{option.description}</p>
+                </button>
+              ))}
+            </div>
+            <p className="text-[11px] text-muted mt-2">Le mode jury active la section de gestion des juges dans l’admin et conserve la compatibilité avec les anciens événements.</p>
+          </div>
+
           <label className="flex items-center gap-2 text-sm text-body">
             <input
               type="checkbox"

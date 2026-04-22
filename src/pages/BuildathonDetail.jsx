@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { addDoc, arrayUnion, collection, collectionGroup, doc, getDoc, getDocs, limit, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore';
+import { addDoc, arrayUnion, collection, collectionGroup, doc, getDoc, getDocs, limit, onSnapshot, query, serverTimestamp, setDoc, deleteDoc, updateDoc, where } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { ArrowLeft, Calendar, Clock3, Crown, ExternalLink, Eye, FileText, Heart, Loader2, Medal, MessageSquare, Settings, ThumbsUp, Trophy, Users, UserPlus, Send, Star, UserCircle2 } from 'lucide-react';
@@ -131,6 +131,7 @@ function getEventStatus(event) {
 }
 
 function normalizeBuildathonEvent(raw) {
+  const mode = raw.mode === 'jury' || raw.juryModeEnabled === true || raw.rankingMode === 'jury' ? 'jury' : 'public';
   return {
     ...raw,
     participants: Array.isArray(raw.participants) ? raw.participants : [],
@@ -148,9 +149,10 @@ function normalizeBuildathonEvent(raw) {
     prizes: Array.isArray(raw.prizes) ? raw.prizes : [],
     projectVisibility: raw.projectVisibility || 'published-only',
     publicationStatus: raw.publicationStatus || 'published',
-    juryModeEnabled: raw.juryModeEnabled === true,
+    mode,
+    juryModeEnabled: mode === 'jury',
     juryResultsPublished: raw.juryResultsPublished === true,
-    rankingMode: raw.rankingMode || 'public',
+    rankingMode: mode,
     judgeCriteria: normalizeJudgeCriteria(raw.judgeCriteria),
   };
 }
@@ -503,12 +505,12 @@ export default function BuildathonDetail() {
   }, [buildathonId, isAdmin]);
 
   useEffect(() => {
-    setJuryModeEnabled(event?.juryModeEnabled === true);
+    setJuryModeEnabled(event?.mode === 'jury' || event?.juryModeEnabled === true || event?.rankingMode === 'jury');
     setJuryResultsPublished(event?.juryResultsPublished === true);
     const criteria = normalizeJudgeCriteria(event?.judgeCriteria);
     const asText = criteria.map((criterion) => criterion.label).join('\n');
     setJudgeCriteriaDraft(asText);
-  }, [event?.id, event?.juryModeEnabled, event?.juryResultsPublished, event?.judgeCriteria]);
+  }, [event?.id, event?.mode, event?.juryModeEnabled, event?.juryResultsPublished, event?.judgeCriteria, event?.rankingMode]);
 
   const handleRegister = async () => {
     try {
@@ -605,8 +607,7 @@ export default function BuildathonDetail() {
         return;
       }
 
-      const invitationRef = doc(db, 'buildathons', event.id, 'judgeInvitations', targetUser.id);
-      await setDoc(invitationRef, {
+      const invitationData = {
         buildathonId: event.id,
         buildathonTitle: event.title || 'Buildathon',
         inviteeUid: targetUser.id,
@@ -616,7 +617,12 @@ export default function BuildathonDetail() {
         status: 'pending',
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-      }, { merge: true });
+      };
+
+      await Promise.all([
+        setDoc(doc(db, 'buildathons', event.id, 'invitations', targetUser.id), invitationData, { merge: true }),
+        setDoc(doc(db, 'buildathons', event.id, 'judgeInvitations', targetUser.id), invitationData, { merge: true }),
+      ]);
 
       setJudgeIdentifier('');
     } catch (error) {
@@ -641,6 +647,7 @@ export default function BuildathonDetail() {
     setJuryConfigSaving(true);
     try {
       await updateDoc(doc(db, 'buildathons', event.id), {
+        mode: juryModeEnabled ? 'jury' : 'public',
         juryModeEnabled,
         juryResultsPublished,
         rankingMode: juryModeEnabled ? 'jury' : 'public',
@@ -664,7 +671,7 @@ export default function BuildathonDetail() {
   }, [projects, event, user?.uid, isAdmin]);
 
   const sortedProjects = useMemo(() => sortProjectsForRanking(visibleProjects), [visibleProjects]);
-  const rankingMode = event?.juryModeEnabled === true || event?.rankingMode === 'jury' ? 'jury' : 'public';
+  const rankingMode = event?.mode === 'jury' || event?.juryModeEnabled === true || event?.rankingMode === 'jury' ? 'jury' : 'public';
   const canRevealJuryRanking = rankingMode !== 'jury' || juryResultsPublished || isAdmin;
   const rankingProjects = useMemo(() => {
     const withJudgeMetrics = visibleProjects.map((project) => {
@@ -1390,100 +1397,155 @@ export default function BuildathonDetail() {
               <Settings className="w-5 h-5 text-primary-400" />
               Gestion
             </h2>
-            <p className="text-body">Administration jury Buildathon: activation, critères, invitations et suivi des évaluations.</p>
+            <p className="text-body">Administration Buildathon: activation du mode jury, critères, invitations et suivi des évaluations.</p>
 
             <div className="rounded-xl border border-themed bg-black/5 dark:bg-white/5 p-4 space-y-3">
-              <h3 className="text-sm font-semibold text-heading">Configuration du mode jury</h3>
-              <div className="grid md:grid-cols-2 gap-3 text-sm">
-                <label className="inline-flex items-center gap-2 text-body">
-                  <input
-                    type="checkbox"
-                    checked={juryModeEnabled}
-                    onChange={(e) => setJuryModeEnabled(e.target.checked)}
-                  />
-                  Activer le mode jury (classement Buildathon basé sur les notes des juges)
-                </label>
-                <label className="inline-flex items-center gap-2 text-body">
-                  <input
-                    type="checkbox"
-                    checked={juryResultsPublished}
-                    onChange={(e) => setJuryResultsPublished(e.target.checked)}
-                  />
-                  Publier les résultats jury
-                </label>
-              </div>
-              <div>
-                <label className="text-xs text-muted">Critères jury (une ligne = un critère, max 100 par critère)</label>
-                <textarea
-                  value={judgeCriteriaDraft}
-                  onChange={(e) => setJudgeCriteriaDraft(e.target.value)}
-                  className="input-field w-full h-32 mt-1 resize-none"
-                  placeholder={'Innovation\nImpact\nQualité technique\nClarté du projet\nDesign / UX\nDéploiement sur Cloud Run'}
-                />
-              </div>
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={handleSaveJuryConfig}
-                  disabled={juryConfigSaving}
-                  className="px-4 py-2 rounded-lg border border-primary-500/30 bg-primary-600/20 text-primary-200 text-sm disabled:opacity-60"
-                >
-                  {juryConfigSaving ? 'Sauvegarde...' : 'Enregistrer la configuration jury'}
-                </button>
-              </div>
-            </div>
-
-            <div className="rounded-xl border border-themed bg-black/5 dark:bg-white/5 p-4 space-y-3">
-              <h3 className="text-sm font-semibold text-heading">Inviter un juge</h3>
-              <div className="flex gap-2 flex-wrap">
-                <input
-                  type="text"
-                  value={judgeIdentifier}
-                  onChange={(e) => setJudgeIdentifier(e.target.value)}
-                  className="input-field flex-1 min-w-[220px]"
-                  placeholder="Email ou UID utilisateur"
-                />
-                <button
-                  type="button"
-                  onClick={handleInviteJudge}
-                  disabled={invitingJudge || !judgeIdentifier.trim()}
-                  className="px-4 py-2 rounded-lg border border-primary-500/30 bg-primary-600/20 text-primary-200 text-sm disabled:opacity-60"
-                >
-                  {invitingJudge ? 'Invitation...' : 'Inviter'}
-                </button>
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div>
+                  <h3 className="text-sm font-semibold text-heading">Configuration du mode jury</h3>
+                  <p className="text-xs text-muted">Le mode courant est {rankingMode === 'jury' ? 'Jury' : 'Public'}.</p>
+                </div>
+                <span className={`px-3 py-1 rounded-full text-xs font-medium border ${rankingMode === 'jury' ? 'border-primary-500/30 bg-primary-500/10 text-primary-200' : 'border-themed bg-black/10 text-muted'}`}>
+                  {rankingMode === 'jury' ? 'Mode jury actif' : 'Mode public actif'}
+                </span>
               </div>
 
-              <div className="grid md:grid-cols-2 gap-3 text-xs">
-                <div className="rounded-lg border border-themed p-3 bg-black/10 dark:bg-white/10">
-                  <p className="text-muted mb-2">Invitations juges</p>
-                  {judgeInvitations.length === 0 ? (
-                    <p className="text-muted">Aucune invitation envoyée.</p>
-                  ) : (
-                    <div className="space-y-1">
-                      {judgeInvitations.map((invitation) => (
-                        <p key={invitation.id} className="text-body">
-                          {invitation.inviteeLabel || invitation.inviteeEmail || invitation.inviteeUid} - {invitation.status || 'pending'}
-                        </p>
-                      ))}
-                    </div>
-                  )}
+              {rankingMode === 'jury' ? (
+                <>
+                  <div className="grid md:grid-cols-2 gap-3 text-sm">
+                    <label className="inline-flex items-center gap-2 text-body">
+                      <input
+                        type="checkbox"
+                        checked={juryModeEnabled}
+                        onChange={(e) => setJuryModeEnabled(e.target.checked)}
+                      />
+                      Activer le mode jury (classement Buildathon basé sur les notes des juges)
+                    </label>
+                    <label className="inline-flex items-center gap-2 text-body">
+                      <input
+                        type="checkbox"
+                        checked={juryResultsPublished}
+                        onChange={(e) => setJuryResultsPublished(e.target.checked)}
+                      />
+                      Publier les résultats jury
+                    </label>
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted">Critères jury (une ligne = un critère, max 100 par critère)</label>
+                    <textarea
+                      value={judgeCriteriaDraft}
+                      onChange={(e) => setJudgeCriteriaDraft(e.target.value)}
+                      className="input-field w-full h-32 mt-1 resize-none"
+                      placeholder={'Innovation\nImpact\nQualité technique\nClarté du projet\nDesign / UX\nDéploiement sur Cloud Run'}
+                    />
+                  </div>
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={handleSaveJuryConfig}
+                      disabled={juryConfigSaving}
+                      className="px-4 py-2 rounded-lg border border-primary-500/30 bg-primary-600/20 text-primary-200 text-sm disabled:opacity-60"
+                    >
+                      {juryConfigSaving ? 'Sauvegarde...' : 'Enregistrer la configuration jury'}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="rounded-lg border border-dashed border-themed p-4 text-sm text-body">
+                  Active le mode jury dans la configuration du Buildathon pour afficher ici la gestion des juges.
                 </div>
-                <div className="rounded-lg border border-themed p-3 bg-black/10 dark:bg-white/10">
-                  <p className="text-muted mb-2">Juges actifs</p>
-                  {activeJudges.length === 0 ? (
-                    <p className="text-muted">Aucun juge actif.</p>
-                  ) : (
-                    <div className="space-y-1">
-                      {activeJudges.map((judge) => (
-                        <p key={judge.id} className="text-body">
-                          {judge.displayName || judge.email || judge.userId || judge.id}
-                        </p>
-                      ))}
-                    </div>
-                  )}
+              )}
+            </div>
+
+            {rankingMode === 'jury' && (
+              <div className="rounded-xl border border-themed bg-black/5 dark:bg-white/5 p-4 space-y-3">
+                <h3 className="text-sm font-semibold text-heading">Gestion du jury</h3>
+                <div className="flex gap-2 flex-wrap">
+                  <input
+                    type="text"
+                    value={judgeIdentifier}
+                    onChange={(e) => setJudgeIdentifier(e.target.value)}
+                    className="input-field flex-1 min-w-[220px]"
+                    placeholder="Email ou UID utilisateur"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleInviteJudge}
+                    disabled={invitingJudge || !judgeIdentifier.trim()}
+                    className="px-4 py-2 rounded-lg border border-primary-500/30 bg-primary-600/20 text-primary-200 text-sm disabled:opacity-60"
+                  >
+                    {invitingJudge ? 'Invitation...' : 'Inviter'}
+                  </button>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-3 text-xs">
+                  <div className="rounded-lg border border-themed p-3 bg-black/10 dark:bg-white/10 space-y-2">
+                    <p className="text-muted mb-1">Invitations juges</p>
+                    {judgeInvitations.length === 0 ? (
+                      <p className="text-muted">Aucune invitation envoyée.</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {judgeInvitations.map((invitation) => (
+                          <div key={invitation.id} className="rounded-lg border border-themed/60 bg-black/5 dark:bg-white/5 p-2 flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="text-body truncate">{invitation.inviteeLabel || invitation.inviteeEmail || invitation.inviteeUid}</p>
+                              <p className="text-muted text-[11px] capitalize">{invitation.status || 'pending'}</p>
+                              <p className="text-muted text-[11px]">{formatEventDate(normalizeDateLike(invitation.createdAt) || invitation.createdAt)}</p>
+                            </div>
+                            <button
+                              type="button"
+                              className="text-red-400 hover:text-red-300 text-[11px]"
+                              onClick={async () => {
+                                try {
+                                  await Promise.all([
+                                    deleteDoc(doc(db, 'buildathons', event.id, 'invitations', invitation.id)),
+                                    deleteDoc(doc(db, 'buildathons', event.id, 'judgeInvitations', invitation.id)),
+                                  ]);
+                                } catch {
+                                  alert('Impossible de supprimer cette invitation');
+                                }
+                              }}
+                            >
+                              Supprimer
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div className="rounded-lg border border-themed p-3 bg-black/10 dark:bg-white/10 space-y-2">
+                    <p className="text-muted mb-1">Juges actifs</p>
+                    {activeJudges.length === 0 ? (
+                      <p className="text-muted">Aucun juge actif.</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {activeJudges.map((judge) => (
+                          <div key={judge.id} className="rounded-lg border border-themed/60 bg-black/5 dark:bg-white/5 p-2 flex items-center justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="text-body truncate">{judge.displayName || judge.email || judge.userId || judge.id}</p>
+                              <p className="text-muted text-[11px]">Accepté {formatEventDate(normalizeDateLike(judge.acceptedAt) || judge.acceptedAt)}</p>
+                            </div>
+                            <button
+                              type="button"
+                              className="text-red-400 hover:text-red-300 text-[11px]"
+                              onClick={async () => {
+                                try {
+                                  await deleteDoc(doc(db, 'buildathons', event.id, 'judges', judge.id));
+                                } catch {
+                                  alert('Impossible de supprimer ce juge');
+                                }
+                              }}
+                            >
+                              Supprimer
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             <div className="grid sm:grid-cols-3 gap-3">
               <div className="p-3 rounded-lg bg-black/5 dark:bg-white/5 border border-themed">
