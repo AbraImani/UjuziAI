@@ -214,6 +214,19 @@ function getProjectVisual(project = {}) {
   return candidate ? candidate.trim() : null;
 }
 
+function getEventCoverImageUrl(event = {}) {
+  const value = String(event?.coverImageUrl || '').trim();
+  if (!value) return '/icon-512.png';
+
+  try {
+    const parsedUrl = new URL(value);
+    if (parsedUrl.protocol !== 'https:') return '/icon-512.png';
+    return parsedUrl.toString();
+  } catch {
+    return '/icon-512.png';
+  }
+}
+
 function getInitialsLabel(input) {
   const value = String(input || '').trim();
   if (!value) return 'PR';
@@ -765,6 +778,34 @@ export default function BuildathonDetail() {
 
   return (
     <div className="max-w-6xl mx-auto animate-fade-in">
+      <div className="glass-card overflow-hidden mb-6">
+        <div className="relative aspect-[16/6] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 border-b border-themed overflow-hidden">
+          <img
+            src={getEventCoverImageUrl(event)}
+            alt={event.title || 'Couverture du Buildathon'}
+            className="absolute inset-0 h-full w-full object-cover"
+            onError={(e) => {
+              e.currentTarget.src = '/icon-512.png';
+            }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
+          <div className="absolute inset-0 flex items-end p-4 sm:p-6">
+            <div className="max-w-3xl">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/15 bg-black/35 backdrop-blur-sm text-white text-xs font-medium">
+                <span>{event.type === 'hackathon' ? '💻' : '🏗️'}</span>
+                <span>{event.type === 'hackathon' ? 'Hackathon' : 'Buildathon'}</span>
+                <span className="opacity-70">•</span>
+                <span>{status}</span>
+                <span className="opacity-70">•</span>
+                <span>{event.mode === 'jury' || event.juryModeEnabled ? 'Mode jury' : 'Mode public'}</span>
+              </div>
+              <h1 className="mt-3 text-2xl sm:text-4xl font-bold text-white drop-shadow-sm">{event.title}</h1>
+              <p className="mt-2 text-sm sm:text-base text-white/85 max-w-2xl">{event.description || 'Aucune description disponible pour cet événement.'}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="mb-6">
         <Link to="/projects" className="inline-flex items-center gap-2 text-sm text-primary-400 hover:text-primary-300 mb-4">
           <ArrowLeft className="w-4 h-4" />
@@ -773,8 +814,6 @@ export default function BuildathonDetail() {
 
         <div className="glass-card p-6">
           <div className="flex flex-col gap-3">
-            <h1 className="text-2xl font-bold text-heading">{event.title}</h1>
-            <p className="text-body line-clamp-3">{event.description || 'Aucune description disponible.'}</p>
             <div className="flex flex-wrap items-center gap-4 text-xs text-muted">
               <span className="inline-flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{formatEventDate(event.startDate)} → {formatEventDate(getEffectiveEventEndDate(event))}</span>
               <span className="inline-flex items-center gap-1"><Clock3 className="w-3.5 h-3.5" />{formatEventDate(event.submissionStartDate)} → {formatEventDate(getEffectiveEventEndDate(event))}</span>

@@ -1457,6 +1457,19 @@ export default function Buildathon() {
     return warnings;
   }
 
+  function getEventCoverImageUrl(event = {}) {
+    const value = String(event.coverImageUrl || '').trim();
+    if (!value) return '/icon-512.png';
+
+    try {
+      const parsedUrl = new URL(value);
+      if (parsedUrl.protocol !== 'https:') return '/icon-512.png';
+      return parsedUrl.toString();
+    } catch {
+      return '/icon-512.png';
+    }
+  }
+
   function getPopularityBucket(event) {
     const { popularityScore } = getEventPopularityMetrics(event.id, event.participants);
     if (popularityScore >= 20) return 'high';
@@ -1755,23 +1768,45 @@ export default function Buildathon() {
             const typeLabel = event.type === 'hackathon' ? 'Hackathon' : 'Buildathon';
             const typeIcon = event.type === 'hackathon' ? '💻' : '🏗️';
             const userVotedProject = allEventProjects.find((p) => p.votes?.includes(user?.uid));
+            const coverImageUrl = getEventCoverImageUrl(event);
 
             return (
               <div key={event.id} className="glass-card overflow-hidden">
+                <div className="relative aspect-[16/6] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 border-b border-themed overflow-hidden">
+                  <img
+                    src={coverImageUrl}
+                    alt={event.title || 'Couverture de l’événement'}
+                    className="absolute inset-0 h-full w-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.src = '/icon-512.png';
+                    }}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                  <div className="absolute inset-0 flex items-end p-4 sm:p-6">
+                    <div className="max-w-2xl">
+                      <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/15 bg-black/35 backdrop-blur-sm text-white text-xs font-medium">
+                        <span>{typeIcon}</span>
+                        <span>{typeLabel}</span>
+                        <span className="opacity-70">•</span>
+                        <span>{statusInfo.label}</span>
+                      </div>
+                      <h2 className="mt-3 text-2xl font-bold text-white drop-shadow-sm line-clamp-1">{event.title}</h2>
+                      <p className="mt-1 text-sm text-white/85 line-clamp-2">{event.description || 'Aucune description disponible.'}</p>
+                    </div>
+                  </div>
+                </div>
                 {/* Event Header */}
                 <div className="p-6">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-3 mb-2 flex-wrap">
                         <span className="text-2xl">{typeIcon}</span>
-                        <h2 className="text-xl font-bold text-heading">{event.title}</h2>
                         <span className={`badge border ${statusInfo.color}`}>
                           <span className={`w-1.5 h-1.5 rounded-full ${statusInfo.dot} mr-1 inline-block`} />
                           {statusInfo.label}
                         </span>
                         <span className="badge bg-surface text-body border border-themed text-xs">{typeLabel}</span>
                       </div>
-                      <p className="text-body text-sm mb-4 line-clamp-2">{event.description || 'Aucune description disponible.'}</p>
                       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-xs">
                         <div className="rounded-lg border border-themed bg-black/5 dark:bg-white/5 px-3 py-2">
                           <p className="text-muted mb-1">Début</p>
