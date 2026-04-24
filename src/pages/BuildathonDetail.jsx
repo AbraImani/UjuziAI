@@ -130,6 +130,17 @@ function getEventStatus(event) {
   return 'En cours';
 }
 
+function isWithinSubmissionWindow(event, nowMs = Date.now()) {
+  const startMs = event?.submissionStartDate ? new Date(event.submissionStartDate).getTime() : null;
+  const endMsRaw = getEffectiveEventEndDate(event);
+  const endMs = endMsRaw ? endMsRaw.getTime() : null;
+
+  if (!Number.isFinite(startMs) && !Number.isFinite(endMs)) return true;
+  if (Number.isFinite(startMs) && nowMs < startMs) return false;
+  if (Number.isFinite(endMs) && nowMs > endMs) return false;
+  return true;
+}
+
 function normalizeBuildathonEvent(raw) {
   const mode = raw.mode === 'jury' || raw.juryModeEnabled === true || raw.rankingMode === 'jury' ? 'jury' : 'public';
   return {
@@ -442,51 +453,172 @@ export default function BuildathonDetail() {
       }
     );
 
-    const projectsRef = query(collection(db, 'buildathonProjects'), where('buildathonId', '==', buildathonId));
-    const unsubProjects = onSnapshot(projectsRef, (snap) => {
-      const data = [];
-      snap.forEach((d) => data.push(normalizeBuildathonProject({ id: d.id, ...d.data() })));
-      setProjects(data);
-    });
+    return () => {
+      unsubEvent();
+    };
+  }, [buildathonId]);
 
-    let unsubJudgeScores = () => {};
-    if (isAdmin) {
-      const judgeScoresRef = query(collectionGroup(db, 'judgeScores'), where('buildathonId', '==', buildathonId));
-      unsubJudgeScores = onSnapshot(judgeScoresRef, (snap) => {
-        const grouped = {};
-        snap.forEach((d) => {
-          const score = d.data() || {};
-          if (!score.projectId) return;
-          if (!grouped[score.projectId]) {
-            grouped[score.projectId] = [];
-          }
-          grouped[score.projectId].push(score);
-        });
-
-        const aggregate = {};
-        Object.keys(grouped).forEach((projectId) => {
-          const scores = grouped[projectId]
-            .map((item) => Number(item.totalScore))
-            .filter((value) => Number.isFinite(value));
-          const judgeScoreCount = scores.length;
-          const judgeScoreTotal = scores.reduce((sum, value) => sum + value, 0);
-          const judgeScoreAverage = judgeScoreCount > 0 ? judgeScoreTotal / judgeScoreCount : 0;
-          aggregate[projectId] = {
-            judgeScoreCount,
-            judgeScoreTotal,
-            judgeScoreAverage,
-          };
-        });
-        setJudgeScoresByProject(aggregate);
-      }, () => {
-        setJudgeScoresByProject({});
-      });
-    } else {
-      setJudgeScoresByProject({});
+  useEffect(() => {
+    if (!buildathonId) return;
+    if (!isAdmin && !event) {
+      setProjects([]);
+      return;
     }
 
+    const visibility = getCanonicalProjectVisibility(event || {});
+
+    const fromStatus = new Map();
+    const fromModeration = new Map();
+    const fromPublished = new Map();
+
+    const normalizeFromSnapshot = (snap) => {
+      const map = new Map();
+      snap.forEach((d) => {
+        map.set(d.id, normalizeBuildathonProject({ id: d.id, ...d.data() }));
+      });
+      return map;
+    };
+
+    const emitMergedProjects = () => {
+      const merged = new Map();
+      fromStatus.forEach((value, key) => merged.set(key, value));
+      fromModeration.forEach((value, key) => merged.set(key, value));
+      fromPublished.forEach((value, key) => merged.set(key, value));
+      setProjects(Array.from(merged.values()));
+    };
+
+    const unsubscribers = [];
+
+    if (isAdmin) {
+      const allProjectsRef = query(collection(db, 'buildathonProjects'), where('buildathonId', '==', buildathonId));
+      unsubscribers.push(onSnapshot(allProjectsRef, (snap) => {
+        fromStatus.clear();
+        normalizeFromSnapshot(snap).forEach((value, key) => fromStatus.set(key, value));
+        fromModeration.clear();
+        fromPublished.clear();
+        emitMergedProjects();
+      }, () => setProjects([])));
+    } else if (visibility === 'all-submitted') {
+      const statusRef = query(
+        collection(db, 'buildathonProjects'),
+        where('buildathonId', '==', buildathonId),
+        where('projectStatus', 'in', ['soumis', 'submitted', 'pending', 'valide', 'validated', 'approved', 'publie', 'published'])
+      );
+      const moderationRef = query(
+        collection(db, 'buildathonProjects'),
+        where('buildathonId', '==', buildathonId),
+        where('moderationStatus', '==', 'approved')
+      );
+      const publishedRef = query(
+        collection(db, 'buildathonProjects'),
+        where('buildathonId', '==', buildathonId),
+        where('isPublished', '==', true)
+      );
+
+      unsubscribers.push(onSnapshot(statusRef, (snap) => {
+        fromStatus.clear();
+        normalizeFromSnapshot(snap).forEach((value, key) => fromStatus.set(key, value));
+        emitMergedProjects();
+      }, () => {
+        fromStatus.clear();
+        emitMergedProjects();
+      }));
+
+      unsubscribers.push(onSnapshot(moderationRef, (snap) => {
+        fromModeration.clear();
+        normalizeFromSnapshot(snap).forEach((value, key) => fromModeration.set(key, value));
+        emitMergedProjects();
+      }, () => {
+        fromModeration.clear();
+        emitMergedProjects();
+      }));
+
+      unsubscribers.push(onSnapshot(publishedRef, (snap) => {
+        fromPublished.clear();
+        normalizeFromSnapshot(snap).forEach((value, key) => fromPublished.set(key, value));
+        emitMergedProjects();
+      }, () => {
+        fromPublished.clear();
+        emitMergedProjects();
+      }));
+    } else {
+      const statusRef = query(
+        collection(db, 'buildathonProjects'),
+        where('buildathonId', '==', buildathonId),
+        where('projectStatus', 'in', ['publie', 'published'])
+      );
+      const publishedRef = query(
+        collection(db, 'buildathonProjects'),
+        where('buildathonId', '==', buildathonId),
+        where('isPublished', '==', true)
+      );
+
+      unsubscribers.push(onSnapshot(statusRef, (snap) => {
+        fromStatus.clear();
+        normalizeFromSnapshot(snap).forEach((value, key) => fromStatus.set(key, value));
+        emitMergedProjects();
+      }, () => {
+        fromStatus.clear();
+        emitMergedProjects();
+      }));
+
+      unsubscribers.push(onSnapshot(publishedRef, (snap) => {
+        fromPublished.clear();
+        normalizeFromSnapshot(snap).forEach((value, key) => fromPublished.set(key, value));
+        emitMergedProjects();
+      }, () => {
+        fromPublished.clear();
+        emitMergedProjects();
+      }));
+    }
+
+    return () => {
+      unsubscribers.forEach((unsub) => unsub());
+    };
+  }, [buildathonId, isAdmin, event?.id, event?.projectVisibility]);
+
+  useEffect(() => {
+    if (!buildathonId || !isAdmin) {
+      setJudgeScoresByProject({});
+      return;
+    }
+
+    const judgeScoresRef = query(collectionGroup(db, 'judgeScores'), where('buildathonId', '==', buildathonId));
+    const unsubscribe = onSnapshot(judgeScoresRef, (snap) => {
+      const grouped = {};
+      snap.forEach((d) => {
+        const score = d.data() || {};
+        if (!score.projectId) return;
+        if (!grouped[score.projectId]) {
+          grouped[score.projectId] = [];
+        }
+        grouped[score.projectId].push(score);
+      });
+
+      const aggregate = {};
+      Object.keys(grouped).forEach((projectId) => {
+        const scores = grouped[projectId]
+          .map((item) => Number(item.totalScore))
+          .filter((value) => Number.isFinite(value));
+        const judgeScoreCount = scores.length;
+        const judgeScoreTotal = scores.reduce((sum, value) => sum + value, 0);
+        const judgeScoreAverage = judgeScoreCount > 0 ? judgeScoreTotal / judgeScoreCount : 0;
+        aggregate[projectId] = {
+          judgeScoreCount,
+          judgeScoreTotal,
+          judgeScoreAverage,
+        };
+      });
+      setJudgeScoresByProject(aggregate);
+    }, () => setJudgeScoresByProject({}));
+
+    return () => unsubscribe();
+  }, [buildathonId, isAdmin]);
+
+  useEffect(() => {
+    if (!buildathonId) return;
+
     let unsubJudgeInvitations = () => {};
-    let unsubJudges = () => {};
     if (isAdmin) {
       const judgeInvitationsRef = collection(db, 'buildathons', buildathonId, 'judgeInvitations');
       unsubJudgeInvitations = onSnapshot(judgeInvitationsRef, (snap) => {
@@ -495,27 +627,34 @@ export default function BuildathonDetail() {
         data.sort((a, b) => String(a?.inviteeLabel || '').localeCompare(String(b?.inviteeLabel || '')));
         setJudgeInvitations(data);
       }, () => setJudgeInvitations([]));
+    } else {
+      setJudgeInvitations([]);
+    }
 
+    const shouldSubscribeJudges = isAdmin || (event?.mode === 'jury' || event?.juryModeEnabled === true || event?.rankingMode === 'jury');
+    let unsubJudges = () => {};
+    if (shouldSubscribeJudges) {
       const judgesRef = collection(db, 'buildathons', buildathonId, 'judges');
       unsubJudges = onSnapshot(judgesRef, (snap) => {
         const data = [];
-        snap.forEach((d) => data.push({ id: d.id, ...d.data() }));
+        snap.forEach((d) => {
+          const judge = { id: d.id, ...d.data() };
+          if (judge?.active === true || isAdmin) {
+            data.push(judge);
+          }
+        });
         data.sort((a, b) => String(a?.displayName || a?.email || '').localeCompare(String(b?.displayName || b?.email || '')));
         setActiveJudges(data);
       }, () => setActiveJudges([]));
     } else {
-      setJudgeInvitations([]);
       setActiveJudges([]);
     }
 
     return () => {
-      unsubEvent();
-      unsubProjects();
-      unsubJudgeScores();
       unsubJudgeInvitations();
       unsubJudges();
     };
-  }, [buildathonId, isAdmin]);
+  }, [buildathonId, isAdmin, event?.mode, event?.juryModeEnabled, event?.rankingMode]);
 
   useEffect(() => {
     setJuryModeEnabled(event?.mode === 'jury' || event?.juryModeEnabled === true || event?.rankingMode === 'jury');
@@ -887,7 +1026,7 @@ export default function BuildathonDetail() {
         {activeTab === 'overview' && (
           <div className="space-y-4">
             <h2 className="text-lg font-semibold text-heading">Aperçu</h2>
-            <p className="text-body">{event.description || 'Aucune description disponible pour cet événement.'}</p>
+            <p className="text-body whitespace-pre-wrap break-words">{event.description || 'Aucune description disponible pour cet événement.'}</p>
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
               <div className="p-3 rounded-lg bg-black/5 dark:bg-white/5 border border-themed">
                 <p className="text-xs text-muted">Statut</p>
@@ -906,6 +1045,39 @@ export default function BuildathonDetail() {
                 <p className="text-sm font-medium text-heading">{event.publicationStatus || 'published'}</p>
               </div>
             </div>
+
+            {rankingMode === 'jury' && (
+              <div className="p-4 rounded-lg bg-black/5 dark:bg-white/5 border border-themed space-y-2">
+                <p className="text-sm font-semibold text-heading">Jury Buildathon</p>
+                <p className="text-sm text-body">Le classement final est basé sur les notes des juges.</p>
+                <p className="text-xs text-muted">Juges actifs: {formatNumber(activeJudges.length)}</p>
+                {activeJudges.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {activeJudges.slice(0, 6).map((judge) => (
+                      <span key={judge.id} className="text-[11px] px-2.5 py-1 rounded-full border border-themed bg-surface text-body">
+                        {judge.displayName || judge.email || judge.userId || 'Juge'}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {!juryResultsPublished && (
+                  <p className="text-xs text-muted">Les notes détaillées restent masquées jusqu'a la publication officielle des résultats jury.</p>
+                )}
+              </div>
+            )}
+
+            {isAdmin && rankingMode === 'jury' && (
+              <div className="rounded-lg border border-primary-500/30 bg-primary-600/10 p-3 flex items-center justify-between gap-3 flex-wrap">
+                <p className="text-xs text-primary-200">Gestion du jury disponible dans l'onglet Gestion.</p>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('management')}
+                  className="text-xs px-3 py-1.5 rounded-lg border border-primary-500/30 bg-primary-600/20 text-primary-200"
+                >
+                  Ouvrir Gestion jury
+                </button>
+              </div>
+            )}
 
             {event.rewardsVisible && event.prizes.length > 0 && (
               <div className="p-4 rounded-lg bg-black/5 dark:bg-white/5 border border-themed space-y-2">
@@ -957,7 +1129,17 @@ export default function BuildathonDetail() {
           <div className="space-y-3">
             <h2 className="text-lg font-semibold text-heading">Projets</h2>
             {sortedProjects.length === 0 ? (
-              <p className="text-body">Aucun projet pour le moment.</p>
+              <div className="space-y-1">
+                <p className="text-body">Aucun projet visible pour le moment.</p>
+                {!isAdmin && (
+                  <p className="text-xs text-muted">
+                    Visibilité actuelle: {getCanonicalProjectVisibility(event) === 'all-submitted' ? 'Tous les projets soumis' : 'Projets publiés uniquement'}.
+                    {isWithinSubmissionWindow(event, nowMs)
+                      ? ' La phase de soumission est en cours.'
+                      : ' La phase de soumission est terminée.'}
+                  </p>
+                )}
+              </div>
             ) : (
               <div className="grid md:grid-cols-2 gap-4">
                 {sortedProjects.map((p) => {
@@ -1416,15 +1598,15 @@ export default function BuildathonDetail() {
             <div className="space-y-3">
               <div className="p-3 rounded-lg bg-black/5 dark:bg-white/5 border border-themed">
                 <p className="text-xs text-muted mb-1">Participation</p>
-                <p className="text-sm text-body">{event.participationRules || 'Aucune règle de participation détaillée pour cet événement.'}</p>
+                <p className="text-sm text-body whitespace-pre-wrap break-words">{event.participationRules || 'Aucune règle de participation détaillée pour cet événement.'}</p>
               </div>
               <div className="p-3 rounded-lg bg-black/5 dark:bg-white/5 border border-themed">
                 <p className="text-xs text-muted mb-1">Critères d'évaluation</p>
-                <p className="text-sm text-body">{event.evaluationCriteria || 'Aucun critère d\'évaluation détaillé pour cet événement.'}</p>
+                <p className="text-sm text-body whitespace-pre-wrap break-words">{event.evaluationCriteria || 'Aucun critère d\'évaluation détaillé pour cet événement.'}</p>
               </div>
               <div className="p-3 rounded-lg bg-black/5 dark:bg-white/5 border border-themed">
                 <p className="text-xs text-muted mb-1">Règle de départage</p>
-                <p className="text-sm text-body">{event.tieBreakRuleText}</p>
+                <p className="text-sm text-body whitespace-pre-wrap break-words">{event.tieBreakRuleText}</p>
               </div>
             </div>
           </div>
@@ -1536,16 +1718,20 @@ export default function BuildathonDetail() {
                               className="text-red-400 hover:text-red-300 text-[11px]"
                               onClick={async () => {
                                 try {
-                                  await Promise.all([
+                                  const tasks = [
                                     deleteDoc(doc(db, 'buildathons', event.id, 'invitations', invitation.id)),
                                     deleteDoc(doc(db, 'buildathons', event.id, 'judgeInvitations', invitation.id)),
-                                  ]);
+                                  ];
+                                  if (invitation.status === 'accepted') {
+                                    tasks.push(deleteDoc(doc(db, 'buildathons', event.id, 'judges', invitation.id)));
+                                  }
+                                  await Promise.all(tasks);
                                 } catch {
                                   alert('Impossible de supprimer cette invitation');
                                 }
                               }}
                             >
-                              Supprimer
+                              {invitation.status === 'accepted' ? 'Révoquer' : 'Supprimer'}
                             </button>
                           </div>
                         ))}

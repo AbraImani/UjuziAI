@@ -403,7 +403,19 @@ service cloud.firestore {
 
       // Active judges assigned to buildathon.
       match /judges/{judgeUid} {
-        allow read: if isAdmin() || (isAuthenticated() && request.auth.uid == judgeUid);
+        allow read: if isAdmin() || (
+          isAuthenticated() && (
+            request.auth.uid == judgeUid ||
+            (
+              resource.data.active == true &&
+              (
+                getBuildathon(buildathonId).data.mode == 'jury' ||
+                getBuildathon(buildathonId).data.rankingMode == 'jury' ||
+                getBuildathon(buildathonId).data.juryModeEnabled == true
+              )
+            )
+          )
+        );
 
         allow create, update: if isAdmin() || (
           isAuthenticated() &&
