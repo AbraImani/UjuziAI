@@ -27,15 +27,23 @@ export default function JudgeEvaluations() {
       collectionGroup(db, 'invitations'),
       where('inviteeUid', '==', user.uid)
     );
+    const invitationsByInvitedUidQuery = query(
+      collectionGroup(db, 'invitations'),
+      where('invitedUid', '==', user.uid)
+    );
     const legacyInvitationsQuery = query(
       collectionGroup(db, 'judgeInvitations'),
       where('inviteeUid', '==', user.uid)
     );
+    const legacyInvitationsByInvitedUidQuery = query(
+      collectionGroup(db, 'judgeInvitations'),
+      where('invitedUid', '==', user.uid)
+    );
 
-    const mergeInvitations = (primaryList, legacyList) => {
+    const mergeInvitations = (primaryList, secondaryList, legacyList, legacySecondaryList) => {
       const merged = new Map();
 
-      [...legacyList, ...primaryList].forEach((item) => {
+      [...legacySecondaryList, ...legacyList, ...secondaryList, ...primaryList].forEach((item) => {
         const key = `${item.buildathonId || 'unknown'}_${item.inviteeUid || user.uid}`;
         const previous = merged.get(key);
         const prevTs = previous?.updatedAt?.toDate ? previous.updatedAt.toDate().getTime() : 0;
@@ -54,10 +62,33 @@ export default function JudgeEvaluations() {
     };
 
     let primaryInvitations = [];
+    let secondaryInvitations = [];
     let legacyInvitations = [];
+    let legacySecondaryInvitations = [];
 
     const emitInvitations = () => {
-      setInvitations(mergeInvitations(primaryInvitations, legacyInvitations));
+      const nextInvitations = mergeInvitations(primaryInvitations, secondaryInvitations, legacyInvitations, legacySecondaryInvitations);
+      if (import.meta.env.DEV) {
+        console.info('[JudgeEvaluations] invitations snapshot', {
+          uid: user.uid,
+          counts: {
+            invitations: primaryInvitations.length,
+            invitationsByInvitedUid: secondaryInvitations.length,
+            judgeInvitations: legacyInvitations.length,
+            judgeInvitationsByInvitedUid: legacySecondaryInvitations.length,
+            merged: nextInvitations.length,
+          },
+          invitations: nextInvitations.map((item) => ({
+            id: item.id,
+            buildathonId: item.buildathonId,
+            inviteeUid: item.inviteeUid || null,
+            invitedUid: item.invitedUid || null,
+            status: item.status || null,
+            buildathonTitle: item.buildathonTitle || null,
+          })),
+        });
+      }
+      setInvitations(nextInvitations);
       setLoading(false);
     };
 
@@ -71,6 +102,16 @@ export default function JudgeEvaluations() {
       emitInvitations();
     });
 
+    const unsubscribePrimarySecondary = onSnapshot(invitationsByInvitedUidQuery, (snap) => {
+      const nextInvitations = [];
+      snap.forEach((d) => nextInvitations.push({ id: d.id, ...d.data() }));
+      secondaryInvitations = nextInvitations;
+      emitInvitations();
+    }, () => {
+      secondaryInvitations = [];
+      emitInvitations();
+    });
+
     const unsubscribeLegacy = onSnapshot(legacyInvitationsQuery, (snap) => {
       const nextInvitations = [];
       snap.forEach((d) => nextInvitations.push({ id: d.id, ...d.data() }));
@@ -81,9 +122,21 @@ export default function JudgeEvaluations() {
       emitInvitations();
     });
 
+    const unsubscribeLegacySecondary = onSnapshot(legacyInvitationsByInvitedUidQuery, (snap) => {
+      const nextInvitations = [];
+      snap.forEach((d) => nextInvitations.push({ id: d.id, ...d.data() }));
+      legacySecondaryInvitations = nextInvitations;
+      emitInvitations();
+    }, () => {
+      legacySecondaryInvitations = [];
+      emitInvitations();
+    });
+
     return () => {
       unsubscribePrimary();
+      unsubscribePrimarySecondary();
       unsubscribeLegacy();
+      unsubscribeLegacySecondary();
     };
   }, [user?.uid]);
 
@@ -152,6 +205,17 @@ export default function JudgeEvaluations() {
       updatedAt: serverTimestamp(),
       respondedAt: serverTimestamp(),
     };
+
+    if (import.meta.env.DEV) {
+      console.info('[JudgeEvaluations] invitation decision', {
+        uid: user.uid,
+        buildathonId: invitation.buildathonId,
+        status,
+        invitationId: invitation.id || null,
+        inviteeUid: invitation.inviteeUid || null,
+        invitedUid: invitation.invitedUid || null,
+      });
+    }
 
     await Promise.all([
       setDoc(doc(db, 'buildathons', invitation.buildathonId, 'invitations', user.uid), invitationData, { merge: true }),

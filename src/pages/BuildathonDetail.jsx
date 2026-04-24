@@ -169,7 +169,7 @@ function normalizeBuildathonEvent(raw) {
 }
 
 function getCanonicalProjectStatus(project = {}) {
-  const raw = String(project.projectStatus || '').toLowerCase();
+  const raw = String(project.projectStatus || project.status || '').toLowerCase();
   const normalizedRaw = raw.replace('é', 'e').trim();
   if (normalizedRaw === 'brouillon' || normalizedRaw === 'draft') return 'brouillon';
   if (normalizedRaw === 'soumis' || normalizedRaw === 'submitted' || normalizedRaw === 'pending') return 'soumis';
@@ -484,7 +484,27 @@ export default function BuildathonDetail() {
       fromStatus.forEach((value, key) => merged.set(key, value));
       fromModeration.forEach((value, key) => merged.set(key, value));
       fromPublished.forEach((value, key) => merged.set(key, value));
-      setProjects(Array.from(merged.values()));
+      const nextProjects = Array.from(merged.values());
+      if (import.meta.env.DEV) {
+        console.info('[BuildathonDetail] project query', {
+          buildathonId,
+          visibility,
+          isAdmin,
+          eventProjectVisibility: event?.projectVisibility || null,
+          projectCount: nextProjects.length,
+          projects: nextProjects.map((project) => ({
+            id: project.id,
+            buildathonId: project.buildathonId,
+            status: project.status || null,
+            projectStatus: project.projectStatus || null,
+            moderationStatus: project.moderationStatus || null,
+            isPublished: project.isPublished === true,
+            submittedBy: project.submittedBy || null,
+            submittedAt: project.submittedAt || null,
+          })),
+        });
+      }
+      setProjects(nextProjects);
     };
 
     const unsubscribers = [];
@@ -772,6 +792,7 @@ export default function BuildathonDetail() {
         buildathonId: event.id,
         buildathonTitle: event.title || 'Buildathon',
         inviteeUid: targetUser.id,
+        invitedUid: targetUser.id,
         inviteeLabel: targetUser.displayName || targetUser.email || targetUser.id,
         inviteeEmail: targetUser.email || null,
         invitedBy: user?.uid || null,
@@ -779,6 +800,20 @@ export default function BuildathonDetail() {
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
+
+      if (import.meta.env.DEV) {
+        console.info('[BuildathonDetail] judge invitation create', {
+          buildathonId: event.id,
+          inviteeEmail: targetUser.email || null,
+          resolvedUid: targetUser.id,
+          invitationStatus: invitationData.status,
+          invitationPath: {
+            invitations: `buildathons/${event.id}/invitations/${targetUser.id}`,
+            judgeInvitations: `buildathons/${event.id}/judgeInvitations/${targetUser.id}`,
+          },
+          invitationData,
+        });
+      }
 
       await Promise.all([
         setDoc(doc(db, 'buildathons', event.id, 'invitations', targetUser.id), invitationData, { merge: true }),

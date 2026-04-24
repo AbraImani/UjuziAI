@@ -225,7 +225,7 @@ const DEFAULT_BUILDATHON_PROJECT_META = {
 const PROJECT_STATUSES = ['brouillon', 'soumis', 'valide', 'rejete', 'publie'];
 
 function getCanonicalProjectStatus(project = {}) {
-  const raw = String(project.projectStatus || '').toLowerCase();
+  const raw = String(project.projectStatus || project.status || '').toLowerCase();
   const normalizedRaw = raw
     .replace('é', 'e')
     .replace('à', 'a')

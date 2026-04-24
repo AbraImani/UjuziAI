@@ -35,21 +35,29 @@ service cloud.firestore {
 
     function projectIsRejected(projectData) {
       return projectData.projectStatus in ['rejete', 'rejected'] ||
+        projectData.status in ['rejete', 'rejected'] ||
         projectData.moderationStatus == 'rejected';
     }
 
     function projectIsDraft(projectData) {
-      return projectData.projectStatus in ['brouillon', 'draft'];
+      return projectData.projectStatus in ['brouillon', 'draft'] ||
+        projectData.status in ['brouillon', 'draft'];
     }
 
     function projectIsPublished(projectData) {
       return projectData.projectStatus in ['publie', 'published'] ||
+        projectData.status in ['publie', 'published'] ||
         projectData.isPublished == true ||
         projectData.isPublic == true;
     }
 
     function projectIsSubmittedOrApproved(projectData) {
       return projectData.projectStatus in [
+          'soumis', 'submitted', 'pending',
+          'valide', 'validated', 'approved',
+          'publie', 'published'
+        ] ||
+        projectData.status in [
           'soumis', 'submitted', 'pending',
           'valide', 'validated', 'approved',
           'publie', 'published'
@@ -362,7 +370,11 @@ service cloud.firestore {
 
       // Judge invitation lifecycle per buildathon.
       match /invitations/{inviteeUid} {
-        allow read: if isAdmin() || (isAuthenticated() && request.auth.uid == inviteeUid);
+        allow read: if isAdmin() || (isAuthenticated() && (
+          request.auth.uid == inviteeUid ||
+          resource.data.inviteeUid == request.auth.uid ||
+          resource.data.invitedUid == request.auth.uid
+        ));
 
         allow create: if isAdmin() &&
           request.resource.data.inviteeUid == inviteeUid &&
@@ -382,7 +394,11 @@ service cloud.firestore {
       }
 
       match /judgeInvitations/{inviteeUid} {
-        allow read: if isAdmin() || (isAuthenticated() && request.auth.uid == inviteeUid);
+        allow read: if isAdmin() || (isAuthenticated() && (
+          request.auth.uid == inviteeUid ||
+          resource.data.inviteeUid == request.auth.uid ||
+          resource.data.invitedUid == request.auth.uid
+        ));
 
         allow create: if isAdmin() &&
           request.resource.data.inviteeUid == inviteeUid &&
