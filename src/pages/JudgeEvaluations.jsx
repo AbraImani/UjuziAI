@@ -23,6 +23,9 @@ export default function JudgeEvaluations() {
       return;
     }
 
+    const email = String(user.email || '').trim();
+    const emailLower = email.toLowerCase();
+
     const invitationsQuery = query(
       collectionGroup(db, 'invitations'),
       where('inviteeUid', '==', user.uid)
@@ -39,12 +42,63 @@ export default function JudgeEvaluations() {
       collectionGroup(db, 'judgeInvitations'),
       where('invitedUid', '==', user.uid)
     );
+    const invitationsByEmailQuery = email
+      ? query(collectionGroup(db, 'invitations'), where('inviteeEmail', '==', email))
+      : null;
+    const invitationsByInvitedEmailQuery = email
+      ? query(collectionGroup(db, 'invitations'), where('invitedEmail', '==', email))
+      : null;
+    const invitationsByEmailLowerQuery = emailLower
+      ? query(collectionGroup(db, 'invitations'), where('inviteeEmailLower', '==', emailLower))
+      : null;
+    const invitationsByInvitedEmailLowerQuery = emailLower
+      ? query(collectionGroup(db, 'invitations'), where('invitedEmailLower', '==', emailLower))
+      : null;
+    const legacyInvitationsByEmailQuery = email
+      ? query(collectionGroup(db, 'judgeInvitations'), where('inviteeEmail', '==', email))
+      : null;
+    const legacyInvitationsByInvitedEmailQuery = email
+      ? query(collectionGroup(db, 'judgeInvitations'), where('invitedEmail', '==', email))
+      : null;
+    const legacyInvitationsByEmailLowerQuery = emailLower
+      ? query(collectionGroup(db, 'judgeInvitations'), where('inviteeEmailLower', '==', emailLower))
+      : null;
+    const legacyInvitationsByInvitedEmailLowerQuery = emailLower
+      ? query(collectionGroup(db, 'judgeInvitations'), where('invitedEmailLower', '==', emailLower))
+      : null;
 
-    const mergeInvitations = (primaryList, secondaryList, legacyList, legacySecondaryList) => {
+    const mergeInvitations = (
+      primaryList,
+      secondaryList,
+      legacyList,
+      legacySecondaryList,
+      emailPrimaryList,
+      emailSecondaryList,
+      emailPrimaryLowerList,
+      emailSecondaryLowerList,
+      legacyEmailPrimaryList,
+      legacyEmailSecondaryList,
+      legacyEmailPrimaryLowerList,
+      legacyEmailSecondaryLowerList
+    ) => {
       const merged = new Map();
 
-      [...legacySecondaryList, ...legacyList, ...secondaryList, ...primaryList].forEach((item) => {
-        const key = `${item.buildathonId || 'unknown'}_${item.inviteeUid || user.uid}`;
+      [
+        ...legacyEmailSecondaryLowerList,
+        ...legacyEmailPrimaryLowerList,
+        ...legacyEmailSecondaryList,
+        ...legacyEmailPrimaryList,
+        ...emailSecondaryLowerList,
+        ...emailPrimaryLowerList,
+        ...emailSecondaryList,
+        ...emailPrimaryList,
+        ...legacySecondaryList,
+        ...legacyList,
+        ...secondaryList,
+        ...primaryList,
+      ].forEach((item) => {
+        const identity = item.inviteeUid || item.invitedUid || item.inviteeEmailLower || item.invitedEmailLower || item.inviteeEmail || item.invitedEmail || user.uid;
+        const key = `${item.buildathonId || 'unknown'}_${identity}`;
         const previous = merged.get(key);
         const prevTs = previous?.updatedAt?.toDate ? previous.updatedAt.toDate().getTime() : 0;
         const currTs = item?.updatedAt?.toDate ? item.updatedAt.toDate().getTime() : 0;
@@ -65,17 +119,47 @@ export default function JudgeEvaluations() {
     let secondaryInvitations = [];
     let legacyInvitations = [];
     let legacySecondaryInvitations = [];
+    let emailInvitations = [];
+    let invitedEmailInvitations = [];
+    let emailLowerInvitations = [];
+    let invitedEmailLowerInvitations = [];
+    let legacyEmailInvitations = [];
+    let legacyInvitedEmailInvitations = [];
+    let legacyEmailLowerInvitations = [];
+    let legacyInvitedEmailLowerInvitations = [];
 
     const emitInvitations = () => {
-      const nextInvitations = mergeInvitations(primaryInvitations, secondaryInvitations, legacyInvitations, legacySecondaryInvitations);
+      const nextInvitations = mergeInvitations(
+        primaryInvitations,
+        secondaryInvitations,
+        legacyInvitations,
+        legacySecondaryInvitations,
+        emailInvitations,
+        invitedEmailInvitations,
+        emailLowerInvitations,
+        invitedEmailLowerInvitations,
+        legacyEmailInvitations,
+        legacyInvitedEmailInvitations,
+        legacyEmailLowerInvitations,
+        legacyInvitedEmailLowerInvitations
+      );
       if (import.meta.env.DEV) {
         console.info('[JudgeEvaluations] invitations snapshot', {
           uid: user.uid,
+          email,
           counts: {
             invitations: primaryInvitations.length,
             invitationsByInvitedUid: secondaryInvitations.length,
             judgeInvitations: legacyInvitations.length,
             judgeInvitationsByInvitedUid: legacySecondaryInvitations.length,
+            invitationsByEmail: emailInvitations.length,
+            invitationsByInvitedEmail: invitedEmailInvitations.length,
+            invitationsByEmailLower: emailLowerInvitations.length,
+            invitationsByInvitedEmailLower: invitedEmailLowerInvitations.length,
+            judgeInvitationsByEmail: legacyEmailInvitations.length,
+            judgeInvitationsByInvitedEmail: legacyInvitedEmailInvitations.length,
+            judgeInvitationsByEmailLower: legacyEmailLowerInvitations.length,
+            judgeInvitationsByInvitedEmailLower: legacyInvitedEmailLowerInvitations.length,
             merged: nextInvitations.length,
           },
           invitations: nextInvitations.map((item) => ({
@@ -83,8 +167,10 @@ export default function JudgeEvaluations() {
             buildathonId: item.buildathonId,
             inviteeUid: item.inviteeUid || null,
             invitedUid: item.invitedUid || null,
+            inviteeEmail: item.inviteeEmail || item.invitedEmail || null,
             status: item.status || null,
             buildathonTitle: item.buildathonTitle || null,
+            sourcePath: item.__sourcePath || null,
           })),
         });
       }
@@ -94,7 +180,7 @@ export default function JudgeEvaluations() {
 
     const unsubscribePrimary = onSnapshot(invitationsQuery, (snap) => {
       const nextInvitations = [];
-      snap.forEach((d) => nextInvitations.push({ id: d.id, ...d.data() }));
+      snap.forEach((d) => nextInvitations.push({ id: d.id, __sourcePath: d.ref.path, __sourceCollection: d.ref.parent.id, ...d.data() }));
       primaryInvitations = nextInvitations;
       emitInvitations();
     }, () => {
@@ -104,7 +190,7 @@ export default function JudgeEvaluations() {
 
     const unsubscribePrimarySecondary = onSnapshot(invitationsByInvitedUidQuery, (snap) => {
       const nextInvitations = [];
-      snap.forEach((d) => nextInvitations.push({ id: d.id, ...d.data() }));
+      snap.forEach((d) => nextInvitations.push({ id: d.id, __sourcePath: d.ref.path, __sourceCollection: d.ref.parent.id, ...d.data() }));
       secondaryInvitations = nextInvitations;
       emitInvitations();
     }, () => {
@@ -114,7 +200,7 @@ export default function JudgeEvaluations() {
 
     const unsubscribeLegacy = onSnapshot(legacyInvitationsQuery, (snap) => {
       const nextInvitations = [];
-      snap.forEach((d) => nextInvitations.push({ id: d.id, ...d.data() }));
+      snap.forEach((d) => nextInvitations.push({ id: d.id, __sourcePath: d.ref.path, __sourceCollection: d.ref.parent.id, ...d.data() }));
       legacyInvitations = nextInvitations;
       emitInvitations();
     }, () => {
@@ -124,7 +210,7 @@ export default function JudgeEvaluations() {
 
     const unsubscribeLegacySecondary = onSnapshot(legacyInvitationsByInvitedUidQuery, (snap) => {
       const nextInvitations = [];
-      snap.forEach((d) => nextInvitations.push({ id: d.id, ...d.data() }));
+      snap.forEach((d) => nextInvitations.push({ id: d.id, __sourcePath: d.ref.path, __sourceCollection: d.ref.parent.id, ...d.data() }));
       legacySecondaryInvitations = nextInvitations;
       emitInvitations();
     }, () => {
@@ -132,13 +218,38 @@ export default function JudgeEvaluations() {
       emitInvitations();
     });
 
+    const optionalUnsubscribers = [];
+    const subscribeOptional = (q, setter) => {
+      if (!q) return;
+      const unsub = onSnapshot(q, (snap) => {
+        const nextInvitations = [];
+        snap.forEach((d) => nextInvitations.push({ id: d.id, __sourcePath: d.ref.path, __sourceCollection: d.ref.parent.id, ...d.data() }));
+        setter(nextInvitations);
+        emitInvitations();
+      }, () => {
+        setter([]);
+        emitInvitations();
+      });
+      optionalUnsubscribers.push(unsub);
+    };
+
+    subscribeOptional(invitationsByEmailQuery, (list) => { emailInvitations = list; });
+    subscribeOptional(invitationsByInvitedEmailQuery, (list) => { invitedEmailInvitations = list; });
+    subscribeOptional(invitationsByEmailLowerQuery, (list) => { emailLowerInvitations = list; });
+    subscribeOptional(invitationsByInvitedEmailLowerQuery, (list) => { invitedEmailLowerInvitations = list; });
+    subscribeOptional(legacyInvitationsByEmailQuery, (list) => { legacyEmailInvitations = list; });
+    subscribeOptional(legacyInvitationsByInvitedEmailQuery, (list) => { legacyInvitedEmailInvitations = list; });
+    subscribeOptional(legacyInvitationsByEmailLowerQuery, (list) => { legacyEmailLowerInvitations = list; });
+    subscribeOptional(legacyInvitationsByInvitedEmailLowerQuery, (list) => { legacyInvitedEmailLowerInvitations = list; });
+
     return () => {
       unsubscribePrimary();
       unsubscribePrimarySecondary();
       unsubscribeLegacy();
       unsubscribeLegacySecondary();
+      optionalUnsubscribers.forEach((unsubscribe) => unsubscribe());
     };
-  }, [user?.uid]);
+  }, [user?.uid, user?.email]);
 
   useEffect(() => {
     let cancelled = false;
@@ -217,9 +328,13 @@ export default function JudgeEvaluations() {
       });
     }
 
+    const invitationCollection = invitation.__sourceCollection === 'judgeInvitations' ? 'judgeInvitations' : 'invitations';
+    const invitationDocId = invitation.id || user.uid;
+
     await Promise.all([
-      setDoc(doc(db, 'buildathons', invitation.buildathonId, 'invitations', user.uid), invitationData, { merge: true }),
-      setDoc(doc(db, 'buildathons', invitation.buildathonId, 'judgeInvitations', user.uid), invitationData, { merge: true }),
+      setDoc(doc(db, 'buildathons', invitation.buildathonId, invitationCollection, invitationDocId), invitationData, { merge: true }),
+      setDoc(doc(db, 'buildathons', invitation.buildathonId, 'invitations', invitationDocId), invitationData, { merge: true }),
+      setDoc(doc(db, 'buildathons', invitation.buildathonId, 'judgeInvitations', invitationDocId), invitationData, { merge: true }),
     ]);
 
     if (status === 'accepted') {

@@ -756,6 +756,7 @@ export default function BuildathonDetail() {
   const resolveUserByIdentifier = async (identifier) => {
     const raw = String(identifier || '').trim();
     if (!raw) return null;
+    const lowered = raw.toLowerCase();
 
     if (raw.includes('@')) {
       const byEmailSnap = await getDocs(query(collection(db, 'users'), where('email', '==', raw), limit(1)));
@@ -765,6 +766,19 @@ export default function BuildathonDetail() {
         const resolvedUid = data.uid || data.userId || data.authUid || docSnap.id;
         return { id: resolvedUid, ...data };
       }
+
+      const usersSnap = await getDocs(collection(db, 'users'));
+      let fallbackUser = null;
+      usersSnap.forEach((snap) => {
+        if (fallbackUser) return;
+        const data = snap.data() || {};
+        const email = String(data.email || '').toLowerCase();
+        if (email === lowered) {
+          const resolvedUid = data.uid || data.userId || data.authUid || snap.id;
+          fallbackUser = { id: resolvedUid, ...data };
+        }
+      });
+      if (fallbackUser) return fallbackUser;
     }
 
     const byIdSnap = await getDoc(doc(db, 'users', raw));
@@ -795,6 +809,9 @@ export default function BuildathonDetail() {
         invitedUid: targetUser.id,
         inviteeLabel: targetUser.displayName || targetUser.email || targetUser.id,
         inviteeEmail: targetUser.email || null,
+        inviteeEmailLower: targetUser.email ? String(targetUser.email).toLowerCase() : null,
+        invitedEmail: targetUser.email || null,
+        invitedEmailLower: targetUser.email ? String(targetUser.email).toLowerCase() : null,
         invitedBy: user?.uid || null,
         status: 'pending',
         createdAt: serverTimestamp(),

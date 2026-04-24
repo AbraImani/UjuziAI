@@ -373,7 +373,13 @@ service cloud.firestore {
         allow read: if isAdmin() || (isAuthenticated() && (
           request.auth.uid == inviteeUid ||
           resource.data.inviteeUid == request.auth.uid ||
-          resource.data.invitedUid == request.auth.uid
+          resource.data.invitedUid == request.auth.uid ||
+          (request.auth.token.email is string && (
+            resource.data.inviteeEmail == request.auth.token.email ||
+            resource.data.invitedEmail == request.auth.token.email ||
+            resource.data.inviteeEmailLower == request.auth.token.email ||
+            resource.data.invitedEmailLower == request.auth.token.email
+          ))
         ));
 
         allow create: if isAdmin() &&
@@ -383,8 +389,17 @@ service cloud.firestore {
 
         allow update: if isAdmin() || (
           isAuthenticated() &&
-          request.auth.uid == inviteeUid &&
-          resource.data.inviteeUid == request.auth.uid &&
+          (
+            request.auth.uid == inviteeUid ||
+            resource.data.inviteeUid == request.auth.uid ||
+            resource.data.invitedUid == request.auth.uid ||
+            (request.auth.token.email is string && (
+              resource.data.inviteeEmail == request.auth.token.email ||
+              resource.data.invitedEmail == request.auth.token.email ||
+              resource.data.inviteeEmailLower == request.auth.token.email ||
+              resource.data.invitedEmailLower == request.auth.token.email
+            ))
+          ) &&
           resource.data.buildathonId == buildathonId &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt', 'respondedAt']) &&
           request.resource.data.status in ['accepted', 'declined']
@@ -397,7 +412,13 @@ service cloud.firestore {
         allow read: if isAdmin() || (isAuthenticated() && (
           request.auth.uid == inviteeUid ||
           resource.data.inviteeUid == request.auth.uid ||
-          resource.data.invitedUid == request.auth.uid
+          resource.data.invitedUid == request.auth.uid ||
+          (request.auth.token.email is string && (
+            resource.data.inviteeEmail == request.auth.token.email ||
+            resource.data.invitedEmail == request.auth.token.email ||
+            resource.data.inviteeEmailLower == request.auth.token.email ||
+            resource.data.invitedEmailLower == request.auth.token.email
+          ))
         ));
 
         allow create: if isAdmin() &&
@@ -407,8 +428,17 @@ service cloud.firestore {
 
         allow update: if isAdmin() || (
           isAuthenticated() &&
-          request.auth.uid == inviteeUid &&
-          resource.data.inviteeUid == request.auth.uid &&
+          (
+            request.auth.uid == inviteeUid ||
+            resource.data.inviteeUid == request.auth.uid ||
+            resource.data.invitedUid == request.auth.uid ||
+            (request.auth.token.email is string && (
+              resource.data.inviteeEmail == request.auth.token.email ||
+              resource.data.invitedEmail == request.auth.token.email ||
+              resource.data.inviteeEmailLower == request.auth.token.email ||
+              resource.data.invitedEmailLower == request.auth.token.email
+            ))
+          ) &&
           resource.data.buildathonId == buildathonId &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt', 'respondedAt']) &&
           request.resource.data.status in ['accepted', 'declined']
