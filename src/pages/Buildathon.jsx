@@ -272,6 +272,11 @@ function isProjectVisibleForParticipant(project, event, uid) {
 
   if (status === 'rejete') return false;
 
+  const isJuryMode = event?.mode === 'jury' || event?.rankingMode === 'jury' || event?.juryModeEnabled === true;
+  if (isJuryMode) {
+    return status !== 'brouillon';
+  }
+
   if ((event?.projectVisibility || 'published-only') === 'all-submitted') {
     return status !== 'brouillon';
   }

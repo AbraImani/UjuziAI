@@ -67,7 +67,12 @@ service cloud.firestore {
     }
 
     function getProjectVisibility(buildathonData) {
-      return buildathonData.projectVisibility in ['all-submitted', 'allsubmitted', 'all']
+      return (
+        buildathonData.mode == 'jury' ||
+        buildathonData.rankingMode == 'jury' ||
+        buildathonData.juryModeEnabled == true ||
+        buildathonData.projectVisibility in ['all-submitted', 'allsubmitted', 'all']
+      )
         ? 'all-submitted'
         : 'published-only';
     }

@@ -184,6 +184,9 @@ function getCanonicalProjectStatus(project = {}) {
 }
 
 function getCanonicalProjectVisibility(event = {}) {
+  const isJuryMode = event?.mode === 'jury' || event?.rankingMode === 'jury' || event?.juryModeEnabled === true;
+  if (isJuryMode) return 'all-submitted';
+
   const raw = String(event?.projectVisibility || '')
     .toLowerCase()
     .replace(/[_\s]+/g, '-')
