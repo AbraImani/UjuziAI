@@ -550,6 +550,8 @@ export default function Buildathon() {
         juryResultsPublished: newEvent.juryResultsPublished === true,
         rankingMode: normalizeBuildathonMode(newEvent),
         judgeCriteria: Array.isArray(newEvent.judgeCriteria) ? newEvent.judgeCriteria : [],
+        submittedProjectsCount: 0,
+        publishedProjectsCount: 0,
         participants: [],
         createdBy: user.uid,
         createdAt: serverTimestamp(),
@@ -754,7 +756,11 @@ export default function Buildathon() {
         submittedAt: serverTimestamp(),
       });
 
-      await updateDoc(doc(db, 'buildathons', eventId), { participants: arrayUnion(targetUser.uid) });
+      await updateDoc(doc(db, 'buildathons', eventId), {
+        participants: arrayUnion(targetUser.uid),
+        submittedProjectsCount: increment(1),
+        publishedProjectsCount: increment(1),
+      });
       toast.success(`Projet ajouté pour ${targetUser.name}`);
       setShowAdminProjectForm(null);
       setAdminProject({ userIdentifier: '', title: '', description: '', category: 'web', teamName: '', repoUrl: '', demoUrl: '' });
@@ -1005,6 +1011,9 @@ export default function Buildathon() {
         publishedBy: DEFAULT_BUILDATHON_PROJECT_META.publishedBy,
         submittedBy: user.uid,
         submittedAt: serverTimestamp(),
+      });
+      await updateDoc(doc(db, 'buildathons', eventId), {
+        submittedProjectsCount: increment(1),
       });
       toast.success('Projet soumis !');
       setShowSubmitProject(null);
@@ -1750,6 +1759,9 @@ export default function Buildathon() {
               ? allEventProjects
               : allEventProjects.filter((p) => isProjectVisibleForParticipant(p, event, user?.uid));
             const metrics = getEventPopularityMetrics(event.id, event.participants);
+            const submittedProjectsCount = Number.isFinite(Number(event.submittedProjectsCount))
+              ? Math.max(Number(event.submittedProjectsCount), Number(metrics.submittedProjects || 0))
+              : Number(metrics.submittedProjects || 0);
             const adminSupervisionMetrics = getBuildathonSupervisionMetrics(event, allEventProjects);
             const adminRankingProjects = sortProjectsForEventRanking(event, allEventProjects);
             const integrityWarningsByProject = allEventProjects
@@ -1822,7 +1834,7 @@ export default function Buildathon() {
                         </div>
                         <div className="rounded-lg border border-themed bg-black/5 dark:bg-white/5 px-3 py-2">
                           <p className="text-muted mb-1">Projets</p>
-                          <p className="text-heading font-medium">{metrics.submittedProjects}</p>
+                          <p className="text-heading font-medium">{submittedProjectsCount}</p>
                         </div>
                       </div>
                     </div>

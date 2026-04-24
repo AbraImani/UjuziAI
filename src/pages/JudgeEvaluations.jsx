@@ -27,23 +27,64 @@ export default function JudgeEvaluations() {
       collectionGroup(db, 'invitations'),
       where('inviteeUid', '==', user.uid)
     );
+    const legacyInvitationsQuery = query(
+      collectionGroup(db, 'judgeInvitations'),
+      where('inviteeUid', '==', user.uid)
+    );
 
-    const unsubscribe = onSnapshot(invitationsQuery, (snap) => {
-      const nextInvitations = [];
-      snap.forEach((d) => nextInvitations.push({ id: d.id, ...d.data() }));
-      nextInvitations.sort((a, b) => {
+    const mergeInvitations = (primaryList, legacyList) => {
+      const merged = new Map();
+
+      [...legacyList, ...primaryList].forEach((item) => {
+        const key = `${item.buildathonId || 'unknown'}_${item.inviteeUid || user.uid}`;
+        const previous = merged.get(key);
+        const prevTs = previous?.updatedAt?.toDate ? previous.updatedAt.toDate().getTime() : 0;
+        const currTs = item?.updatedAt?.toDate ? item.updatedAt.toDate().getTime() : 0;
+
+        if (!previous || currTs >= prevTs) {
+          merged.set(key, item);
+        }
+      });
+
+      return Array.from(merged.values()).sort((a, b) => {
         const aDate = a?.createdAt?.toDate ? a.createdAt.toDate().getTime() : 0;
         const bDate = b?.createdAt?.toDate ? b.createdAt.toDate().getTime() : 0;
         return bDate - aDate;
       });
-      setInvitations(nextInvitations);
+    };
+
+    let primaryInvitations = [];
+    let legacyInvitations = [];
+
+    const emitInvitations = () => {
+      setInvitations(mergeInvitations(primaryInvitations, legacyInvitations));
       setLoading(false);
+    };
+
+    const unsubscribePrimary = onSnapshot(invitationsQuery, (snap) => {
+      const nextInvitations = [];
+      snap.forEach((d) => nextInvitations.push({ id: d.id, ...d.data() }));
+      primaryInvitations = nextInvitations;
+      emitInvitations();
     }, () => {
-      setInvitations([]);
-      setLoading(false);
+      primaryInvitations = [];
+      emitInvitations();
     });
 
-    return () => unsubscribe();
+    const unsubscribeLegacy = onSnapshot(legacyInvitationsQuery, (snap) => {
+      const nextInvitations = [];
+      snap.forEach((d) => nextInvitations.push({ id: d.id, ...d.data() }));
+      legacyInvitations = nextInvitations;
+      emitInvitations();
+    }, () => {
+      legacyInvitations = [];
+      emitInvitations();
+    });
+
+    return () => {
+      unsubscribePrimary();
+      unsubscribeLegacy();
+    };
   }, [user?.uid]);
 
   useEffect(() => {

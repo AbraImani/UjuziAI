@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { addDoc, arrayUnion, collection, collectionGroup, doc, getDoc, getDocs, limit, onSnapshot, query, serverTimestamp, setDoc, deleteDoc, updateDoc, where } from 'firebase/firestore';
+import { addDoc, arrayUnion, collection, collectionGroup, doc, getDoc, getDocs, increment, limit, onSnapshot, query, serverTimestamp, setDoc, deleteDoc, updateDoc, where } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { ArrowLeft, Calendar, Clock3, Crown, ExternalLink, Eye, FileText, Heart, Loader2, Medal, MessageSquare, Settings, ThumbsUp, Trophy, Users, UserPlus, Send, Star, UserCircle2 } from 'lucide-react';
@@ -718,6 +718,11 @@ export default function BuildathonDetail() {
         updatedAt: serverTimestamp(),
       });
 
+      await updateDoc(doc(db, 'buildathons', buildathonId), {
+        submittedProjectsCount: increment(1),
+        updatedAt: serverTimestamp(),
+      });
+
       setSubmitFormData({ title: '', description: '', category: '', teamName: '', repoUrl: '', demoUrl: '' });
       setActiveTab('projects');
     } catch (error) {
@@ -736,13 +741,17 @@ export default function BuildathonDetail() {
       const byEmailSnap = await getDocs(query(collection(db, 'users'), where('email', '==', raw), limit(1)));
       if (!byEmailSnap.empty) {
         const docSnap = byEmailSnap.docs[0];
-        return { id: docSnap.id, ...docSnap.data() };
+        const data = docSnap.data() || {};
+        const resolvedUid = data.uid || data.userId || data.authUid || docSnap.id;
+        return { id: resolvedUid, ...data };
       }
     }
 
     const byIdSnap = await getDoc(doc(db, 'users', raw));
     if (byIdSnap.exists()) {
-      return { id: byIdSnap.id, ...byIdSnap.data() };
+      const data = byIdSnap.data() || {};
+      const resolvedUid = data.uid || data.userId || data.authUid || byIdSnap.id;
+      return { id: resolvedUid, ...data };
     }
 
     return null;
@@ -823,6 +832,13 @@ export default function BuildathonDetail() {
   }, [projects, event, user?.uid, isAdmin]);
 
   const sortedProjects = useMemo(() => sortProjectsForRanking(visibleProjects), [visibleProjects]);
+  const submittedProjectsCount = useMemo(() => {
+    const storedCount = Number(event?.submittedProjectsCount);
+    if (Number.isFinite(storedCount) && storedCount >= 0) {
+      return storedCount;
+    }
+    return projects.filter((project) => getCanonicalProjectStatus(project) !== 'brouillon').length;
+  }, [event?.submittedProjectsCount, projects]);
   const rankingMode = event?.mode === 'jury' || event?.juryModeEnabled === true || event?.rankingMode === 'jury' ? 'jury' : 'public';
   const canRevealJuryRanking = rankingMode !== 'jury' || juryResultsPublished || isAdmin;
   const rankingProjects = useMemo(() => {
@@ -880,6 +896,28 @@ export default function BuildathonDetail() {
     () => getPhaseCountdown(event?.voteStartDate, event?.voteEndDate, nowMs),
     [event?.voteStartDate, event?.voteEndDate, nowMs]
   );
+
+  useEffect(() => {
+    if (!isAdmin || !event?.id) return;
+
+    const submittedCount = projects.filter((project) => getCanonicalProjectStatus(project) !== 'brouillon').length;
+    const publishedCount = projects.filter((project) => getCanonicalProjectStatus(project) === 'publie').length;
+
+    const currentSubmitted = Number(event?.submittedProjectsCount);
+    const currentPublished = Number(event?.publishedProjectsCount);
+    const hasSubmittedDrift = !Number.isFinite(currentSubmitted) || currentSubmitted !== submittedCount;
+    const hasPublishedDrift = !Number.isFinite(currentPublished) || currentPublished !== publishedCount;
+
+    if (!hasSubmittedDrift && !hasPublishedDrift) return;
+
+    updateDoc(doc(db, 'buildathons', event.id), {
+      submittedProjectsCount: submittedCount,
+      publishedProjectsCount: publishedCount,
+      updatedAt: serverTimestamp(),
+    }).catch(() => {
+      // Silent sync: UI remains usable even if counter update fails.
+    });
+  }, [isAdmin, event?.id, event?.submittedProjectsCount, event?.publishedProjectsCount, projects]);
 
   if (loading) {
     return (
@@ -957,7 +995,7 @@ export default function BuildathonDetail() {
               <span className="inline-flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{formatEventDate(event.startDate)} → {formatEventDate(getEffectiveEventEndDate(event))}</span>
               <span className="inline-flex items-center gap-1"><Clock3 className="w-3.5 h-3.5" />{formatEventDate(event.submissionStartDate)} → {formatEventDate(getEffectiveEventEndDate(event))}</span>
               <span className="inline-flex items-center gap-1"><Users className="w-3.5 h-3.5" />{event.participants.length} participant{event.participants.length > 1 ? 's' : ''}</span>
-              <span className="inline-flex items-center gap-1"><FileText className="w-3.5 h-3.5" />{projects.length} projet{projects.length > 1 ? 's' : ''}</span>
+              <span className="inline-flex items-center gap-1"><FileText className="w-3.5 h-3.5" />{submittedProjectsCount} projet{submittedProjectsCount > 1 ? 's' : ''} soumis</span>
               <span className={`inline-flex items-center gap-1 ${event.votingEnabled ? 'text-green-400' : 'text-red-400'}`}>
                 <ThumbsUp className="w-3.5 h-3.5" />
                 Vote {event.votingEnabled ? 'activé' : 'désactivé'}
@@ -1034,7 +1072,7 @@ export default function BuildathonDetail() {
               </div>
               <div className="p-3 rounded-lg bg-black/5 dark:bg-white/5 border border-themed">
                 <p className="text-xs text-muted">Projets soumis</p>
-                <p className="text-sm font-medium text-heading">{projects.length}</p>
+                <p className="text-sm font-medium text-heading">{submittedProjectsCount}</p>
               </div>
               <div className="p-3 rounded-lg bg-black/5 dark:bg-white/5 border border-themed">
                 <p className="text-xs text-muted">Vote</p>
@@ -1137,6 +1175,11 @@ export default function BuildathonDetail() {
                     {isWithinSubmissionWindow(event, nowMs)
                       ? ' La phase de soumission est en cours.'
                       : ' La phase de soumission est terminée.'}
+                  </p>
+                )}
+                {!isAdmin && submittedProjectsCount > 0 && (
+                  <p className="text-xs text-muted">
+                    {submittedProjectsCount} projet{submittedProjectsCount > 1 ? 's' : ''} soumis au total pour cet evenement.
                   </p>
                 )}
               </div>
