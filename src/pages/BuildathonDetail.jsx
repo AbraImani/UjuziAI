@@ -790,8 +790,18 @@ export default function BuildathonDetail() {
       toast?.success && toast.success('Invitation envoyée');
     } catch (error) {
       console.error('[DEBUG] Error inviting judge:', error);
-      const errorMessage = error?.message ? String(error.message) : 'Erreur lors de l\'invitation du juge';
-      alert(errorMessage);
+      const errorCode = error?.code ? String(error.code) : 'unknown';
+      const errorMessage = error?.message
+        ? String(error.message)
+        : (typeof error === 'string' ? error : JSON.stringify(error));
+      const debugMessage = [
+        'Invitation juge échouée',
+        `code: ${errorCode}`,
+        `message: ${errorMessage || 'n/a'}`,
+        `buildathonId: ${event?.id || 'n/a'}`,
+        `invitee: ${judgeIdentifier || 'n/a'}`,
+      ].join('\n');
+      alert(debugMessage);
     } finally {
       setInvitingJudge(false);
     }
