@@ -468,30 +468,19 @@ export default function BuildathonDetail() {
       return;
     }
 
-    const visibility = getCanonicalProjectVisibility(event || {});
-
-    const fromStatus = new Map();
-    const fromModeration = new Map();
-    const fromPublished = new Map();
-
     const normalizeFromSnapshot = (snap) => {
-      const map = new Map();
+      const list = [];
       snap.forEach((d) => {
-        map.set(d.id, normalizeBuildathonProject({ id: d.id, ...d.data() }));
+        list.push(normalizeBuildathonProject({ id: d.id, ...d.data() }));
       });
-      return map;
+      return list;
     };
 
-    const emitMergedProjects = () => {
-      const merged = new Map();
-      fromStatus.forEach((value, key) => merged.set(key, value));
-      fromModeration.forEach((value, key) => merged.set(key, value));
-      fromPublished.forEach((value, key) => merged.set(key, value));
-      const nextProjects = Array.from(merged.values());
+    const emitProjects = (nextProjects) => {
       if (import.meta.env.DEV) {
         console.info('[BuildathonDetail] project query', {
           buildathonId,
-          visibility,
+          visibility: getCanonicalProjectVisibility(event || {}),
           isAdmin,
           eventProjectVisibility: event?.projectVisibility || null,
           projectCount: nextProjects.length,
@@ -510,93 +499,27 @@ export default function BuildathonDetail() {
       setProjects(nextProjects);
     };
 
-    const unsubscribers = [];
-
-    if (isAdmin) {
-      const allProjectsRef = query(collection(db, 'buildathonProjects'), where('buildathonId', '==', buildathonId));
-      unsubscribers.push(onSnapshot(allProjectsRef, (snap) => {
-        fromStatus.clear();
-        normalizeFromSnapshot(snap).forEach((value, key) => fromStatus.set(key, value));
-        fromModeration.clear();
-        fromPublished.clear();
-        emitMergedProjects();
-      }, () => setProjects([])));
-    } else if (visibility === 'all-submitted') {
-      const statusRef = query(
-        collection(db, 'buildathonProjects'),
-        where('buildathonId', '==', buildathonId),
-        where('projectStatus', 'in', ['soumis', 'submitted', 'pending', 'valide', 'validated', 'approved', 'publie', 'published'])
-      );
-      const moderationRef = query(
-        collection(db, 'buildathonProjects'),
-        where('buildathonId', '==', buildathonId),
-        where('moderationStatus', '==', 'approved')
-      );
-      const publishedRef = query(
-        collection(db, 'buildathonProjects'),
-        where('buildathonId', '==', buildathonId),
-        where('isPublished', '==', true)
-      );
-
-      unsubscribers.push(onSnapshot(statusRef, (snap) => {
-        fromStatus.clear();
-        normalizeFromSnapshot(snap).forEach((value, key) => fromStatus.set(key, value));
-        emitMergedProjects();
-      }, () => {
-        fromStatus.clear();
-        emitMergedProjects();
-      }));
-
-      unsubscribers.push(onSnapshot(moderationRef, (snap) => {
-        fromModeration.clear();
-        normalizeFromSnapshot(snap).forEach((value, key) => fromModeration.set(key, value));
-        emitMergedProjects();
-      }, () => {
-        fromModeration.clear();
-        emitMergedProjects();
-      }));
-
-      unsubscribers.push(onSnapshot(publishedRef, (snap) => {
-        fromPublished.clear();
-        normalizeFromSnapshot(snap).forEach((value, key) => fromPublished.set(key, value));
-        emitMergedProjects();
-      }, () => {
-        fromPublished.clear();
-        emitMergedProjects();
-      }));
-    } else {
-      const statusRef = query(
-        collection(db, 'buildathonProjects'),
-        where('buildathonId', '==', buildathonId),
-        where('projectStatus', 'in', ['publie', 'published'])
-      );
-      const publishedRef = query(
-        collection(db, 'buildathonProjects'),
-        where('buildathonId', '==', buildathonId),
-        where('isPublished', '==', true)
-      );
-
-      unsubscribers.push(onSnapshot(statusRef, (snap) => {
-        fromStatus.clear();
-        normalizeFromSnapshot(snap).forEach((value, key) => fromStatus.set(key, value));
-        emitMergedProjects();
-      }, () => {
-        fromStatus.clear();
-        emitMergedProjects();
-      }));
-
-      unsubscribers.push(onSnapshot(publishedRef, (snap) => {
-        fromPublished.clear();
-        normalizeFromSnapshot(snap).forEach((value, key) => fromPublished.set(key, value));
-        emitMergedProjects();
-      }, () => {
-        fromPublished.clear();
-        emitMergedProjects();
-      }));
-    }
+    const projectsRef = query(collection(db, 'buildathonProjects'), where('buildathonId', '==', buildathonId));
+    const unsubscribeProjects = onSnapshot(
+      projectsRef,
+      (snap) => {
+        const nextProjects = normalizeFromSnapshot(snap);
+        emitProjects(nextProjects);
+      },
+      (error) => {
+        if (import.meta.env.DEV) {
+          console.error('[BuildathonDetail] project query error', {
+            buildathonId,
+            message: error?.message || String(error),
+            code: error?.code || null,
+          });
+        }
+        setProjects([]);
+      }
+    );
 
     return () => {
-      unsubscribers.forEach((unsub) => unsub());
+      unsubscribeProjects();
     };
   }, [buildathonId, isAdmin, event?.id, event?.projectVisibility]);
 
