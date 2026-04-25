@@ -52,18 +52,9 @@ service cloud.firestore {
     }
 
     function projectIsSubmittedOrApproved(projectData) {
-      return projectData.projectStatus in [
-          'soumis', 'submitted', 'pending',
-          'valide', 'validated', 'approved',
-          'publie', 'published'
-        ] ||
-        projectData.status in [
-          'soumis', 'submitted', 'pending',
-          'valide', 'validated', 'approved',
-          'publie', 'published'
-        ] ||
-        projectData.moderationStatus == 'approved' ||
-        projectIsPublished(projectData);
+      // In all-submitted mode, any project that is neither draft nor rejected
+      // should be visible to authenticated participants.
+      return !projectIsDraft(projectData) && !projectIsRejected(projectData);
     }
 
     function getProjectVisibility(buildathonData) {
