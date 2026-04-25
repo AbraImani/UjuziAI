@@ -732,6 +732,7 @@ export default function BuildathonDetail() {
         commentsCount: 0,
         feedbackCount: 0,
         projectStatus: 'soumis',
+        status: 'soumis',
         moderationStatus: 'pending',
         isPublished: false,
         isPublic: false,
@@ -741,16 +742,18 @@ export default function BuildathonDetail() {
         updatedAt: serverTimestamp(),
       });
 
-      await updateDoc(doc(db, 'buildathons', buildathonId), {
-        submittedProjectsCount: increment(1),
-        updatedAt: serverTimestamp(),
-      });
-
       setSubmitFormData({ title: '', description: '', category: '', teamName: '', repoUrl: '', demoUrl: '' });
       setActiveTab('projects');
     } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('[BuildathonDetail] submit project error', {
+          buildathonId,
+          message: error?.message || String(error),
+          code: error?.code || null,
+        });
+      }
       console.error('Erreur:', error);
-      alert('Erreur lors de la soumission du projet');
+      alert(error?.message ? `Erreur lors de la soumission du projet: ${error.message}` : 'Erreur lors de la soumission du projet');
     } finally {
       setSubmitting(false);
     }
@@ -889,10 +892,11 @@ export default function BuildathonDetail() {
   const sortedProjects = useMemo(() => sortProjectsForRanking(visibleProjects), [visibleProjects]);
   const submittedProjectsCount = useMemo(() => {
     const storedCount = Number(event?.submittedProjectsCount);
+    const derivedCount = projects.filter((project) => getCanonicalProjectStatus(project) !== 'brouillon').length;
     if (Number.isFinite(storedCount) && storedCount >= 0) {
-      return storedCount;
+      return Math.max(storedCount, derivedCount);
     }
-    return projects.filter((project) => getCanonicalProjectStatus(project) !== 'brouillon').length;
+    return derivedCount;
   }, [event?.submittedProjectsCount, projects]);
   const rankingMode = event?.mode === 'jury' || event?.juryModeEnabled === true || event?.rankingMode === 'jury' ? 'jury' : 'public';
   const canRevealJuryRanking = rankingMode !== 'jury' || juryResultsPublished || isAdmin;
