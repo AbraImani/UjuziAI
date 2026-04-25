@@ -207,12 +207,19 @@ function isProjectVisibleForParticipant(project, event, uid) {
   if (isProjectOwnerOrMember(project, uid)) return true;
 
   if (status === 'rejete') return false;
+  
+  // LOGIC FIX: Always show submitted projects if the event is in "jury" mode 
+  // or if projectVisibility is set to 'all-submitted'.
+  // ALSO: If it's currently the submission or voting phase, we should probably 
+  // show submitted projects so participants can see the activity.
   const projectVisibility = getCanonicalProjectVisibility(event);
+  const isJuryMode = event?.mode === 'jury' || event?.rankingMode === 'jury' || event?.juryModeEnabled === true;
 
-  if (projectVisibility === 'all-submitted') {
+  if (isJuryMode || projectVisibility === 'all-submitted') {
     return status === 'soumis' || status === 'valide' || status === 'publie';
   }
 
+  // Fallback: only published projects
   return status === 'publie';
 }
 
@@ -731,6 +738,14 @@ export default function BuildathonDetail() {
         return;
       }
 
+      // DEBUG: Log the resolved user to see what UID we are using
+      console.info('[DEBUG] Judge invitation - Resolved user:', {
+        identifier: judgeIdentifier,
+        resolvedUid: targetUser.id,
+        email: targetUser.email,
+        displayName: targetUser.displayName
+      });
+
       const invitationData = {
         buildathonId: event.id,
         buildathonTitle: event.title || 'Buildathon',
@@ -747,27 +762,19 @@ export default function BuildathonDetail() {
         updatedAt: serverTimestamp(),
       };
 
-      if (import.meta.env.DEV) {
-        console.info('[BuildathonDetail] judge invitation create', {
-          buildathonId: event.id,
-          inviteeEmail: targetUser.email || null,
-          resolvedUid: targetUser.id,
-          invitationStatus: invitationData.status,
-          invitationPath: {
-            invitations: `buildathons/${event.id}/invitations/${targetUser.id}`,
-            judgeInvitations: `buildathons/${event.id}/judgeInvitations/${targetUser.id}`,
-          },
-          invitationData,
-        });
-      }
+      const invRef1 = doc(db, 'buildathons', event.id, 'invitations', targetUser.id);
+      const invRef2 = doc(db, 'buildathons', event.id, 'judgeInvitations', targetUser.id);
 
       await Promise.all([
-        setDoc(doc(db, 'buildathons', event.id, 'invitations', targetUser.id), invitationData, { merge: true }),
-        setDoc(doc(db, 'buildathons', event.id, 'judgeInvitations', targetUser.id), invitationData, { merge: true }),
+        setDoc(invRef1, invitationData, { merge: true }),
+        setDoc(invRef2, invitationData, { merge: true }),
       ]);
 
+      console.info('[DEBUG] Judge invitation created successfully at:', invRef1.path);
       setJudgeIdentifier('');
+      toast?.success && toast.success('Invitation envoyée');
     } catch (error) {
+      console.error('[DEBUG] Error inviting judge:', error);
       alert('Erreur lors de l\'invitation du juge');
     } finally {
       setInvitingJudge(false);

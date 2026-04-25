@@ -26,229 +26,62 @@ export default function JudgeEvaluations() {
     const email = String(user.email || '').trim();
     const emailLower = email.toLowerCase();
 
-    const invitationsQuery = query(
-      collectionGroup(db, 'invitations'),
-      where('inviteeUid', '==', user.uid)
-    );
-    const invitationsByInvitedUidQuery = query(
-      collectionGroup(db, 'invitations'),
-      where('invitedUid', '==', user.uid)
-    );
-    const legacyInvitationsQuery = query(
-      collectionGroup(db, 'judgeInvitations'),
-      where('inviteeUid', '==', user.uid)
-    );
-    const legacyInvitationsByInvitedUidQuery = query(
-      collectionGroup(db, 'judgeInvitations'),
-      where('invitedUid', '==', user.uid)
-    );
-    const invitationsByEmailQuery = email
-      ? query(collectionGroup(db, 'invitations'), where('inviteeEmail', '==', email))
-      : null;
-    const invitationsByInvitedEmailQuery = email
-      ? query(collectionGroup(db, 'invitations'), where('invitedEmail', '==', email))
-      : null;
-    const invitationsByEmailLowerQuery = emailLower
-      ? query(collectionGroup(db, 'invitations'), where('inviteeEmailLower', '==', emailLower))
-      : null;
-    const invitationsByInvitedEmailLowerQuery = emailLower
-      ? query(collectionGroup(db, 'invitations'), where('invitedEmailLower', '==', emailLower))
-      : null;
-    const legacyInvitationsByEmailQuery = email
-      ? query(collectionGroup(db, 'judgeInvitations'), where('inviteeEmail', '==', email))
-      : null;
-    const legacyInvitationsByInvitedEmailQuery = email
-      ? query(collectionGroup(db, 'judgeInvitations'), where('invitedEmail', '==', email))
-      : null;
-    const legacyInvitationsByEmailLowerQuery = emailLower
-      ? query(collectionGroup(db, 'judgeInvitations'), where('inviteeEmailLower', '==', emailLower))
-      : null;
-    const legacyInvitationsByInvitedEmailLowerQuery = emailLower
-      ? query(collectionGroup(db, 'judgeInvitations'), where('invitedEmailLower', '==', emailLower))
-      : null;
+    // DEBUG: Log current user info to see what we are matching against
+    console.info('[DEBUG] JudgeEvaluations - Current User:', {
+      uid: user.uid,
+      email: user.email,
+      emailLower
+    });
 
-    const mergeInvitations = (
-      primaryList,
-      secondaryList,
-      legacyList,
-      legacySecondaryList,
-      emailPrimaryList,
-      emailSecondaryList,
-      emailPrimaryLowerList,
-      emailSecondaryLowerList,
-      legacyEmailPrimaryList,
-      legacyEmailSecondaryList,
-      legacyEmailPrimaryLowerList,
-      legacyEmailSecondaryLowerList
-    ) => {
-      const merged = new Map();
+    // SIMPLIFIED QUERIES: 
+    // 1. By UID (primary)
+    // 2. By Lowercase Email (fallback)
+    // We check both 'invitations' and 'judgeInvitations' collections
+    
+    const queries = [
+      query(collectionGroup(db, 'invitations'), where('inviteeUid', '==', user.uid)),
+      query(collectionGroup(db, 'judgeInvitations'), where('inviteeUid', '==', user.uid)),
+      query(collectionGroup(db, 'invitations'), where('inviteeEmailLower', '==', emailLower)),
+      query(collectionGroup(db, 'judgeInvitations'), where('inviteeEmailLower', '==', emailLower))
+    ];
 
-      [
-        ...legacyEmailSecondaryLowerList,
-        ...legacyEmailPrimaryLowerList,
-        ...legacyEmailSecondaryList,
-        ...legacyEmailPrimaryList,
-        ...emailSecondaryLowerList,
-        ...emailPrimaryLowerList,
-        ...emailSecondaryList,
-        ...emailPrimaryList,
-        ...legacySecondaryList,
-        ...legacyList,
-        ...secondaryList,
-        ...primaryList,
-      ].forEach((item) => {
-        const identity = item.inviteeUid || item.invitedUid || item.inviteeEmailLower || item.invitedEmailLower || item.inviteeEmail || item.invitedEmail || user.uid;
-        const key = `${item.buildathonId || 'unknown'}_${identity}`;
-        const previous = merged.get(key);
-        const prevTs = previous?.updatedAt?.toDate ? previous.updatedAt.toDate().getTime() : 0;
-        const currTs = item?.updatedAt?.toDate ? item.updatedAt.toDate().getTime() : 0;
+    const unsubscribers = [];
+    const results = new Map();
 
-        if (!previous || currTs >= prevTs) {
-          merged.set(key, item);
-        }
-      });
-
-      return Array.from(merged.values()).sort((a, b) => {
+    const updateInvitations = () => {
+      const merged = Array.from(results.values()).sort((a, b) => {
         const aDate = a?.createdAt?.toDate ? a.createdAt.toDate().getTime() : 0;
         const bDate = b?.createdAt?.toDate ? b.createdAt.toDate().getTime() : 0;
         return bDate - aDate;
       });
-    };
 
-    let primaryInvitations = [];
-    let secondaryInvitations = [];
-    let legacyInvitations = [];
-    let legacySecondaryInvitations = [];
-    let emailInvitations = [];
-    let invitedEmailInvitations = [];
-    let emailLowerInvitations = [];
-    let invitedEmailLowerInvitations = [];
-    let legacyEmailInvitations = [];
-    let legacyInvitedEmailInvitations = [];
-    let legacyEmailLowerInvitations = [];
-    let legacyInvitedEmailLowerInvitations = [];
+      console.info('[DEBUG] JudgeEvaluations - Merged Invitations:', merged.length, merged.map(i => ({
+        id: i.id,
+        buildathonId: i.buildathonId,
+        status: i.status
+      })));
 
-    const emitInvitations = () => {
-      const nextInvitations = mergeInvitations(
-        primaryInvitations,
-        secondaryInvitations,
-        legacyInvitations,
-        legacySecondaryInvitations,
-        emailInvitations,
-        invitedEmailInvitations,
-        emailLowerInvitations,
-        invitedEmailLowerInvitations,
-        legacyEmailInvitations,
-        legacyInvitedEmailInvitations,
-        legacyEmailLowerInvitations,
-        legacyInvitedEmailLowerInvitations
-      );
-      if (import.meta.env.DEV) {
-        console.info('[JudgeEvaluations] invitations snapshot', {
-          uid: user.uid,
-          email,
-          counts: {
-            invitations: primaryInvitations.length,
-            invitationsByInvitedUid: secondaryInvitations.length,
-            judgeInvitations: legacyInvitations.length,
-            judgeInvitationsByInvitedUid: legacySecondaryInvitations.length,
-            invitationsByEmail: emailInvitations.length,
-            invitationsByInvitedEmail: invitedEmailInvitations.length,
-            invitationsByEmailLower: emailLowerInvitations.length,
-            invitationsByInvitedEmailLower: invitedEmailLowerInvitations.length,
-            judgeInvitationsByEmail: legacyEmailInvitations.length,
-            judgeInvitationsByInvitedEmail: legacyInvitedEmailInvitations.length,
-            judgeInvitationsByEmailLower: legacyEmailLowerInvitations.length,
-            judgeInvitationsByInvitedEmailLower: legacyInvitedEmailLowerInvitations.length,
-            merged: nextInvitations.length,
-          },
-          invitations: nextInvitations.map((item) => ({
-            id: item.id,
-            buildathonId: item.buildathonId,
-            inviteeUid: item.inviteeUid || null,
-            invitedUid: item.invitedUid || null,
-            inviteeEmail: item.inviteeEmail || item.invitedEmail || null,
-            status: item.status || null,
-            buildathonTitle: item.buildathonTitle || null,
-            sourcePath: item.__sourcePath || null,
-          })),
-        });
-      }
-      setInvitations(nextInvitations);
+      setInvitations(merged);
       setLoading(false);
     };
 
-    const unsubscribePrimary = onSnapshot(invitationsQuery, (snap) => {
-      const nextInvitations = [];
-      snap.forEach((d) => nextInvitations.push({ id: d.id, __sourcePath: d.ref.path, __sourceCollection: d.ref.parent.id, ...d.data() }));
-      primaryInvitations = nextInvitations;
-      emitInvitations();
-    }, () => {
-      primaryInvitations = [];
-      emitInvitations();
-    });
-
-    const unsubscribePrimarySecondary = onSnapshot(invitationsByInvitedUidQuery, (snap) => {
-      const nextInvitations = [];
-      snap.forEach((d) => nextInvitations.push({ id: d.id, __sourcePath: d.ref.path, __sourceCollection: d.ref.parent.id, ...d.data() }));
-      secondaryInvitations = nextInvitations;
-      emitInvitations();
-    }, () => {
-      secondaryInvitations = [];
-      emitInvitations();
-    });
-
-    const unsubscribeLegacy = onSnapshot(legacyInvitationsQuery, (snap) => {
-      const nextInvitations = [];
-      snap.forEach((d) => nextInvitations.push({ id: d.id, __sourcePath: d.ref.path, __sourceCollection: d.ref.parent.id, ...d.data() }));
-      legacyInvitations = nextInvitations;
-      emitInvitations();
-    }, () => {
-      legacyInvitations = [];
-      emitInvitations();
-    });
-
-    const unsubscribeLegacySecondary = onSnapshot(legacyInvitationsByInvitedUidQuery, (snap) => {
-      const nextInvitations = [];
-      snap.forEach((d) => nextInvitations.push({ id: d.id, __sourcePath: d.ref.path, __sourceCollection: d.ref.parent.id, ...d.data() }));
-      legacySecondaryInvitations = nextInvitations;
-      emitInvitations();
-    }, () => {
-      legacySecondaryInvitations = [];
-      emitInvitations();
-    });
-
-    const optionalUnsubscribers = [];
-    const subscribeOptional = (q, setter) => {
-      if (!q) return;
+    queries.forEach((q, index) => {
       const unsub = onSnapshot(q, (snap) => {
-        const nextInvitations = [];
-        snap.forEach((d) => nextInvitations.push({ id: d.id, __sourcePath: d.ref.path, __sourceCollection: d.ref.parent.id, ...d.data() }));
-        setter(nextInvitations);
-        emitInvitations();
-      }, () => {
-        setter([]);
-        emitInvitations();
+        console.info(`[DEBUG] Query ${index} snapshot size:`, snap.size);
+        snap.forEach((d) => {
+          const data = { id: d.id, __sourcePath: d.ref.path, __sourceCollection: d.ref.parent.id, ...d.data() };
+          // Key by buildathonId to avoid duplicates from different queries/collections
+          results.set(data.buildathonId, data);
+        });
+        updateInvitations();
+      }, (err) => {
+        console.error(`[DEBUG] Query ${index} error:`, err);
+        updateInvitations();
       });
-      optionalUnsubscribers.push(unsub);
-    };
+      unsubscribers.push(unsub);
+    });
 
-    subscribeOptional(invitationsByEmailQuery, (list) => { emailInvitations = list; });
-    subscribeOptional(invitationsByInvitedEmailQuery, (list) => { invitedEmailInvitations = list; });
-    subscribeOptional(invitationsByEmailLowerQuery, (list) => { emailLowerInvitations = list; });
-    subscribeOptional(invitationsByInvitedEmailLowerQuery, (list) => { invitedEmailLowerInvitations = list; });
-    subscribeOptional(legacyInvitationsByEmailQuery, (list) => { legacyEmailInvitations = list; });
-    subscribeOptional(legacyInvitationsByInvitedEmailQuery, (list) => { legacyInvitedEmailInvitations = list; });
-    subscribeOptional(legacyInvitationsByEmailLowerQuery, (list) => { legacyEmailLowerInvitations = list; });
-    subscribeOptional(legacyInvitationsByInvitedEmailLowerQuery, (list) => { legacyInvitedEmailLowerInvitations = list; });
-
-    return () => {
-      unsubscribePrimary();
-      unsubscribePrimarySecondary();
-      unsubscribeLegacy();
-      unsubscribeLegacySecondary();
-      optionalUnsubscribers.forEach((unsubscribe) => unsubscribe());
-    };
+    return () => unsubscribers.forEach(unsub => unsub());
   }, [user?.uid, user?.email]);
 
   useEffect(() => {
