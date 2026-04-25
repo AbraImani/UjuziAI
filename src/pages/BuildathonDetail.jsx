@@ -130,6 +130,11 @@ function getEventStatus(event) {
   return 'En cours';
 }
 
+function isEventOpenForParticipation(event) {
+  const status = getEventStatus(event);
+  return status === 'À venir' || status === 'En cours';
+}
+
 function isWithinSubmissionWindow(event, nowMs = Date.now()) {
   const startMs = event?.submissionStartDate ? new Date(event.submissionStartDate).getTime() : null;
   const endMsRaw = getEffectiveEventEndDate(event);
@@ -618,6 +623,10 @@ export default function BuildathonDetail() {
   }, [event?.id, event?.mode, event?.juryModeEnabled, event?.juryResultsPublished, event?.judgeCriteria, event?.rankingMode]);
 
   const handleRegister = async () => {
+    if (!isEventOpenForParticipation(event)) {
+      alert('Les inscriptions sont fermées pour ce buildathon terminé.');
+      return;
+    }
     try {
       await updateDoc(doc(db, 'buildathons', buildathonId), {
         participants: arrayUnion(user.uid),
@@ -629,6 +638,14 @@ export default function BuildathonDetail() {
 
   const handleSubmitProject = async (e) => {
     e.preventDefault();
+    if (!isEventOpenForParticipation(event)) {
+      alert('Les soumissions sont fermées pour ce buildathon terminé.');
+      return;
+    }
+    if (event?.submissionOpen === false) {
+      alert('Les soumissions sont actuellement fermées pour ce buildathon.');
+      return;
+    }
     if (!submitFormData.title || !submitFormData.teamName || !submitFormData.repoUrl || !submitFormData.demoUrl) {
       alert('Veuillez remplir tous les champs obligatoires');
       return;
@@ -987,6 +1004,7 @@ export default function BuildathonDetail() {
   }
 
   const status = getEventStatus(event);
+  const canParticipate = isEventOpenForParticipation(event);
 
   return (
     <div className="max-w-6xl mx-auto animate-fade-in">
@@ -1048,7 +1066,7 @@ export default function BuildathonDetail() {
               </div>
             </div>
             <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-themed mt-3">
-              {!event.participants.includes(user?.uid) && (
+              {!event.participants.includes(user?.uid) && canParticipate && (
                 <button
                   onClick={handleRegister}
                   className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg bg-accent-600/20 text-accent-300 border border-accent-500/30 hover:bg-accent-600/30 transition-colors"
@@ -1060,7 +1078,7 @@ export default function BuildathonDetail() {
               {event.participants.includes(user?.uid) && (
                 <span className="text-xs text-green-400 flex items-center gap-1">✓ Inscrit</span>
               )}
-              {event.participants.includes(user?.uid) && !projects.some((p) => p.submittedBy === user?.uid) && (
+              {event.participants.includes(user?.uid) && canParticipate && !projects.some((p) => p.submittedBy === user?.uid) && (
                 <button
                   onClick={() => setActiveTab('submit')}
                   className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg bg-primary-600/20 text-primary-300 border border-primary-500/30 hover:bg-primary-600/30 transition-colors"
@@ -1562,7 +1580,7 @@ export default function BuildathonDetail() {
           <div className="space-y-4">
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <h2 className="text-lg font-semibold text-heading">Soumettre un projet</h2>
-              {!event.participants.includes(user?.uid) && (
+              {!event.participants.includes(user?.uid) && canParticipate && (
                 <button onClick={handleRegister} className="btn-primary text-sm inline-flex items-center gap-1">
                   <UserPlus className="w-3.5 h-3.5" />
                   S'inscrire d'abord
@@ -1570,7 +1588,9 @@ export default function BuildathonDetail() {
               )}
             </div>
 
-            {!event.participants.includes(user?.uid) ? (
+            {!canParticipate ? (
+              <p className="text-body">Ce buildathon est terminé: inscriptions et soumissions sont fermées.</p>
+            ) : !event.participants.includes(user?.uid) ? (
               <p className="text-body">Vous devez d'abord vous inscrire au buildathon pour soumettre un projet.</p>
             ) : (
               <form onSubmit={handleSubmitProject} className="space-y-3">

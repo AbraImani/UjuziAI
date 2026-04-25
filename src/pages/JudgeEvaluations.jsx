@@ -11,7 +11,7 @@ function formatCount(value) {
 }
 
 export default function JudgeEvaluations() {
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const [loading, setLoading] = useState(true);
   const [invitations, setInvitations] = useState([]);
   const [progressByBuildathon, setProgressByBuildathon] = useState({});
@@ -23,12 +23,14 @@ export default function JudgeEvaluations() {
       return;
     }
 
-    const email = String(user.email || '').trim();
+    const legacyUid = String(userProfile?.uid || '').trim();
+    const email = String(user.email || userProfile?.email || '').trim();
     const emailLower = email.toLowerCase();
 
     // DEBUG: Log current user info to see what we are matching against
     console.info('[DEBUG] JudgeEvaluations - Current User:', {
       uid: user.uid,
+      legacyUid,
       email: user.email,
       emailLower
     });
@@ -46,8 +48,25 @@ export default function JudgeEvaluations() {
       query(collectionGroup(db, 'invitations'), where('inviteeEmailLower', '==', emailLower)),
       query(collectionGroup(db, 'judgeInvitations'), where('inviteeEmailLower', '==', emailLower)),
       query(collectionGroup(db, 'invitations'), where('invitedEmailLower', '==', emailLower)),
-      query(collectionGroup(db, 'judgeInvitations'), where('invitedEmailLower', '==', emailLower))
+      query(collectionGroup(db, 'judgeInvitations'), where('invitedEmailLower', '==', emailLower)),
+      query(collectionGroup(db, 'invitations'), where('inviteeEmail', '==', email)),
+      query(collectionGroup(db, 'judgeInvitations'), where('inviteeEmail', '==', email)),
+      query(collectionGroup(db, 'invitations'), where('invitedEmail', '==', email)),
+      query(collectionGroup(db, 'judgeInvitations'), where('invitedEmail', '==', email))
     ];
+
+    if (legacyUid && legacyUid !== user.uid) {
+      queries.push(
+        query(collectionGroup(db, 'invitations'), where('inviteeUid', '==', legacyUid)),
+        query(collectionGroup(db, 'judgeInvitations'), where('inviteeUid', '==', legacyUid)),
+        query(collectionGroup(db, 'invitations'), where('invitedUid', '==', legacyUid)),
+        query(collectionGroup(db, 'judgeInvitations'), where('invitedUid', '==', legacyUid)),
+        query(collectionGroup(db, 'invitations'), where('inviteeLegacyUid', '==', legacyUid)),
+        query(collectionGroup(db, 'judgeInvitations'), where('inviteeLegacyUid', '==', legacyUid)),
+        query(collectionGroup(db, 'invitations'), where('invitedLegacyUid', '==', legacyUid)),
+        query(collectionGroup(db, 'judgeInvitations'), where('invitedLegacyUid', '==', legacyUid))
+      );
+    }
 
     const unsubscribers = [];
     const results = new Map();
@@ -110,7 +129,7 @@ export default function JudgeEvaluations() {
     });
 
     return () => unsubscribers.forEach(unsub => unsub());
-  }, [user?.uid, user?.email]);
+  }, [user?.uid, user?.email, userProfile?.uid, userProfile?.email]);
 
   useEffect(() => {
     let cancelled = false;
