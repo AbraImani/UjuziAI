@@ -1017,9 +1017,6 @@ export default function Buildathon() {
         submittedBy: user.uid,
         submittedAt: serverTimestamp(),
       });
-      await updateDoc(doc(db, 'buildathons', eventId), {
-        submittedProjectsCount: increment(1),
-      });
       toast.success('Projet soumis !');
       setShowSubmitProject(null);
       setNewProject({ title: '', description: '', category: 'ai-ml', teamName: '', repoUrl: '', demoUrl: '', inviteIdentifier: '' });

@@ -41,12 +41,38 @@ export default function JudgeEvaluations() {
     const queries = [
       query(collectionGroup(db, 'invitations'), where('inviteeUid', '==', user.uid)),
       query(collectionGroup(db, 'judgeInvitations'), where('inviteeUid', '==', user.uid)),
+      query(collectionGroup(db, 'invitations'), where('invitedUid', '==', user.uid)),
+      query(collectionGroup(db, 'judgeInvitations'), where('invitedUid', '==', user.uid)),
       query(collectionGroup(db, 'invitations'), where('inviteeEmailLower', '==', emailLower)),
-      query(collectionGroup(db, 'judgeInvitations'), where('inviteeEmailLower', '==', emailLower))
+      query(collectionGroup(db, 'judgeInvitations'), where('inviteeEmailLower', '==', emailLower)),
+      query(collectionGroup(db, 'invitations'), where('invitedEmailLower', '==', emailLower)),
+      query(collectionGroup(db, 'judgeInvitations'), where('invitedEmailLower', '==', emailLower))
     ];
 
     const unsubscribers = [];
     const results = new Map();
+
+    const getStatusPriority = (status) => {
+      if (status === 'accepted') return 3;
+      if (status === 'pending') return 2;
+      if (status === 'declined') return 1;
+      return 0;
+    };
+
+    const setMergedInvitation = (incoming) => {
+      const existing = results.get(incoming.buildathonId);
+      if (!existing) {
+        results.set(incoming.buildathonId, incoming);
+        return;
+      }
+
+      const existingPriority = getStatusPriority(existing.status);
+      const incomingPriority = getStatusPriority(incoming.status);
+
+      if (incomingPriority > existingPriority) {
+        results.set(incoming.buildathonId, incoming);
+      }
+    };
 
     const updateInvitations = () => {
       const merged = Array.from(results.values()).sort((a, b) => {
@@ -70,8 +96,10 @@ export default function JudgeEvaluations() {
         console.info(`[DEBUG] Query ${index} snapshot size:`, snap.size);
         snap.forEach((d) => {
           const data = { id: d.id, __sourcePath: d.ref.path, __sourceCollection: d.ref.parent.id, ...d.data() };
-          // Key by buildathonId to avoid duplicates from different queries/collections
-          results.set(data.buildathonId, data);
+          if (!data.buildathonId) return;
+          // Key by buildathonId to avoid duplicates from different queries/collections.
+          // Keep the strongest status when duplicates exist.
+          setMergedInvitation(data);
         });
         updateInvitations();
       }, (err) => {
