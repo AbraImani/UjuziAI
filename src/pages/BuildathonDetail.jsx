@@ -765,17 +765,33 @@ export default function BuildathonDetail() {
       const invRef1 = doc(db, 'buildathons', event.id, 'invitations', targetUser.id);
       const invRef2 = doc(db, 'buildathons', event.id, 'judgeInvitations', targetUser.id);
 
-      await Promise.all([
+      const writeResults = await Promise.allSettled([
         setDoc(invRef1, invitationData, { merge: true }),
         setDoc(invRef2, invitationData, { merge: true }),
       ]);
+
+      const successCount = writeResults.filter((result) => result.status === 'fulfilled').length;
+      if (successCount === 0) {
+        const firstFailure = writeResults.find((result) => result.status === 'rejected');
+        throw firstFailure?.reason || new Error('Invitation write failed');
+      }
+
+      if (import.meta.env.DEV) {
+        const failures = writeResults
+          .filter((result) => result.status === 'rejected')
+          .map((result) => result.reason?.message || String(result.reason));
+        if (failures.length > 0) {
+          console.warn('[BuildathonDetail] partial invitation write failure', failures);
+        }
+      }
 
       console.info('[DEBUG] Judge invitation created successfully at:', invRef1.path);
       setJudgeIdentifier('');
       toast?.success && toast.success('Invitation envoyée');
     } catch (error) {
       console.error('[DEBUG] Error inviting judge:', error);
-      alert('Erreur lors de l\'invitation du juge');
+      const errorMessage = error?.message ? String(error.message) : 'Erreur lors de l\'invitation du juge';
+      alert(errorMessage);
     } finally {
       setInvitingJudge(false);
     }
