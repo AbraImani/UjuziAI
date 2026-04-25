@@ -699,8 +699,13 @@ export default function BuildathonDetail() {
       if (!byEmailSnap.empty) {
         const docSnap = byEmailSnap.docs[0];
         const data = docSnap.data() || {};
-        const resolvedUid = data.uid || data.userId || data.authUid || docSnap.id;
-        return { id: resolvedUid, ...data };
+        return {
+          id: docSnap.id,
+          authUid: docSnap.id,
+          legacyUid: data.uid || data.userId || data.authUid || null,
+          email: data.email || raw,
+          ...data,
+        };
       }
 
       const usersSnap = await getDocs(collection(db, 'users'));
@@ -710,8 +715,13 @@ export default function BuildathonDetail() {
         const data = snap.data() || {};
         const email = String(data.email || '').toLowerCase();
         if (email === lowered) {
-          const resolvedUid = data.uid || data.userId || data.authUid || snap.id;
-          fallbackUser = { id: resolvedUid, ...data };
+          fallbackUser = {
+            id: snap.id,
+            authUid: snap.id,
+            legacyUid: data.uid || data.userId || data.authUid || null,
+            email: data.email || raw,
+            ...data,
+          };
         }
       });
       if (fallbackUser) return fallbackUser;
@@ -720,8 +730,13 @@ export default function BuildathonDetail() {
     const byIdSnap = await getDoc(doc(db, 'users', raw));
     if (byIdSnap.exists()) {
       const data = byIdSnap.data() || {};
-      const resolvedUid = data.uid || data.userId || data.authUid || byIdSnap.id;
-      return { id: resolvedUid, ...data };
+      return {
+        id: byIdSnap.id,
+        authUid: byIdSnap.id,
+        legacyUid: data.uid || data.userId || data.authUid || null,
+        email: data.email || null,
+        ...data,
+      };
     }
 
     return null;
@@ -749,21 +764,24 @@ export default function BuildathonDetail() {
       const invitationData = {
         buildathonId: event.id,
         buildathonTitle: event.title || 'Buildathon',
-        inviteeUid: targetUser.id,
-        invitedUid: targetUser.id,
+        inviteeUid: targetUser.authUid || targetUser.id,
+        invitedUid: targetUser.authUid || targetUser.id,
+        inviteeLegacyUid: targetUser.legacyUid || null,
+        invitedLegacyUid: targetUser.legacyUid || null,
         inviteeLabel: targetUser.displayName || targetUser.email || targetUser.id,
-        inviteeEmail: targetUser.email || null,
-        inviteeEmailLower: targetUser.email ? String(targetUser.email).toLowerCase() : null,
-        invitedEmail: targetUser.email || null,
-        invitedEmailLower: targetUser.email ? String(targetUser.email).toLowerCase() : null,
+        inviteeEmail: targetUser.email || judgeIdentifier.trim() || null,
+        inviteeEmailLower: (targetUser.email || judgeIdentifier.trim()) ? String(targetUser.email || judgeIdentifier.trim()).toLowerCase() : null,
+        invitedEmail: targetUser.email || judgeIdentifier.trim() || null,
+        invitedEmailLower: (targetUser.email || judgeIdentifier.trim()) ? String(targetUser.email || judgeIdentifier.trim()).toLowerCase() : null,
         invitedBy: user?.uid || null,
         status: 'pending',
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
 
-      const invRef1 = doc(db, 'buildathons', event.id, 'invitations', targetUser.id);
-      const invRef2 = doc(db, 'buildathons', event.id, 'judgeInvitations', targetUser.id);
+      const invitationDocId = targetUser.authUid || targetUser.id;
+      const invRef1 = doc(db, 'buildathons', event.id, 'invitations', invitationDocId);
+      const invRef2 = doc(db, 'buildathons', event.id, 'judgeInvitations', invitationDocId);
 
       const writeResults = await Promise.allSettled([
         setDoc(invRef1, invitationData, { merge: true }),
