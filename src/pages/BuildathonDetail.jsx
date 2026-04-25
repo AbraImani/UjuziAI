@@ -5,7 +5,6 @@ import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { ArrowLeft, Calendar, Clock3, Crown, ExternalLink, Eye, FileText, Heart, Loader2, Medal, MessageSquare, Settings, ThumbsUp, Trophy, Users, UserPlus, Send, Star, UserCircle2 } from 'lucide-react';
 import { normalizeJudgeCriteria } from '../lib/judging';
-import toast from 'react-hot-toast';
 
 const TAB_LIST = [
   { id: 'overview', label: 'Aperçu' },
@@ -788,17 +787,19 @@ export default function BuildathonDetail() {
 
       console.info('[DEBUG] Judge invitation created successfully at:', invRef1.path);
       setJudgeIdentifier('');
-      toast?.success && toast.success('Invitation envoyée');
+      alert('Invitation envoyee');
     } catch (error) {
       console.error('[DEBUG] Error inviting judge:', error);
       const errorCode = error?.code ? String(error.code) : 'unknown';
       const errorMessage = error?.message
         ? String(error.message)
         : (typeof error === 'string' ? error : JSON.stringify(error));
+      const errorStack = error?.stack ? String(error.stack) : 'n/a';
       const debugMessage = [
         'Invitation juge échouée',
         `code: ${errorCode}`,
         `message: ${errorMessage || 'n/a'}`,
+        `stack: ${errorStack}`,
         `buildathonId: ${event?.id || 'n/a'}`,
         `invitee: ${judgeIdentifier || 'n/a'}`,
       ].join('\n');
