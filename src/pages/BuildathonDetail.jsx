@@ -5,6 +5,7 @@ import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { ArrowLeft, Calendar, Clock3, Crown, ExternalLink, Eye, FileText, Heart, Loader2, Medal, MessageSquare, Settings, ThumbsUp, Trophy, Users, UserPlus, Send, Star, UserCircle2 } from 'lucide-react';
 import { normalizeJudgeCriteria } from '../lib/judging';
+import toast from 'react-hot-toast';
 
 const TAB_LIST = [
   { id: 'overview', label: 'Aperçu' },
