@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo } from 'react';
+﻿import { useState, useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import {
   collection,
@@ -434,6 +434,7 @@ export default function Buildathon() {
   });
   const [showEditEvent, setShowEditEvent] = useState(false);
   const [editingEventId, setEditingEventId] = useState(null);
+  const editFormRef = useRef(null);
   const [editEvent, setEditEvent] = useState({
     type: 'buildathon',
     title: '',
@@ -575,6 +576,9 @@ export default function Buildathon() {
 
   // ---- Admin: Edit Event ----
   function handleOpenEditEvent(event) {
+    setShowCreateEvent(false);
+    setShowSubmitProject(null);
+    setShowAdminProjectForm(null);
     setEditingEventId(event.id);
     setEditEvent({
       type: event.type || 'buildathon',
@@ -619,6 +623,13 @@ export default function Buildathon() {
     });
     setShowEditEvent(true);
   }
+
+  useEffect(() => {
+    if (!showEditEvent) return;
+    if (editFormRef.current) {
+      editFormRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [showEditEvent, editingEventId]);
 
   async function handleUpdateEvent(e) {
     e.preventDefault();
@@ -1639,7 +1650,7 @@ export default function Buildathon() {
 
       {/* Admin: Edit Event Form */}
       {showEditEvent && isAdmin && (
-        <div className="glass-card p-8 mb-6 border-2 border-amber-500/30">
+        <div ref={editFormRef} className="glass-card p-8 mb-6 border-2 border-amber-500/30">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-bold text-heading flex items-center gap-2">
               <Pencil className="w-5 h-5 text-amber-400" />

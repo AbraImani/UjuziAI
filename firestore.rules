@@ -71,6 +71,7 @@ service cloud.firestore {
     function canReadProject(projectData) {
       let buildathonDoc = getBuildathon(projectData.buildathonId);
       let buildathonData = buildathonDoc.data;
+      let projectVisibility = buildathonData != null ? getProjectVisibility(buildathonData) : 'published-only';
 
       return isAdmin() ||
         (projectData.buildathonId is string && isAcceptedJudge(projectData.buildathonId)) ||
@@ -79,11 +80,11 @@ service cloud.firestore {
           isAuthenticated() &&
           projectData.buildathonId is string &&
           buildathonData != null &&
-          !projectIsDraft(projectData) &&
-          !projectIsRejected(projectData) &&
           (
-            (getProjectVisibility(buildathonData) == 'all-submitted' && projectIsSubmittedOrApproved(projectData)) ||
-            (getProjectVisibility(buildathonData) == 'published-only' && projectIsPublished(projectData))
+            // In all-submitted visibility, allow authenticated participants to read
+            // all project documents for the event so collection queries remain valid.
+            (projectVisibility == 'all-submitted') ||
+            (projectVisibility == 'published-only' && projectIsPublished(projectData))
           )
         );
     }
