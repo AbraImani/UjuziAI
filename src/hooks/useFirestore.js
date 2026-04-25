@@ -487,36 +487,14 @@ export function useLeaderboard() {
   useEffect(() => {
     const usersRef = collection(db, 'users');
     const usersQuery = query(usersRef, orderBy('totalScore', 'desc'));
-    const projectsRef = collection(db, 'buildathonProjects');
-    // Use the exact same published-project sources for admin and users so
-    // the leaderboard remains identical for everyone.
-    const publishedQuery = query(projectsRef, where('isPublished', '==', true));
-    const publicQuery = query(projectsRef, where('isPublic', '==', true));
-    const legacyPublishedQuery = query(projectsRef, where('projectStatus', 'in', ['publie', 'published']));
 
     let usersCache = [];
-    let projectsCache = [];
 
     function recomputeLeaderboard() {
-      const communityPointsByUser = {};
-
-      projectsCache.forEach((project) => {
-        const ownerId = project?.submittedBy;
-        if (!ownerId) return;
-        const voteCount = Number.isFinite(Number(project?.voteCount))
-          ? Number(project.voteCount)
-          : (Array.isArray(project?.votes) ? project.votes.length : 0);
-        const likesCount = Number.isFinite(Number(project?.likesCount))
-          ? Number(project.likesCount)
-          : (Array.isArray(project?.likeUserIds) ? project.likeUserIds.length : 0);
-        const points = (voteCount * 10) + likesCount;
-        communityPointsByUser[ownerId] = (communityPointsByUser[ownerId] || 0) + points;
-      });
-
       const allData = usersCache
         .filter((item) => !ADMIN_EMAILS_HIDDEN.includes(item.email?.toLowerCase()))
         .map((item) => {
-          const communityPoints = Number(communityPointsByUser[item.id] || 0);
+          const communityPoints = Number(item.communityPoints || 0);
           const leaderboardScore = Number(item.totalScore || 0) + Number(item.bonusPoints || 0) + communityPoints;
           return {
             ...item,
@@ -546,29 +524,8 @@ export function useLeaderboard() {
       setLoading(false);
     });
 
-    const projectDocsById = new Map();
-
-    const bindProjectListener = (label, projectQuery) => onSnapshot(projectQuery, (snap) => {
-      snap.forEach((docSnap) => {
-        projectDocsById.set(docSnap.id, { id: docSnap.id, ...docSnap.data() });
-      });
-      projectsCache = Array.from(projectDocsById.values());
-      recomputeLeaderboard();
-    }, (error) => {
-      console.error(`Error listening to ${label} projects for leaderboard:`, error);
-      projectsCache = Array.from(projectDocsById.values());
-      recomputeLeaderboard();
-    });
-
-    const unsubProjectsPublished = bindProjectListener('published', publishedQuery);
-    const unsubProjectsPublic = bindProjectListener('public', publicQuery);
-    const unsubProjectsLegacy = bindProjectListener('legacy-published', legacyPublishedQuery);
-
     return () => {
       unsubUsers();
-      unsubProjectsPublished();
-      unsubProjectsPublic();
-      unsubProjectsLegacy();
     };
   }, [user]);
 
