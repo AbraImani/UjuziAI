@@ -479,7 +479,7 @@ export function useLeaderboard() {
   const [userRank, setUserRank] = useState(null);
   const [totalUsers, setTotalUsers] = useState(0);
   const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
 
   // Admin emails to hide from public leaderboard
   const ADMIN_EMAILS_HIDDEN = ['abrahamfaith325@gmail.com', 'gdgoncampusucb@gmail.com'];
@@ -488,6 +488,11 @@ export function useLeaderboard() {
     const usersRef = collection(db, 'users');
     const usersQuery = query(usersRef, orderBy('totalScore', 'desc'));
     const projectsRef = collection(db, 'buildathonProjects');
+    // For non-admin users, use a rule-safe query to avoid silent realtime failures
+    // when private/unpublished projects exist in the collection.
+    const projectsQuery = isAdmin
+      ? query(projectsRef)
+      : query(projectsRef, where('isPublished', '==', true));
 
     let usersCache = [];
     let projectsCache = [];
@@ -541,20 +546,23 @@ export function useLeaderboard() {
       setLoading(false);
     });
 
-    const unsubProjects = onSnapshot(projectsRef, (snap) => {
+    const unsubProjects = onSnapshot(projectsQuery, (snap) => {
       const data = [];
       snap.forEach((docSnap) => data.push({ id: docSnap.id, ...docSnap.data() }));
       projectsCache = data;
       recomputeLeaderboard();
     }, (error) => {
       console.error('Error listening to buildathon projects for leaderboard:', error);
+      // Keep the leaderboard functional even if project stream is denied.
+      projectsCache = [];
+      recomputeLeaderboard();
     });
 
     return () => {
       unsubUsers();
       unsubProjects();
     };
-  }, [user]);
+  }, [user, isAdmin]);
 
   return { leaderboard, userRank, totalUsers, loading };
 }
