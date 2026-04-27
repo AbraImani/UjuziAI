@@ -46,7 +46,18 @@ function normalizeDateLike(value) {
 
 function formatDate(value) {
   if (!value) return 'Date non définie';
-  const d = new Date(value);
+  
+  // Handle Firestore Timestamp objects
+  let timestamp = value;
+  if (value?.toDate && typeof value.toDate === 'function') {
+    try {
+      timestamp = value.toDate();
+    } catch {
+      return 'Date non définie';
+    }
+  }
+  
+  const d = new Date(timestamp);
   if (Number.isNaN(d.getTime())) return 'Date non définie';
   return d.toLocaleString('fr-FR', {
     day: 'numeric',
@@ -563,7 +574,7 @@ export default function BuildathonProjectDetail() {
         const currentFeedback = Number.isFinite(Number(projectData.feedbackCount))
           ? Number(projectData.feedbackCount)
           : 0;
-        const currentComments = Number.isFinite(Number(projectData.commentsCount))
+          const currentComments = Number.isFinite(Number(projectData.commentsCount))
           ? Number(projectData.commentsCount)
           : 0;
         const nextCount = Math.max(currentFeedback, currentComments) + 1;
@@ -877,7 +888,10 @@ export default function BuildathonProjectDetail() {
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
             <div className="p-3 rounded-lg border border-themed bg-black/5 dark:bg-white/5">
               <p className="text-muted">Date de soumission</p>
-              <p className="text-heading font-medium inline-flex items-center gap-1 mt-1"><Calendar className="w-3.5 h-3.5" />{formatDate(project.submittedAt)}</p>
+                <p className="text-heading font-medium inline-flex items-center gap-1 mt-1">
+                  <Calendar className="w-3.5 h-3.5" />
+                  {project.submittedAt ? formatDate(project.submittedAt) : 'Date non définie'}
+                </p>
             </div>
             <div className="p-3 rounded-lg border border-themed bg-black/5 dark:bg-white/5">
               <p className="text-muted">Vote (classement)</p>

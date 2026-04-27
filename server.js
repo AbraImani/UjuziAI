@@ -18,9 +18,9 @@ console.log('[SERVER] Starting UjuziAI Server...');
 try {
   if (!admin.apps.length) {
     admin.initializeApp({
-      projectId: 'gdg-ucb-bwai',
+      projectId: process.env.VITE_FIREBASE_PROJECT_ID || 'ujuziai-2ddea',
     });
-    console.log('[SERVER] Firebase Admin initialized for project: gdg-ucb-bwai');
+    console.log(`[SERVER] Firebase Admin initialized for project: ${process.env.VITE_FIREBASE_PROJECT_ID || 'ujuziai-2ddea'}`);
   }
 } catch (error) {
   console.error('[SERVER] Firebase Admin Init Error:', error);
