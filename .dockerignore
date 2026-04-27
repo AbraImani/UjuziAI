@@ -8,3 +8,5 @@ functions/node_modules
 README.md
 docs
 tests
+
+Dockerfile
