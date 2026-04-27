@@ -527,13 +527,16 @@ export function useLeaderboard() {
       projects.forEach((project) => {
         const ownerId = project?.submittedBy;
         if (!ownerId) return;
+
+        const judgeScore = Number.isFinite(Number(project?.judgeScore)) ? Number(project.judgeScore) : 0;
         const voteCount = Number.isFinite(Number(project?.voteCount))
           ? Number(project.voteCount)
           : (Array.isArray(project?.votes) ? project.votes.length : 0);
         const likesCount = Number.isFinite(Number(project?.likesCount))
           ? Number(project.likesCount)
           : (Array.isArray(project?.likeUserIds) ? project.likeUserIds.length : 0);
-        byUser[ownerId] = (byUser[ownerId] || 0) + (voteCount * 10) + likesCount;
+
+        byUser[ownerId] = (byUser[ownerId] || 0) + judgeScore + (voteCount * 10) + likesCount;
       });
       runtimeCommunityPointsByUser = byUser;
       recomputeLeaderboard();
